@@ -1,3 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,64 +8,83 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 240 10% 3.9%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 240 10% 3.9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 240 10% 3.9%;
 
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
 
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 10% 3.9%;
 
     --radius: 0.5rem;
+    
+    /* Shelivery Design System Variables */
+    --shelivery-primary-yellow: #FFDB0D;
+    --shelivery-primary-blue: #245B7B;
+    --shelivery-background-gray: #EAE4E4;
+    --shelivery-card-background: #FFFADF;
+    --shelivery-card-border: #E5E8EB;
+    --shelivery-button-secondary-bg: #FFF5C0;
+    --shelivery-button-secondary-border: #FFEF95;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 94.1%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
   }
 }
 
@@ -71,50 +93,165 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-poppins;
+  }
+  
+  html {
+    font-family: 'Poppins', sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-poppins;
+  }
+  
+  .font-inter {
+    font-family: 'Inter', sans-serif;
   }
 }
 
-/* PWA specific styles */
+/* Shelivery Component Styles */
 @layer components {
+  /* Navigation Bar */
+  .shelivery-navbar {
+    @apply bg-shelivery-primary-blue rounded-shelivery-md p-shelivery-4;
+  }
+  
+  .shelivery-nav-item {
+    @apply px-shelivery-4 py-shelivery-2 rounded-shelivery-sm font-medium text-white transition-colors;
+  }
+  
+  .shelivery-nav-item-active {
+    @apply bg-shelivery-primary-yellow text-shelivery-primary-blue;
+  }
+  
+  .shelivery-nav-item-inactive {
+    @apply hover:bg-white/10;
+  }
+
+  /* Avatar Component */
+  .shelivery-avatar {
+    @apply rounded-full flex items-center justify-center overflow-hidden border-2 border-shelivery-primary-yellow;
+  }
+  
+  .shelivery-avatar-sm {
+    @apply w-8 h-8 text-xs;
+  }
+  
+  .shelivery-avatar-md {
+    @apply w-12 h-12 text-sm;
+  }
+  
+  .shelivery-avatar-lg {
+    @apply w-16 h-16 text-lg;
+  }
+  
+  .shelivery-avatar-xl {
+    @apply w-20 h-20 text-xl;
+  }
+
+  /* Basket Cards */
+  .shelivery-basket-card {
+    @apply bg-shelivery-card-background border border-shelivery-card-border rounded-shelivery-md p-shelivery-4 shadow-shelivery-md;
+  }
+  
+  .shelivery-basket-card-small {
+    @apply rounded-shelivery-md p-shelivery-2;
+  }
+  
+  .shelivery-basket-card-large {
+    @apply rounded-shelivery-lg p-shelivery-4;
+  }
+
+  /* Progress Bar */
+  .shelivery-progress-bar {
+    @apply relative overflow-hidden bg-shelivery-card-border rounded-shelivery-sm h-4;
+  }
+  
+  .shelivery-progress-fill {
+    @apply bg-shelivery-warning-orange h-full transition-all duration-500 ease-out transform-gpu origin-left;
+  }
+  
+  .shelivery-progress-current {
+    @apply bg-shelivery-primary-yellow;
+  }
+
+  /* Buttons */
+  .shelivery-button-primary {
+    @apply bg-shelivery-primary-yellow text-black font-semibold rounded-shelivery-md px-6 py-3 transition-colors hover:bg-shelivery-primary-yellow/90 focus:outline-none focus:ring-2 focus:ring-shelivery-primary-yellow focus:ring-offset-2;
+  }
+  
+  .shelivery-button-secondary {
+    @apply bg-shelivery-button-secondary-bg border border-shelivery-button-secondary-border text-shelivery-text-primary font-medium rounded-shelivery-sm px-4 py-2 transition-colors hover:bg-shelivery-button-secondary-bg/80;
+  }
+  
+  .shelivery-button-error {
+    @apply bg-shelivery-error-red text-white font-semibold rounded-shelivery-md px-6 py-3 transition-colors hover:bg-shelivery-error-red/90;
+  }
+  
+  .shelivery-button-success {
+    @apply bg-shelivery-success-green text-white font-semibold rounded-shelivery-sm px-4 py-2 transition-colors hover:bg-shelivery-success-green/90;
+  }
+
+  /* Status Badges */
+  .shelivery-badge {
+    @apply inline-flex items-center px-2 py-1 rounded-shelivery-full text-xs font-medium;
+  }
+  
+  .shelivery-badge-ordering {
+    @apply bg-shelivery-badge-red-bg border border-shelivery-badge-red-border text-shelivery-badge-red-text;
+  }
+  
+  .shelivery-badge-waiting {
+    @apply bg-shelivery-badge-blue-bg border border-shelivery-badge-blue-border text-shelivery-badge-blue-text;
+  }
+  
+  .shelivery-badge-delivered {
+    @apply bg-shelivery-badge-green-bg border border-shelivery-badge-green-border text-shelivery-badge-green-text;
+  }
+
+  /* Text Fields */
+  .shelivery-input {
+    @apply bg-white border border-gray-400 rounded-shelivery-lg px-shelivery-4 py-shelivery-3 focus:outline-none focus:border-shelivery-primary-blue focus:ring-1 focus:ring-shelivery-primary-blue placeholder:text-gray-400;
+  }
+
+  /* Modal/Dialog */
+  .shelivery-modal {
+    @apply bg-white rounded-t-shelivery-xl rounded-b-none p-shelivery-4;
+  }
+  
+  .shelivery-modal-backdrop {
+    @apply fixed inset-0 bg-shelivery-primary-blue/60 backdrop-blur-sm;
+  }
+
+  /* PWA Install Prompt */
   .pwa-install-prompt {
-    @apply fixed bottom-4 left-4 right-4 bg-primary text-primary-foreground p-4 rounded-lg shadow-lg z-50;
+    @apply fixed bottom-4 left-4 right-4 bg-shelivery-primary-blue text-white p-4 rounded-shelivery-md shadow-shelivery-lg z-50;
   }
   
-  .pool-progress-bar {
-    @apply relative overflow-hidden bg-muted rounded-full h-2;
-  }
-  
-  .pool-progress-fill {
-    @apply bg-primary h-full transition-all duration-500 ease-out;
-  }
-  
+  /* Chat Messages */
   .chat-message-bubble {
-    @apply max-w-xs lg:max-w-md px-4 py-2 rounded-lg;
+    @apply max-w-xs lg:max-w-md px-4 py-2 rounded-shelivery-md;
   }
   
   .chat-message-own {
-    @apply bg-primary text-primary-foreground ml-auto;
+    @apply bg-shelivery-primary-blue text-white ml-auto;
   }
   
   .chat-message-other {
-    @apply bg-muted text-muted-foreground mr-auto;
+    @apply bg-gray-100 text-shelivery-text-primary mr-auto;
   }
   
-  .basket-card {
-    @apply border rounded-lg p-4 space-y-2 hover:shadow-md transition-shadow;
-  }
-  
+  /* Ready Toggle */
   .ready-toggle {
-    @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background;
+    @apply inline-flex items-center justify-center rounded-shelivery-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shelivery-primary-yellow focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
   }
   
   .ready-toggle-active {
-    @apply bg-primary text-primary-foreground hover:bg-primary/90;
+    @apply bg-shelivery-primary-yellow text-shelivery-primary-blue hover:bg-shelivery-primary-yellow/90;
   }
   
   .ready-toggle-inactive {
-    @apply border border-input bg-background hover:bg-accent hover:text-accent-foreground;
+    @apply border border-gray-300 bg-white hover:bg-gray-50 text-shelivery-text-primary;
   }
 }
 
@@ -139,6 +276,31 @@
   .text-balance {
     text-wrap: balance;
   }
+  
+  /* Shelivery-specific utilities */
+  .shelivery-container {
+    @apply max-w-sm mx-auto px-shelivery-4 safe-area-top safe-area-bottom;
+  }
+  
+  .shelivery-page-padding {
+    @apply px-shelivery-6 py-shelivery-4;
+  }
+  
+  .shelivery-card-padding {
+    @apply p-shelivery-4;
+  }
+  
+  .shelivery-gap-small {
+    @apply gap-shelivery-2;
+  }
+  
+  .shelivery-gap-medium {
+    @apply gap-shelivery-4;
+  }
+  
+  .shelivery-gap-large {
+    @apply gap-shelivery-6;
+  }
 }
 
 /* Real-time animations */
@@ -151,8 +313,49 @@
   }
 }
 
+@keyframes pool-progress-fill {
+  0% {
+    transform: scaleX(0);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes bounce-gentle {
+  0%, 100% {
+    transform: translateY(-2px);
+  }
+  50% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .updating {
   animation: pulse-update 0.5s ease-in-out;
+}
+
+.pool-progress-animate {
+  animation: pool-progress-fill 0.5s ease-out;
+}
+
+.bounce-gentle {
+  animation: bounce-gentle 1s ease-in-out infinite;
+}
+
+.fade-in-up {
+  animation: fade-in-up 0.3s ease-out;
 }
 
 /* PWA specific media queries */
@@ -173,5 +376,54 @@
   
   .browser-only {
     display: block !important;
+  }
+}
+
+/* Screen size specific styles for mobile optimization */
+@media screen and (max-width: 375px) {
+  .shelivery-container {
+    @apply px-shelivery-3;
+  }
+  
+  .shelivery-navbar {
+    @apply p-shelivery-3;
+  }
+  
+  .shelivery-basket-card {
+    @apply p-shelivery-3;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .shelivery-button-primary {
+    @apply border-2 border-black;
+  }
+  
+  .shelivery-badge {
+    @apply border-2;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .pool-progress-animate,
+  .bounce-gentle,
+  .fade-in-up,
+  .updating {
+    animation: none;
+  }
+  
+  .shelivery-progress-fill {
+    transition: none;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
   }
 }

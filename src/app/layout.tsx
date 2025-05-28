@@ -1,66 +1,77 @@
-import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
-import '@/styles/globals.css'
+import type { Metadata, Viewport } from "next/types";
+import { Inter } from "next/font/google";
+import "@/styles/globals.css";
 
-const inter = Inter({ 
-  subsets: ['latin'],
-  variable: '--font-sans',
-})
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
 
 export const metadata: Metadata = {
-  title: 'Shelivery - Group Shopping for Dormitories',
-  description: 'Share delivery costs and coordinate group orders with your dormmates',
-  keywords: ['group shopping', 'delivery sharing', 'dormitory', 'cost savings', 'student'],
-  authors: [{ name: 'Shelivery Team' }],
-  creator: 'Shelivery',
-  publisher: 'Shelivery',
+  title: "Shelivery - Group Shopping for Dormitories",
+  description:
+    "Share delivery costs and coordinate group orders with your dormmates",
+  keywords: [
+    "group shopping",
+    "delivery sharing",
+    "dormitory",
+    "cost savings",
+    "student",
+  ],
+  authors: [{ name: "Shelivery Team" }],
+  creator: "Shelivery",
+  publisher: "Shelivery",
   formatDetection: {
     email: false,
     address: false,
     telephone: false,
   },
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://shelivery.app'),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || "https://shelivery.app"
+  ),
   openGraph: {
-    title: 'Shelivery - Group Shopping for Dormitories',
-    description: 'Share delivery costs and coordinate group orders with your dormmates',
-    type: 'website',
-    locale: 'en_US',
-    siteName: 'Shelivery',
+    title: "Shelivery - Group Shopping for Dormitories",
+    description:
+      "Share delivery costs and coordinate group orders with your dormmates",
+    type: "website",
+    locale: "en_US",
+    siteName: "Shelivery",
   },
   twitter: {
-    card: 'summary_large_image',
-    title: 'Shelivery - Group Shopping for Dormitories',
-    description: 'Share delivery costs and coordinate group orders with your dormmates',
+    card: "summary_large_image",
+    title: "Shelivery - Group Shopping for Dormitories",
+    description:
+      "Share delivery costs and coordinate group orders with your dormmates",
   },
-  manifest: '/manifest.json',
+  manifest: "/manifest.json",
   icons: {
-    icon: '/icons/icon-192x192.png',
-    shortcut: '/icons/icon-192x192.png',
-    apple: '/icons/icon-192x192.png',
+    icon: "/icons/icon-192x192.png",
+    shortcut: "/icons/icon-192x192.png",
+    apple: "/icons/icon-192x192.png",
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
-    title: 'Shelivery',
+    statusBarStyle: "default",
+    title: "Shelivery",
   },
-}
+};
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#2563eb' },
-    { media: '(prefers-color-scheme: dark)', color: '#1e40af' },
+    { media: "(prefers-color-scheme: light)", color: "#2563eb" },
+    { media: "(prefers-color-scheme: dark)", color: "#1e40af" },
   ],
-  width: 'device-width',
+  width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  viewportFit: 'cover',
-}
+  viewportFit: "cover",
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="en" className={inter.variable}>
@@ -75,13 +86,13 @@ export default function RootLayout({
         <meta name="msapplication-TileColor" content="#2563eb" />
         <meta name="msapplication-tap-highlight" content="no" />
       </head>
-      <body className={`${inter.className} antialiased min-h-screen bg-background font-sans`}>
+      <body
+        className={`${inter.className} antialiased min-h-screen bg-background font-sans`}
+      >
         <div className="relative flex min-h-screen flex-col">
-          <div className="flex-1">
-            {children}
-          </div>
+          <div className="flex-1">{children}</div>
         </div>
       </body>
     </html>
-  )
+  );
 }
