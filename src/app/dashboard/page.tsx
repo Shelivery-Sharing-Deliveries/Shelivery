@@ -58,6 +58,10 @@ export default function DashboardPage() {
         router.push("/shops");
     //console.log("Add basket clicked");
   };
+  const handleInviteFriend = () => {
+        router.push("/invite-friend");
+    //console.log("Add basket clicked");
+  };
 
   const handleBasketClick = (basketId: string) => {
     console.log("Basket clicked:", basketId);
@@ -72,7 +76,7 @@ export default function DashboardPage() {
           <h1 className="text-[16px] font-bold leading-8 text-black">
             Dashboard
           </h1>
-          <Button className="bg-[#245B7B] text-white px-4 py-2 rounded-lg text-[12px] font-semibold">
+          <Button onClick={handleInviteFriend} className="bg-[#245B7B] text-white px-4 py-2 rounded-lg text-[12px] font-semibold">
             Invite Friends
           </Button>
         </div>
