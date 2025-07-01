@@ -5,6 +5,7 @@ import ProfileCard from "@/components/dashboard/ProfileCard";
 import AddBasket from "@/components/dashboard/AddBasket";
 import Baskets from "@/components/dashboard/Baskets";
 import Banner from "@/components/dashboard/Banner";
+import { useRouter, useSearchParams } from "next/navigation";
 
 // Mock data for demonstration
 const mockUser = {
@@ -51,8 +52,11 @@ const mockBaskets: any[] = [
 ];
 
 export default function DashboardPage() {
-  const handleAddBasket = () => {
-    console.log("Add basket clicked");
+    const router = useRouter();
+
+    const handleAddBasket = () => {
+        router.push("/shops");
+    //console.log("Add basket clicked");
   };
 
   const handleBasketClick = (basketId: string) => {
