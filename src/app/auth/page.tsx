@@ -1,4 +1,5 @@
 "use client";
+import { supabase } from "@/lib/supabase";
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -57,34 +58,32 @@ export default function AuthPage() {
   }, [resendCountdown]);
 
   const handleEmailSubmit = async (submittedEmail: string) => {
-    setLoading(true);
-    setError(null);
-    setEmail(submittedEmail);
+  setLoading(true);
+  setError(null);
+  setEmail(submittedEmail);
 
-    try {
-      // Check if user exists by attempting a test sign in
-      const { error } = await signIn(submittedEmail, "temp_password");
+  try {
+    const { error } = await supabase.auth.signInWithOtp({
+      email: submittedEmail,
+      options: {
+        emailRedirectTo: `${window.location.origin}/dashboard`, // optional
+      },
+    });
 
-      if (error && error.includes("Invalid login credentials")) {
-        // User doesn't exist, go to invite code step
-        setStep("invite");
-      } else if (error && error.includes("Email not confirmed")) {
-        // User exists but email not confirmed, go to password step
-        setStep("password");
-      } else if (error) {
-        // User exists, go to password step
-        setStep("password");
-      } else {
-        // User exists and signed in successfully (shouldn't happen with temp password)
-        setStep("password");
-      }
-    } catch (err: any) {
-      // Assume user exists and go to password step
-      setStep("password");
-    } finally {
-      setLoading(false);
+    if (error) {
+      setError(error.message);
+      return;
     }
-  };
+
+    // Email sent successfully
+    setStep("otp");
+    setResendCountdown(60);
+  } catch (err: any) {
+    setError(err.message || "An unexpected error occurred");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handlePasswordSubmit = async (password: string) => {
     setLoading(true);
