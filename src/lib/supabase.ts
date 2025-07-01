@@ -273,19 +273,19 @@ export interface Database {
           id: number
           image: string
           date: string
-          shop_id: string
+          shop_id: number
         }
         Insert: {
           id?: number
           image: string
           date?: string
-          shop_id: string
+          shop_id: number
         }
         Update: {
           id?: number
           image?: string
           date?: string
-          shop_id?: string
+          shop_id?: number
         }
       }
     }

@@ -5,13 +5,11 @@ import { Tables } from "@/lib/supabase"; // type helper
 
 interface BannerProps {
   className?: string;
-  shopId?: number; // optional filter by shop
 }
-
 
 type Banner = Tables<"banners">;
 
-export default function Banner({ className = "", shopId }: BannerProps) {
+export default function Banner({ className = "" }: BannerProps) {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -19,19 +17,13 @@ export default function Banner({ className = "", shopId }: BannerProps) {
     async function fetchBanners() {
       setLoading(true);
 
-      const query = supabase
+      const { data, error } = await supabase
         .from("banners")
         .select("*")
         .order("date", { ascending: false });
 
-      if (shopId) {
-        query.eq("shop_id", shopId);
-      }
-
-      const { data, error } = await query;
-
       if (error) {
-        console.error("Failed to fetch banners:", error.message);
+        console.error("Failed to fetch banners:", error);
       } else {
         setBanners(data || []);
       }
@@ -40,30 +32,30 @@ export default function Banner({ className = "", shopId }: BannerProps) {
     }
 
     fetchBanners();
-  }, [shopId]);
+  }, []);
 
   if (loading) return <p>Loading banners...</p>;
 
   return (
-  <div className={`flex flex-col gap-3 ${className}`}>
-    {banners.length === 0 ? (
-      <p className="text-center text-gray-500">No new banners</p>
-    ) : (
-      banners.map((banner) => (
-        <div
-          key={banner.id}
-          className="w-full h-[172px] rounded-[20px] relative overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
-          style={{ backgroundColor: "#f3f3f3" }}
-        >
-          <Image
-            src={banner.image}
-            alt={`Banner ${banner.id}`}
-            fill
-            className="object-cover"
-          />
-        </div>
-      ))
-    )}
-  </div>
-);
+    <div className={`flex flex-col gap-3 ${className}`}>
+      {banners.length === 0 ? (
+        <p className="text-center text-gray-500">No new banners</p>
+      ) : (
+        banners.map((banner) => (
+          <div
+            key={banner.id}
+            className="w-full h-[172px] rounded-[20px] relative overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: "#f3f3f3" }}
+          >
+            <Image
+              src={banner.image}
+              alt={`Banner ${banner.id}`}
+              fill
+              className="object-cover"
+            />
+          </div>
+        ))
+      )}
+    </div>
+  );
 }
