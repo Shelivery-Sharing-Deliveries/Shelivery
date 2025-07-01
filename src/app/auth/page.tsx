@@ -1,5 +1,5 @@
 "use client";
-
+import { supabase } from '@/lib/supabase';
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -149,16 +149,37 @@ export default function AuthPage() {
     }
   };
 
+    const sendOTP = async (email: string) => {
+        console.log("Sending OTP to email:", email);
+        const { error } = await supabase.auth.signInWithOtp({
+            email: email,
+            options: {
+                emailRedirectTo: `${window.location.origin}/auth/callback`,
+            },
+        });
+
+        if (error) {
+            console.error("Error sending OTP:", error);
+            throw new Error(error.message);
+        }
+
+        console.log("OTP sent successfully");
+    };
+
   const handleOTPSubmit = async (code: string) => {
     setLoading(true);
     setError(null);
 
-    try {
-      // Verify OTP and complete authentication
-      if (code.length < 4) {
-        setError("Please enter a valid verification code");
-        return;
-      }
+      try {
+          const { data, error } = await supabase.auth.verifyOtp({
+              email,
+              token: code,
+              type: 'email', // or 'sms' if you're using phone numbers
+          });
+          if (error) {
+              setError(error.message);
+              return;
+          }
 
       // For existing users, sign them in
       if (step === "otp" && !inviteCode) {
