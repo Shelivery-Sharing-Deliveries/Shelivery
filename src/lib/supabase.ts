@@ -268,6 +268,26 @@ export interface Database {
           created_at?: string
         }
       }
+      banners: {
+        Row: {
+          id: number
+          image: string
+          date: string
+          shop_id: string
+        }
+        Insert: {
+          id?: number
+          image: string
+          date?: string
+          shop_id: string
+        }
+        Update: {
+          id?: number
+          image?: string
+          date?: string
+          shop_id?: string
+        }
+      }
     }
     Enums: {
       basket_status: 'in_pool' | 'in_chat' | 'resolved'
