@@ -111,23 +111,44 @@ if (error) {
     }));
   };
 
-  // Handle image file selection and upload to Supabase Storage
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && userId) {
-      const fileExt = file.name.split(".").pop();
-      const filePath = `avatars/${userId}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(filePath, file, { upsert: true });
-
-      if (!uploadError) {
-        const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
-        setProfileImage(data.publicUrl);
-      }
+    if (!file || !userId) return;
+  
+    const fileExt = file.name.split(".").pop();
+    const filePath = `${userId}.${fileExt}`;
+  
+    // ✅ Step 1: Delete existing file if it exists
+    await supabase.storage.from("avatars").remove([filePath]);
+  
+    // ✅ Step 2: Upload new file
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(filePath, file);
+  
+    if (uploadError) {
+      console.error("Upload Error:", uploadError);
+      return;
+    }
+  
+    // ✅ Step 3: Get public URL
+    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
+    const publicUrl = urlData?.publicUrl;
+  
+    setProfileImage(publicUrl);
+  
+    // ✅ Step 4: Save URL to user table
+    const { error: updateError } = await supabase
+      .from("user")
+      .update({ image: publicUrl })
+      .eq("id", userId);
+  
+    if (updateError) {
+      console.error("Failed to update image in user table:", updateError);
     }
   };
+  
+  
 
   // Save updated profile data to Supabase
   const handleSave = async () => {
@@ -180,35 +201,34 @@ if (error) {
       <div className="flex flex-col justify-between items-center flex-1 gap-8 px-4 pb-8">
         <div className="flex flex-col items-center gap-8 w-full">
           {/* Profile Picture Upload */}
-          <div className="relative">
+            <button
+            className="relative w-[126px] h-[126px] rounded-[16px] bg-cover bg-center"
+            style={{
+              backgroundImage: profileImage
+              ? `url(${profileImage})`
+              : "url('/images/default-avatar.svg')",
+            }}
+            onClick={() => document.getElementById("profile-upload")?.click()}
+            >
             <input
               type="file"
               id="profile-upload"
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              className="hidden"
               accept="image/*"
               onChange={handleImageUpload}
             />
-            <div
-              className="w-[126px] h-[126px] rounded-[16px] bg-cover bg-center relative"
-              style={{
-                backgroundImage: profileImage
-                  ? `url(${profileImage})`
-                  : "url('/images/default-avatar.svg')",
-              }}
-            >
-              <div className="absolute bottom-0 left-0 w-[126px] h-[31px] bg-[#FFE65B] rounded-b-[16px] flex items-center justify-center gap-1 px-4 py-2">
-                <Image
-                  src="/icons/upload-icon.svg"
-                  alt="Upload"
-                  width={16}
-                  height={16}
-                />
-                <span className="text-black font-inter text-sm font-medium leading-5">
-                  Upload
-                </span>
-              </div>
+            <div className="absolute bottom-0 left-0 w-[126px] h-[31px] bg-[#FFE65B] rounded-b-[16px] flex items-center justify-center gap-1 px-4 py-2">
+              <Image
+              src="/icons/upload-icon.svg"
+              alt="Upload"
+              width={16}
+              height={16}
+              />
+              <span className="text-black font-inter text-sm font-medium leading-5">
+              Upload
+              </span>
             </div>
-          </div>
+            </button>
 
           {/* Form Fields */}
           <div className="flex flex-col gap-4 w-full">
