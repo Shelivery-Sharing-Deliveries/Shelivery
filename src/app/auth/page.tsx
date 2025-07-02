@@ -1,17 +1,18 @@
 "use client";
-import { supabase } from "@/lib/supabase";
-
+import { supabase } from '@/lib/supabase';
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   LoginForm,
   PasswordForm,
-  InviteCodeForm,
+    InviteCodeForm,
   OTPVerificationForm,
 } from "@/components/auth";
+import SetPasswordForm from "@/components/auth/SetPasswordForm";
+import EmailConfirmationForm from "@/components/auth/EmailConfirmationForm";
 import { useAuth } from "@/hooks/useAuth";
 
-type AuthStep = "login" | "password" | "invite" | "otp" | "register";
+type AuthStep = "login" | "password" | "invite" | "setPassword" | "otp" | "register" | "awaitingEmailConfirmation";
 
 export default function AuthPage() {
   const [step, setStep] = useState<AuthStep>("login");
@@ -19,14 +20,17 @@ export default function AuthPage() {
   const [inviteCode, setInviteCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [resendCountdown, setResendCountdown] = useState(0);
+    const [resendCountdown, setResendCountdown] = useState(0);
+    const [password, setPassword] = useState("");
+
 
   const {
     user,
     loading: authLoading,
     signIn,
     signUp,
-    signInWithOAuth,
+      signInWithOAuth,
+      checkUserExists,
   } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -57,33 +61,29 @@ export default function AuthPage() {
     }
   }, [resendCountdown]);
 
-  const handleEmailSubmit = async (submittedEmail: string) => {
-  setLoading(true);
-  setError(null);
-  setEmail(submittedEmail);
+    const handleEmailSubmit = async (submittedEmail: string) => {
+        setLoading(true);
+        setError(null);
+        setEmail(submittedEmail);
 
-  try {
-    const { error } = await supabase.auth.signInWithOtp({
-      email: submittedEmail,
-      options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`, // optional
-      },
-    });
+        try {
+            const userExists = await checkUserExists(submittedEmail);
+            console.log("User exists:", userExists);
 
-    if (error) {
-      setError(error.message);
-      return;
-    }
-
-    // Email sent successfully
-    setStep("otp");
-    setResendCountdown(60);
-  } catch (err: any) {
-    setError(err.message || "An unexpected error occurred");
-  } finally {
-    setLoading(false);
-  }
-};
+            if (userExists) {
+                // User exists, proceed to password step
+                setStep("password");
+            } else {
+                // User does not exist, proceed to invite code step (for new user registration)
+                setStep("invite");
+            }
+        } catch (err: any) {
+            console.error("Error in handleEmailSubmit:", err);
+            setError("An unexpected error occurred while checking email.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
   const handlePasswordSubmit = async (password: string) => {
     setLoading(true);
@@ -92,12 +92,18 @@ export default function AuthPage() {
     try {
       const { error } = await signIn(email, password);
 
-      if (error) {
-        setError("Invalid password. Please try again.");
-      } else {
-        // Successfully signed in
-        router.push("/dashboard");
-      }
+        if (error) {
+            // MODIFIED: Check for "Email not confirmed" error specifically
+            if (error.includes("Email not confirmed")) {
+                setError("Your email is not confirmed. Please check your inbox for the confirmation link to log in.");
+                setStep("awaitingEmailConfirmation");
+            } else {
+                setError("Invalid password. Please try again.");
+            }
+        } else {
+            // Successfully signed in
+            router.push("/dashboard");
+        }
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred");
     } finally {
@@ -138,46 +144,93 @@ export default function AuthPage() {
         setError("Please enter a valid invite code");
         return;
       }
-
-      setStep("otp");
+      
+        setStep("setPassword");
       setResendCountdown(60);
     } catch (err: any) {
       setError(err.message || "Invalid invite code");
     } finally {
       setLoading(false);
     }
-  };
+    };
 
-  const handleOTPSubmit = async (code: string) => {
+    const handleSetPasswordSubmit = async (submittedPassword: string) => {
     setLoading(true);
     setError(null);
 
     try {
-      // Verify OTP and complete authentication
-      if (code.length < 4) {
-        setError("Please enter a valid verification code");
+      // Store the password in state for potential future use (e.g., if signup fails and user tries again)
+      setPassword(submittedPassword);
+
+      // Call the signUp function from useAuth. This should internally use supabase.auth.signUp.
+      // Supabase's signUp method will create the user and send a confirmation email (link).
+      const { error: signUpError } = await signUp(email, submittedPassword, inviteCode);
+
+      if (signUpError) {
+        setError(signUpError);
+        // If signup fails, stay on the setPassword step or provide specific feedback.
         return;
       }
 
-      // For existing users, sign them in
-      if (step === "otp" && !inviteCode) {
-        // Sign in existing user
-        router.push("/dashboard");
-      } else {
-        // Register new user with invite code
-        const { error } = await signUp(email, "temp_password", inviteCode);
-        if (error) {
-          setError(error);
-        } else {
-          router.push("/dashboard");
-        }
-      }
+      // If signup is successful, transition to a state where the user is informed to check their email.
+        setStep("awaitingEmailConfirmation"); 
+      // No OTP countdown needed here as the user is expected to click a link in their email.
     } catch (err: any) {
-      setError(err.message || "Invalid verification code");
+      setError(err.message || "Failed to set password and register account.");
     } finally {
       setLoading(false);
     }
   };
+
+    const sendOTP = async (email: string) => {
+        console.log("Sending OTP to email:", email);
+        const { error } = await supabase.auth.signInWithOtp({
+            email: email,
+            options: {
+                emailRedirectTo: `${window.location.origin}/auth/callback`,
+            },
+        });
+
+        if (error) {
+            console.error("Error sending OTP:", error);
+            throw new Error(error.message);
+        }
+
+        console.log("OTP sent successfully");
+    };
+
+    const handleOTPSubmit = async (code: string) => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const { data, error } = await supabase.auth.verifyOtp({
+                email,
+                token: code,
+                type: 'email',
+            });
+
+            if (error) {
+                setError(error.message);
+                return;
+            }
+
+            if (step === "otp" && !inviteCode) {
+                router.push("/dashboard");
+            } else {
+                const { error } = await signUp(email, password, inviteCode);
+                if (error) {
+                    setError(error);
+                } else {
+                    router.push("/dashboard");
+                }
+            }
+        } catch (err: any) {
+            setError(err.message || "Invalid verification code");
+        } finally {
+            setLoading(false);
+        }
+    };
 
   const handleResendCode = async () => {
     setResendCountdown(60);
@@ -227,7 +280,21 @@ export default function AuthPage() {
           error={error || undefined}
         />
       )}
-
+          {step === "setPassword" && (
+              <SetPasswordForm
+                  email={email}
+                  onPasswordSubmit={handleSetPasswordSubmit}
+                  loading={loading}
+                  error={error || undefined}
+              />
+          )}
+          {step === "awaitingEmailConfirmation" && (
+              <EmailConfirmationForm
+                  email={email}
+                  loading={loading}
+                  error={error || undefined}
+              />
+          )}
       {step === "otp" && (
         <OTPVerificationForm
           email={email}

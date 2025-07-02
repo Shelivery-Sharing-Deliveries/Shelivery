@@ -14,7 +14,7 @@ export default function AuthCallbackPage() {
     const handleAuthCallback = async () => {
       try {
         // Handle the OAuth callback
-        const { data, error } = await supabase.auth.getSession();
+          const { data, error } = await supabase.auth.exchangeCodeForSession();
 
         if (error) {
           console.error("Auth callback error:", error);

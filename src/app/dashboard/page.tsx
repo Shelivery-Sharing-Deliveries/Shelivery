@@ -5,8 +5,7 @@ import ProfileCard from "@/components/dashboard/ProfileCard";
 import AddBasket from "@/components/dashboard/AddBasket";
 import Baskets from "@/components/dashboard/Baskets";
 import Banner from "@/components/dashboard/Banner";
-import { useRouter } from "next/navigation";
-
+import { useRouter, useSearchParams } from "next/navigation";
 
 // Mock data for demonstration
 const mockUser = {
@@ -53,10 +52,15 @@ const mockBaskets: any[] = [
 ];
 
 export default function DashboardPage() {
-  const router = useRouter();
+    const router = useRouter();
 
-  const handleAddBasket = () => {
-    router.push("/choose-shop");
+    const handleAddBasket = () => {
+        router.push("/shops");
+    //console.log("Add basket clicked");
+  };
+  const handleInviteFriend = () => {
+        router.push("/invite-friend");
+    //console.log("Add basket clicked");
   };
 
   const handleBasketClick = (basketId: string) => {
@@ -72,7 +76,7 @@ export default function DashboardPage() {
           <h1 className="text-[16px] font-bold leading-8 text-black">
             Dashboard
           </h1>
-          <Button className="bg-[#245B7B] text-white px-4 py-2 rounded-lg text-[12px] font-semibold">
+          <Button onClick={handleInviteFriend} className="bg-[#245B7B] text-white px-4 py-2 rounded-lg text-[12px] font-semibold">
             Invite Friends
           </Button>
         </div>

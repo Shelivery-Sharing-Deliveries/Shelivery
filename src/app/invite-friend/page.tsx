@@ -1,47 +1,71 @@
-"use client";
+﻿"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import Header from "@/components/invite-friend/Header";
 import InviteCard from "@/components/invite-friend/InviteCard";
 import InviteForm from "@/components/invite-friend/InviteForm";
+import { generateInvite } from "@/lib/invites";
 
 export default function InviteFriendPage() {
-  const [inviteCode] = useState("FH554D25");
+  const { user, loading: authLoading } = useAuth();
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (!user) {
+      //router.push("/auth"); // ✅ redirect to your actual auth flow
+      return;
+    }
+
+    const fetchCode = async () => {
+      const code = await generateInvite(user.id);
+      setInviteCode(code);
+      setLoading(false);
+    };
+
+    fetchCode();
+  }, [user, authLoading, router]);
+
   const handleCopyCode = () => {
+    if (!inviteCode) return;
     navigator.clipboard.writeText(inviteCode);
-    // You could add a toast notification here
+    alert("Invite code copied!");
   };
 
   const handleInviteFriend = () => {
-    // Handle invite friend logic
-    console.log("Inviting friend...");
-    // For now, navigate back
-    router.back();
+    if (!inviteCode) return;
+    const fullUrl = `${window.location.origin}/auth?invite=${inviteCode}`;
+    navigator.clipboard.writeText(fullUrl);
+    alert("Invite link copied! Send it to your friend.");
   };
 
   return (
     <div className="min-h-screen bg-white w-full max-w-[375px] mx-auto flex flex-col">
-      {/* Header */}
       <Header />
 
-      {/* Content Section */}
       <div className="flex-1 px-4 py-6 flex flex-col items-center gap-6">
-        {/* Main Content */}
-        <div className="flex flex-col items-center gap-4 w-full">
-          <InviteCard />
-        </div>
+        {loading ? (
+          <p>Loading your invite code...</p>
+        ) : (
+          <>
+            <div className="flex flex-col items-center gap-4 w-full">
+              <InviteCard inviteCode={inviteCode || ""} />
+            </div>
 
-        {/* Form Section */}
-        <div className="w-full">
-          <InviteForm
-            inviteCode={inviteCode}
-            onCopyCode={handleCopyCode}
-            onInviteFriend={handleInviteFriend}
-          />
-        </div>
+            <div className="w-full">
+              <InviteForm
+                inviteCode={inviteCode || ""}
+                onCopyCode={handleCopyCode}
+                onInviteFriend={handleInviteFriend}
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
