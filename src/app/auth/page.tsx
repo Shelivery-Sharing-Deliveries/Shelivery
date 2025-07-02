@@ -9,9 +9,10 @@ import {
   OTPVerificationForm,
 } from "@/components/auth";
 import SetPasswordForm from "@/components/auth/SetPasswordForm";
+import EmailConfirmationForm from "@/components/auth/EmailConfirmationForm";
 import { useAuth } from "@/hooks/useAuth";
 
-type AuthStep = "login" | "password" | "invite" | "setPassword" | "otp" | "register";
+type AuthStep = "login" | "password" | "invite" | "setPassword" | "otp" | "register" | "awaitingEmailConfirmation";
 
 export default function AuthPage() {
   const [step, setStep] = useState<AuthStep>("login");
@@ -91,12 +92,18 @@ export default function AuthPage() {
     try {
       const { error } = await signIn(email, password);
 
-      if (error) {
-        setError("Invalid password. Please try again.");
-      } else {
-        // Successfully signed in
-        router.push("/dashboard");
-      }
+        if (error) {
+            // MODIFIED: Check for "Email not confirmed" error specifically
+            if (error.includes("Email not confirmed")) {
+                setError("Your email is not confirmed. Please check your inbox for the confirmation link to log in.");
+                setStep("awaitingEmailConfirmation");
+            } else {
+                setError("Invalid password. Please try again.");
+            }
+        } else {
+            // Successfully signed in
+            router.push("/dashboard");
+        }
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred");
     } finally {
@@ -166,7 +173,7 @@ export default function AuthPage() {
       }
 
       // If signup is successful, transition to a state where the user is informed to check their email.
-        router.push("/dashboard");
+        setStep("awaitingEmailConfirmation"); 
       // No OTP countdown needed here as the user is expected to click a link in their email.
     } catch (err: any) {
       setError(err.message || "Failed to set password and register account.");
@@ -277,6 +284,13 @@ export default function AuthPage() {
               <SetPasswordForm
                   email={email}
                   onPasswordSubmit={handleSetPasswordSubmit}
+                  loading={loading}
+                  error={error || undefined}
+              />
+          )}
+          {step === "awaitingEmailConfirmation" && (
+              <EmailConfirmationForm
+                  email={email}
                   loading={loading}
                   error={error || undefined}
               />
