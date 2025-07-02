@@ -19,7 +19,7 @@ const mockBaskets: any[] = [
   {
     id: "1",
     shopName: "Migros",
-    shopLogo: "D:\WD projects\Shelivery\public\shop-logos\Migros Logo.png",
+    shopLogo: "/shop-logos/Migros Logo.png",
     total: "15",
     status: "ordering" as const,
   },
