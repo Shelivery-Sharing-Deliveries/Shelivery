@@ -59,29 +59,41 @@ export interface Database {
       }
       user: {
         Row: {
-          id: string
-          email: string
-          dormitory_id: number | null
-          profile: any
-          created_at: string
-          updated_at: string
-        }
+          id: string; // UUID
+          email: string;
+          dormitory_id: number | null;
+          profile: JSON | null;
+          created_at: string | null; // ISO timestamp
+          updated_at: string | null; // ISO timestamp
+          first_name: string | null;
+          last_name: string | null;
+          favorite_store: string | null;
+          image: string | null;
+        };
         Insert: {
-          id: string
-          email: string
-          dormitory_id?: number | null
-          profile?: any
-          created_at?: string
-          updated_at?: string
-        }
+          id: string;
+          email: string;
+          dormitory_id?: number | null;
+          profile?: JSON | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          first_name?: string | null;
+          last_name?: string | null;
+          favorite_store?: string | null;
+          image?: string | null;
+        };
         Update: {
-          id?: string
-          email?: string
-          dormitory_id?: number | null
-          profile?: any
-          created_at?: string
-          updated_at?: string
-        }
+          id?: string;
+          email?: string;
+          dormitory_id?: number | null;
+          profile?: JSON | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          first_name?: string | null;
+          last_name?: string | null;
+          favorite_store?: string | null;
+          image?: string | null;
+        };
       }
       pool: {
         Row: {

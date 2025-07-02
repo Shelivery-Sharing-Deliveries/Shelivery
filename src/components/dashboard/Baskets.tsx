@@ -102,7 +102,7 @@ function BasketCard({ basket, onClick }: BasketCardProps) {
     console.error("Unknown basket status:", basket.status);
     return null;
   }
-
+  
   return (
     <div
       className="w-full bg-white border border-[#D1D5DB] rounded-[16px] p-2 cursor-pointer hover:shadow-sm transition-shadow"
@@ -114,7 +114,7 @@ function BasketCard({ basket, onClick }: BasketCardProps) {
           {/* Shop Logo */}
           <div
             className="w-[54px] h-[54px] rounded-[12px] bg-cover bg-center"
-            style={{ backgroundImage: `url(${basket.shopLogo})` }}
+            style={{ backgroundImage: `url(${basket.shopLogo.replace(/ /g, "%20")})` }}
           />
 
           {/* Shop details */}
