@@ -58,21 +58,6 @@ useEffect(() => {
 
   fetchOptions();
 }, []);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   // Load user profile data when component mounts
   useEffect(() => {
   const loadProfile = async () => {
@@ -85,11 +70,10 @@ useEffect(() => {
     email: "default@example.com",
   };
 
-  setUserId(currentUser.id);
-
+setUserId(currentUser.id);
 const { data, error } = await supabase
   .from("user")
-  .select("first_name, last_name, email, favorite_store, dormitory, image")
+  .select("first_name, last_name, email, favorite_store, dormitory(name), image")
   .eq("id", currentUser.id)
   .single();
 
@@ -98,7 +82,7 @@ if (error) {
     firstName: "User_Firstname",
     lastName: "User_Lastname",
     favoriteStore: "defaultStore",
-    dormitory: "dorm0", // updated key
+    dormitory: "TEST", // updated key
     email: "default@example.com",
   });
 } else if (data) {
@@ -106,7 +90,7 @@ if (error) {
     firstName: data.first_name || "User",
     lastName: data.last_name || "",
     favoriteStore: data.favorite_store || "defaultStore",
-    dormitory: data.dormitory || "dorm0", // updated key
+    dormitory: data.dormitory?.name  || "TEST", // updated key
     email: data.email || "default@example.com",
   });
 
@@ -116,7 +100,6 @@ if (error) {
 }
 
 };
-
   loadProfile();
 }, []);
 
@@ -149,13 +132,14 @@ if (error) {
   // Save updated profile data to Supabase
   const handleSave = async () => {
   if (!userId) return;
-  const { error } = await supabase.from("user").upsert({
-  id: userId,
-  first_name: formData.firstName,
-  last_name: formData.lastName,
-  favorite_store: formData.favoriteStore,
-  image: profileImage,
-  });
+  const { error } = await supabase
+  .from("user")
+  .update({
+    first_name: formData.firstName,
+    last_name: formData.lastName,
+    favorite_store: formData.favoriteStore,
+  })
+  .eq("id", userId);
   if (!error) router.back();
 };
 

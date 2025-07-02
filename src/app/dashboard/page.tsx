@@ -67,16 +67,18 @@ export default function DashboardPage() {
     return;
     } 
 
-      if (!currentUser) {
-        // Handle user not logged in, maybe redirect or show message
-        return;
-      }
+    if (error || !currentUser) {
+      console.error("No user or auth error:", error);
+      return;
+    }
+      //console.log(currentUser);
 
       const { data: userData, error: userError } = await supabase
         .from("user")
         .select("first_name, image")
         .eq("id", currentUser.id)
         .single();
+
 
       if (userError) {
         console.error("Error fetching user:", userError);
