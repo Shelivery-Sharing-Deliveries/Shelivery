@@ -6,6 +6,8 @@ import AddBasket from "@/components/dashboard/AddBasket";
 import Baskets from "@/components/dashboard/Baskets";
 import Banner from "@/components/dashboard/Banner";
 import { useRouter, useSearchParams } from "next/navigation";
+import { supabase } from "@/lib/supabase"; // adjust path as needed
+import { useEffect, useState } from "react";
 
 // Mock data for demonstration
 const mockUser = {
@@ -52,8 +54,45 @@ const mockBaskets: any[] = [
 ];
 
 export default function DashboardPage() {
+    const [user, setUser] = useState<{ userName: string; userAvatar: string } | null>(null);
     const router = useRouter();
+    useEffect(() => {
+    async function fetchUser() {
+    const {
+      data: { user: currentUser },
+      error,
+    } = await supabase.auth.getUser();
 
+    if (error || !currentUser) {// Handle error or no user logged in
+    return;
+    } 
+
+      if (!currentUser) {
+        // Handle user not logged in, maybe redirect or show message
+        return;
+      }
+
+      const { data: userData, error: userError } = await supabase
+        .from("user")
+        .select("first_name, image")
+        .eq("id", currentUser.id)
+        .single();
+
+      if (userError) {
+        console.error("Error fetching user:", userError);
+        // Optionally set default/fallback user here
+        setUser({ userName: "User", userAvatar: "/avatars/default-avatar.png" });
+      } else if (userData) {
+        setUser({
+          userName: userData.first_name || "User",
+          userAvatar: userData.image || "/avatars/default-avatar.png",
+        });
+      }
+    }
+
+    fetchUser();
+  }, []);
+ 
     const handleAddBasket = () => {
         router.push("/shops");
     //console.log("Add basket clicked");
@@ -84,8 +123,8 @@ export default function DashboardPage() {
         {/* Dashboard Components */}
         <div className="px-0">
           <ProfileCard
-            userName={mockUser.userName}
-            userAvatar={mockUser.userAvatar}
+            userName={user ? user.userName : "username not loaded"}
+            userAvatar={user ? user.userAvatar : "/avatars/default-avatar.png"}
           />
           <AddBasket onClick={handleAddBasket} />
           <Baskets baskets={mockBaskets} onBasketClick={handleBasketClick} />
