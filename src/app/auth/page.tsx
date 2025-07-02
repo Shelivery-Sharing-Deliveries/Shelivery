@@ -5,12 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   LoginForm,
   PasswordForm,
-  InviteCodeForm,
+    InviteCodeForm,
   OTPVerificationForm,
 } from "@/components/auth";
+import SetPasswordForm from "@/components/auth/SetPasswordForm";
 import { useAuth } from "@/hooks/useAuth";
 
-type AuthStep = "login" | "password" | "invite" | "otp" | "register";
+type AuthStep = "login" | "password" | "invite" | "setPassword" | "otp" | "register";
 
 export default function AuthPage() {
   const [step, setStep] = useState<AuthStep>("login");
@@ -18,14 +19,17 @@ export default function AuthPage() {
   const [inviteCode, setInviteCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [resendCountdown, setResendCountdown] = useState(0);
+    const [resendCountdown, setResendCountdown] = useState(0);
+    const [password, setPassword] = useState("");
+
 
   const {
     user,
     loading: authLoading,
     signIn,
     signUp,
-    signInWithOAuth,
+      signInWithOAuth,
+      checkUserExists,
   } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -56,35 +60,29 @@ export default function AuthPage() {
     }
   }, [resendCountdown]);
 
-  const handleEmailSubmit = async (submittedEmail: string) => {
-    setLoading(true);
-    setError(null);
-    setEmail(submittedEmail);
+    const handleEmailSubmit = async (submittedEmail: string) => {
+        setLoading(true);
+        setError(null);
+        setEmail(submittedEmail);
 
-    try {
-      // Check if user exists by attempting a test sign in
-      const { error } = await signIn(submittedEmail, "temp_password");
+        try {
+            const userExists = await checkUserExists(submittedEmail);
+            console.log("User exists:", userExists);
 
-      if (error && error.includes("Invalid login credentials")) {
-        // User doesn't exist, go to invite code step
-        setStep("invite");
-      } else if (error && error.includes("Email not confirmed")) {
-        // User exists but email not confirmed, go to password step
-        setStep("password");
-      } else if (error) {
-        // User exists, go to password step
-        setStep("password");
-      } else {
-        // User exists and signed in successfully (shouldn't happen with temp password)
-        setStep("password");
-      }
-    } catch (err: any) {
-      // Assume user exists and go to password step
-      setStep("password");
-    } finally {
-      setLoading(false);
-    }
-  };
+            if (userExists) {
+                // User exists, proceed to password step
+                setStep("password");
+            } else {
+                // User does not exist, proceed to invite code step (for new user registration)
+                setStep("invite");
+            }
+        } catch (err: any) {
+            console.error("Error in handleEmailSubmit:", err);
+            setError("An unexpected error occurred while checking email.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
   const handlePasswordSubmit = async (password: string) => {
     setLoading(true);
@@ -139,11 +137,39 @@ export default function AuthPage() {
         setError("Please enter a valid invite code");
         return;
       }
-
-      setStep("otp");
+      
+        setStep("setPassword");
       setResendCountdown(60);
     } catch (err: any) {
       setError(err.message || "Invalid invite code");
+    } finally {
+      setLoading(false);
+    }
+    };
+
+    const handleSetPasswordSubmit = async (submittedPassword: string) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Store the password in state for potential future use (e.g., if signup fails and user tries again)
+      setPassword(submittedPassword);
+
+      // Call the signUp function from useAuth. This should internally use supabase.auth.signUp.
+      // Supabase's signUp method will create the user and send a confirmation email (link).
+      const { error: signUpError } = await signUp(email, submittedPassword, inviteCode);
+
+      if (signUpError) {
+        setError(signUpError);
+        // If signup fails, stay on the setPassword step or provide specific feedback.
+        return;
+      }
+
+      // If signup is successful, transition to a state where the user is informed to check their email.
+        router.push("/dashboard");
+      // No OTP countdown needed here as the user is expected to click a link in their email.
+    } catch (err: any) {
+      setError(err.message || "Failed to set password and register account.");
     } finally {
       setLoading(false);
     }
@@ -166,40 +192,38 @@ export default function AuthPage() {
         console.log("OTP sent successfully");
     };
 
-  const handleOTPSubmit = async (code: string) => {
-    setLoading(true);
-    setError(null);
+    const handleOTPSubmit = async (code: string) => {
+        setLoading(true);
+        setError(null);
 
-      try {
-          const { data, error } = await supabase.auth.verifyOtp({
-              email,
-              token: code,
-              type: 'email', // or 'sms' if you're using phone numbers
-          });
-          if (error) {
-              setError(error.message);
-              return;
-          }
+        try {
+            const { data, error } = await supabase.auth.verifyOtp({
+                email,
+                token: code,
+                type: 'email',
+            });
 
-      // For existing users, sign them in
-      if (step === "otp" && !inviteCode) {
-        // Sign in existing user
-        router.push("/dashboard");
-      } else {
-        // Register new user with invite code
-        const { error } = await signUp(email, "temp_password", inviteCode);
-        if (error) {
-          setError(error);
-        } else {
-          router.push("/dashboard");
+            if (error) {
+                setError(error.message);
+                return;
+            }
+
+            if (step === "otp" && !inviteCode) {
+                router.push("/dashboard");
+            } else {
+                const { error } = await signUp(email, password, inviteCode);
+                if (error) {
+                    setError(error);
+                } else {
+                    router.push("/dashboard");
+                }
+            }
+        } catch (err: any) {
+            setError(err.message || "Invalid verification code");
+        } finally {
+            setLoading(false);
         }
-      }
-    } catch (err: any) {
-      setError(err.message || "Invalid verification code");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
   const handleResendCode = async () => {
     setResendCountdown(60);
@@ -249,7 +273,14 @@ export default function AuthPage() {
           error={error || undefined}
         />
       )}
-
+          {step === "setPassword" && (
+              <SetPasswordForm
+                  email={email}
+                  onPasswordSubmit={handleSetPasswordSubmit}
+                  loading={loading}
+                  error={error || undefined}
+              />
+          )}
       {step === "otp" && (
         <OTPVerificationForm
           email={email}
