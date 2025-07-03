@@ -133,7 +133,8 @@ if (error) {
   
     // ✅ Step 3: Get public URL
     const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
-    const publicUrl = urlData?.publicUrl;
+    const publicUrl = `${urlData?.publicUrl}?t=${Date.now()}`;
+    
   
     setProfileImage(publicUrl);
   
