@@ -24,7 +24,7 @@ interface Basket {
     id: string;
     user_id: string;
     shop_id: string;
-    pool_id: string;
+    pool_id: string; // Direct pool_id from baskets table
     amount: number; // The price of the basket
     link: string;
     status: 'in_pool' | 'in_chat' | 'resolved'; // Valid statuses from your DB schema
@@ -33,9 +33,10 @@ interface Basket {
     created_at: string;
     // Nested shop data from the join
     shop: {
+        id: string; // Joined shop.id
         name: string;
         logo_url: string | null;
-    } | null; // Shop might be null if the foreign key reference is broken
+    } | null; // Shop might be null if the foreign key reference is broken or RLS prevents join
 }
 
 // Define the interface for baskets displayed in the Baskets component
@@ -45,7 +46,11 @@ interface DisplayBasket {
     shopName: string;
     shopLogo: string | null;
     total: string; // Formatted amount
+    rawAmount: number; // Raw amount for passing to basket edit page (if needed later)
     status: 'in_pool' | 'in_chat' | 'resolved'; // Using actual DB statuses for now
+    poolId: string; // Added poolId for navigation
+    shopId: string; // Added shopId for navigation (if needed later)
+    link: string; // Added link for navigation (if needed later)
 }
 
 export default function DashboardPage() {
@@ -94,14 +99,18 @@ export default function DashboardPage() {
                 const { data: basketsData, error: basketsError } = await supabase
                     .from("baskets")
                     .select(`
-            id,
-            amount,
-            status,
-            shop (
-              name,
-              logo_url
-            )
-          `)
+                        id,
+                        amount,
+                        link,
+                        status,
+                        pool_id,
+                        shop_id,
+                        shop (
+                            id,
+                            name,
+                            logo_url
+                        )
+                    `)
                     .eq("user_id", currentUser.id)
                     .order("created_at", { ascending: false }); // Order by newest first
 
@@ -109,15 +118,25 @@ export default function DashboardPage() {
                     throw basketsError;
                 }
 
+                // Log the raw data received from Supabase
+                console.log("DEBUG: Raw basketsData fetched from Supabase:", basketsData);
+
                 if (basketsData) {
                     // Map fetched data to the DisplayBasket interface
-                    const mappedBaskets: DisplayBasket[] = basketsData.map((basket: any) => ({
-                        id: basket.id,
-                        shopName: basket.shop?.name || "Unknown Shop", // Use optional chaining for safety
-                        shopLogo: basket.shop?.logo_url || null,
-                        total: basket.amount ? `CHF ${basket.amount.toFixed(2)}` : "CHF 0.00",
-                        status: basket.status, // Directly use DB status
-                    }));
+                    const mappedBaskets: DisplayBasket[] = basketsData.map((basket: any) => {
+                        console.log(`DEBUG: Mapping basket ID: ${basket.id}, Raw pool_id from fetched data: ${basket.pool_id}`);
+                        return {
+                            id: basket.id,
+                            shopName: basket.shop?.name || "Unknown Shop",
+                            shopLogo: basket.shop?.logo_url || null,
+                            total: basket.amount ? `CHF ${basket.amount.toFixed(2)}` : "CHF 0.00",
+                            rawAmount: basket.amount, // Pass raw amount
+                            status: basket.status,
+                            poolId: basket.pool_id, // Map the pool_id
+                            shopId: basket.shop?.id || basket.shop_id || "", // Prioritize joined ID, fallback to direct
+                            link: basket.link,
+                        };
+                    });
                     setBaskets(mappedBaskets);
                 }
             } catch (err: any) {
@@ -139,9 +158,52 @@ export default function DashboardPage() {
         router.push("/invite-friend");
     };
 
-    const handleBasketClick = (basketId: string) => {
-        // Navigate to the basket details page or pool page
-        router.push(`/pool/${basketId}`); // Assuming basketId can be used to navigate to pool
+    // handleBasketClick to navigate to the Pool Page with validation
+    const handleBasketClick = async (basket: DisplayBasket) => {
+        console.log("Attempting to navigate to pool page. Basket data:", basket);
+        console.log("DEBUG: Initial poolId received in handleBasketClick:", basket.poolId); // Log the poolId at the start
+
+        if (!basket.poolId) {
+            console.error("ERROR: Basket has no associated pool ID. Cannot navigate to pool page. Basket details:", basket);
+            setError("This basket is not linked to a valid pool. Please delete and create a new one.");
+            return;
+        }
+
+        // Verify if the pool actually exists in the database before navigating
+        try {
+            console.log(`DEBUG: Checking existence of pool with ID: '${basket.poolId}' for basket ID: '${basket.id}'`);
+            const { data: poolData, error: poolError } = await supabase
+                .from("pools")
+                .select("id")
+                .eq("id", basket.poolId)
+                .single();
+
+            if (poolError) {
+                console.error("ERROR: Supabase error during pool existence check:", poolError);
+                // If poolError.code is PGRST116, it means no rows found
+                if (poolError.code === 'PGRST116') {
+                    setError("The pool for this basket no longer exists or is invalid. Please delete and create a new basket.");
+                } else {
+                    // Other database errors
+                    setError(`Failed to verify pool existence due to a database error: ${poolError.message}. Please try again.`);
+                }
+                return;
+            }
+
+            // If poolData is null, it means no pool was found (though PGRST116 should ideally catch this)
+            if (!poolData) {
+                console.error(`ERROR: Pool with ID '${basket.poolId}' not found after query. Cannot navigate. Query result was null.`);
+                setError("The pool for this basket no longer exists or is invalid. Please delete and create a new basket.");
+                return;
+            }
+
+            // If the pool exists, navigate to the pool page
+            console.log(`SUCCESS: Pool with ID '${basket.poolId}' found. Navigating to /pool/${basket.poolId}`);
+            router.push(`/pool/${basket.poolId}`);
+        } catch (err: any) {
+            console.error("ERROR: Unexpected error during pool ID validation:", err);
+            setError(err.message || "An unexpected error occurred while validating the pool.");
+        }
     };
 
     return (
@@ -179,9 +241,10 @@ export default function DashboardPage() {
                         </div>
                     ) : baskets.length === 0 ? (
                         <div className="text-center py-8 text-gray-500">
-                            <p>You have no active baskets.</p> {/* MODIFIED: Changed message */}
+                            <p>You have no active baskets.</p>
                         </div>
                     ) : (
+                        // Pass the entire basket object to onBasketClick
                         <Baskets baskets={baskets} onBasketClick={handleBasketClick} />
                     )}
                     <Banner />

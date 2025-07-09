@@ -1,16 +1,22 @@
 import Image from "next/image";
 
+// MODIFIED: Added poolId, rawAmount, shopId, and link to match DisplayBasket
 interface Basket {
     id: string;
     shopName: string;
     shopLogo: string | null; // shopLogo can be null
     total: string;
     status: "in_pool" | "in_chat" | "resolved"; // Updated to match DB statuses
+    poolId: string; // Added for navigation to pool page
+    rawAmount: number; // Added for consistency with DashboardPage's DisplayBasket
+    shopId: string; // Added for consistency
+    link: string; // Added for consistency
 }
 
 interface BasketsProps {
     baskets: Basket[];
-    onBasketClick?: (basketId: string) => void;
+    // MODIFIED: onBasketClick now expects the full Basket object
+    onBasketClick?: (basket: Basket) => void;
 }
 
 // Updated statusConfig to match database 'status' values
@@ -69,7 +75,8 @@ export default function Baskets({ baskets, onBasketClick }: BasketsProps) {
                         <BasketCard
                             key={basket.id}
                             basket={basket}
-                            onClick={() => onBasketClick?.(basket.id)}
+                            // MODIFIED: Pass the entire basket object to onBasketClick
+                            onClick={() => onBasketClick?.(basket)}
                         />
                     ))}
                 </div>
@@ -80,10 +87,14 @@ export default function Baskets({ baskets, onBasketClick }: BasketsProps) {
 
 interface BasketCardProps {
     basket: Basket;
-    onClick?: () => void;
+    // MODIFIED: onClick now expects the full Basket object
+    onClick?: (basket: Basket) => void;
 }
 
 function BasketCard({ basket, onClick }: BasketCardProps) {
+    // Removed debug log as it's no longer needed for this specific issue
+    // console.log("DEBUG: BasketCard received basket:", basket);
+
     const statusStyle = statusConfig[basket.status];
 
     // Add error handling in case statusStyle is undefined
@@ -98,7 +109,8 @@ function BasketCard({ basket, onClick }: BasketCardProps) {
     return (
         <div
             className="w-full bg-white border border-[#D1D5DB] rounded-[16px] p-2 cursor-pointer hover:shadow-sm transition-shadow"
-            onClick={onClick}
+            // MODIFIED: Ensure the entire basket object is passed to the onClick handler
+            onClick={() => onClick?.(basket)}
         >
             <div className="flex items-center justify-between">
                 {/* Left side - Shop info */}
