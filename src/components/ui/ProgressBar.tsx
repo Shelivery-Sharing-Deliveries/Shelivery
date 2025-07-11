@@ -25,7 +25,13 @@ export function ProgressBar({
   showPercentage = true,
   animated = true,
 }: ProgressBarProps) {
-  const percentage = Math.min((current / target) * 100, 100);
+  // Safely parse current and target to ensure they are numbers
+  // If they are not valid numbers, default to 0
+  const safeCurrent = typeof current === 'number' ? current : parseFloat(current as any) || 0;
+  const safeTarget = typeof target === 'number' ? target : parseFloat(target as any) || 0;
+
+  // Calculate percentage using the safe numerical values
+  const percentage = safeTarget > 0 ? Math.min((safeCurrent / safeTarget) * 100, 100) : 0;
   const isComplete = percentage >= 100;
 
   return (
@@ -47,10 +53,11 @@ export function ProgressBar({
         {users.length > 0 && (
           <div className="absolute -top-6 left-0 right-0 flex justify-between items-end">
             {users.map((user, index) => {
-              const userPercentage = users
+              // Safely calculate userPercentage as well
+              const userPercentageAmount = users
                 .slice(0, index + 1)
-                .reduce((sum, u) => sum + u.amount, 0);
-              const position = Math.min((userPercentage / target) * 100, 100);
+                .reduce((sum, u) => sum + (typeof u.amount === 'number' ? u.amount : parseFloat(u.amount as any) || 0), 0);
+              const position = safeTarget > 0 ? Math.min((userPercentageAmount / safeTarget) * 100, 100) : 0;
 
               return (
                 <div
@@ -67,7 +74,8 @@ export function ProgressBar({
                     size="sm"
                     className={cn(
                       "transition-all duration-300",
-                      userPercentage <= current ? "opacity-100" : "opacity-50"
+                      // Ensure comparison with safeCurrent
+                      userPercentageAmount <= safeCurrent ? "opacity-100" : "opacity-50"
                     )}
                   />
                 </div>
@@ -80,7 +88,8 @@ export function ProgressBar({
       {/* Progress information */}
       <div className="flex justify-between items-center text-sm">
         <div className="text-shelivery-text-secondary">
-          ${current.toFixed(2)} / ${target.toFixed(2)}
+          {/* Use safeCurrent and safeTarget for toFixed */}
+          ${safeCurrent.toFixed(2)} / ${safeTarget.toFixed(2)}
         </div>
         {showPercentage && (
           <div className="text-shelivery-text-primary font-medium">
