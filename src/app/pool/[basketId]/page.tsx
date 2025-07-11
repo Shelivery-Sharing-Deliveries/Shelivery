@@ -358,11 +358,11 @@ useEffect(() => {
       <div className="flex flex-col justify-between items-center gap-8 px-4 py-6 min-h-[calc(100vh-120px)]">
         {/* Main Card */}
         <div className="w-[355px] bg-[#FFFADF] border border-[#E5E8EB] rounded-[24px] p-4 flex flex-col items-center gap-4">
-          {/* Shop Logo instead of User Avatar as per mock data mapping */}
+          {/* Shop Logo */}
           <div className="w-16 h-16 rounded-xl overflow-hidden border border-[#EFF1F3]">
             <Image
-              src={poolData.shopLogo}
-              alt={poolData.shopName + " Logo"}
+              src={poolData?.shopLogo || "/default-logo.png"} // Fallback for shop logo
+              alt={poolData?.shopName + " Logo"}
               width={64}
               height={64}
               className="w-full h-full object-cover"
@@ -376,12 +376,12 @@ useEffect(() => {
             </h2>
             <p className="text-[#374151] font-poppins text-sm font-medium text-center">
               {isReady
-                ? "We're collecting enough orders to active free shipping"
-                : "You can still edit or delete this basket. Tap ready when your done."}
+                ? "We're collecting enough orders to activate free shipping."
+                : "You can still edit or delete this basket. Tap ready when you're done."}
             </p>
           </div>
         </div>
-
+ 
         {/* Progress Section */}
         <div className="w-full">
           {/* Pool Progress Labels */}
@@ -400,12 +400,13 @@ useEffect(() => {
           <ProgressBar
             current={currentProgressBarAmount} // This now directly uses poolData.currentAmount
             target={poolData.minAmount}
-            users={poolData.participants.map((participant) => ({
-              id: participant.id.toString(),
-              name: `User ${participant.id}`,
-              avatar: participant.avatar,
-              amount: participant.amount,
-            }))}
+            users={[]} // No users are sent to the ProgressBar
+            // users={poolData.participants.map((participant) => ({
+            //   id: participant.id.toString(),
+            //   name: `User ${participant.id}`,
+            //   // avatar: participant.avatar,
+            //   amount: participant.amount,
+            // }))}
             showPercentage={false}
             animated={true}
             className="w-full"
