@@ -4,10 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { supabase } from "@/lib/supabase"; // Make sure this import path is correct for your project
 
 interface PoolPageProps {
   params: {
-    poolId: string;
+    basketId: string; // Changed from poolId to basketId as per your provided code
   };
 }
 
@@ -18,7 +19,7 @@ const mockPoolData = {
   poolTotal: 150,
   currentAmount: 110,
   userAmount: 40,
-  minAmount: 150,
+  minAmount: poolTotal,
   userBasket: {
     total: 20,
     itemsUrl:
@@ -37,13 +38,53 @@ const mockPoolData = {
 export default function PoolPage({ params }: PoolPageProps) {
   const router = useRouter();
   const [isReady, setIsReady] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // <--- DECLARED HERE
+  const [error, setError] = useState<string | null>(null); // <--- DECLARED HERE
 
   const handleBack = () => {
     router.back();
   };
 
-  const handleToggleReady = () => {
-    setIsReady(!isReady);
+  const handleToggleReady = async () => {
+    if (isLoading) return; // Prevent multiple clicks while a request is in progress
+
+    setIsLoading(true); // Start loading
+    setError(null); // Clear previous errors
+
+    const newIsReadyState = !isReady; // Determine the desired new state (true or false)
+    const basketIdToUpdate = params.basketId; // Use basketId from params
+
+    try {
+      const { data, error: supabaseError } = await supabase
+        .from('basket') // Target the 'basket' table
+        .update({ is_ready: newIsReadyState }) // Set the 'is_ready' column to the new state
+        .eq('id', basketIdToUpdate) // Find the row where 'id' matches the basketIdToUpdate
+        .select(); // To get the updated data back, though not strictly necessary for this use case
+
+      if (supabaseError) {
+        // Handle Supabase-specific errors (e.g., RLS violation, network issues)
+        console.error('Supabase update error:', supabaseError);
+        setError(supabaseError.message || 'Failed to update basket status via Supabase.');
+        return;
+      }
+
+      if (data && data.length > 0) {
+        // If the update was successful and data was returned
+        setIsReady(newIsReadyState); // Update local state
+        console.log(`Basket ${basketIdToUpdate} 'is_ready' set to ${newIsReadyState}`);
+      } else {
+        // This might happen if the basketId doesn't exist or RLS prevented the update silently
+        // Check Supabase dashboard logs for more details in such cases.
+        setError('Basket not found or permission denied.');
+        console.warn(`Basket ${basketIdToUpdate} not found or update failed silently.`);
+      }
+    } catch (generalError) {
+      // Catch any unexpected errors during the async operation (e.g., network down)
+      console.error('General error during update:', generalError);
+      setError('An unexpected error occurred. Please check your network connection.');
+    } finally {
+      setIsLoading(false); // End loading, regardless of success or failure
+    }
   };
 
   const handleEdit = () => {
@@ -260,19 +301,23 @@ export default function PoolPage({ params }: PoolPageProps) {
               </button>
             </div>
           )}
+          {error && ( // Display error message if present
+            <p className="text-red-500 text-sm mt-2 font-medium">{error}</p>
+          )}
         </div>
 
         {/* Bottom Action Button */}
         <button
           onClick={handleToggleReady}
+          disabled={isLoading} // Disable button when loading
           className={`w-[343px] h-14 rounded-2xl px-4 py-3 flex items-center justify-center ${
             isReady
               ? "bg-[#F04438] hover:bg-[#D92D20]"
               : "bg-[#FFDB0D] hover:bg-[#F7C600]"
-          } transition-colors`}
+          } transition-colors ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <span className="text-white font-poppins text-lg font-semibold">
-            {isReady ? "Cancel" : "Ready To Order"}
+            {isLoading ? (isReady ? "Cancelling..." : "Setting Ready...") : (isReady ? "Cancel" : "Ready To Order")}
           </span>
         </button>
       </div>

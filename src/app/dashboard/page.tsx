@@ -92,7 +92,7 @@ export default function DashboardPage() {
             // Fetch baskets for the current user, joining with the 'shop' table
             try {
                 const { data: basketsData, error: basketsError } = await supabase
-                    .from("baskets")
+                    .from("basket")
                     .select(`
             id,
             amount,
@@ -116,7 +116,7 @@ export default function DashboardPage() {
                         shopName: basket.shop?.name || "Unknown Shop", // Use optional chaining for safety
                         shopLogo: basket.shop?.logo_url || null,
                         total: basket.amount ? `CHF ${basket.amount.toFixed(2)}` : "CHF 0.00",
-                        status: basket.status, // Directly use DB status
+                        status: basket.status, // Directly use DB sbatatus
                     }));
                     setBaskets(mappedBaskets);
                 }

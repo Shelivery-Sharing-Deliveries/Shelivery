@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation"; // Import useSearchParams
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
@@ -10,7 +10,7 @@ import { Navigation } from "@/components/ui/Navigation";
 interface Shop {
     id: string;
     name: string;
-    min_amount: number; // Minimum order amount for the shop (still fetched for display, but not for basket creation validation here)
+    min_amount: number;
     logo_url: string | null;
     is_active: boolean;
 }
@@ -22,12 +22,17 @@ export default function BasketCreationPage() {
     const [basketAmount, setBasketAmount] = useState(""); // Storing as string for input
 
     const [loading, setLoading] = useState(true); // For initial shop data fetch
-    const [creating, setCreating] = useState(false); // For basket creation process
+    const [submitting, setSubmitting] = useState(false); // For basket creation/update process
     const [error, setError] = useState<string | null>(null);
+
+    const [isEditMode, setIsEditMode] = useState(false); // New state to track edit mode
+    const [existingBasketId, setExistingBasketId] = useState<string | null>(null); // To store the basket ID if in edit mode
+    const [currentBasketPoolId, setCurrentBasketPoolId] = useState<string | null>(null); // NEW: To store the pool ID of the existing basket
 
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
     const params = useParams();
+    const searchParams = useSearchParams(); // Get search params
     const shopId = params?.shopId as string;
 
     // Redirect if not authenticated
@@ -37,49 +42,89 @@ export default function BasketCreationPage() {
         }
     }, [user, authLoading, router]);
 
-    // Fetch shop details
+    // Fetch shop details and handle edit mode pre-population
     useEffect(() => {
-        const fetchShop = async () => {
-            if (!shopId) return;
+        const fetchShopAndBasket = async () => {
+            if (!shopId || !user) {
+                setLoading(false);
+                return;
+            }
+
+            setLoading(true);
+            setError(null);
 
             try {
-                setLoading(true);
-                const { data, error: fetchError } = await supabase
+                // 1. Fetch Shop Details
+                const { data: shopData, error: fetchShopError } = await supabase
                     .from("shop")
                     .select("id, name, min_amount, logo_url, is_active")
                     .eq("id", shopId)
                     .eq("is_active", true)
                     .single();
 
-                if (fetchError) {
-                    throw fetchError;
+                if (fetchShopError) {
+                    throw fetchShopError;
                 }
 
-                if (!data) {
+                if (!shopData) {
                     throw new Error("Shop not found or not active.");
                 }
+                setShop(shopData);
 
-                setShop(data);
+                // 2. Check for Edit Mode and Fetch Existing Basket
+                const urlBasketId = searchParams.get("basketId");
+                const urlLink = searchParams.get("link");
+                const urlAmount = searchParams.get("amount");
+
+                if (urlBasketId && urlLink && urlAmount) {
+                    setIsEditMode(true);
+                    setExistingBasketId(urlBasketId);
+                    setBasketLink(decodeURIComponent(urlLink));
+                    setBasketAmount(urlAmount); // Amount is a string from URL
+
+                    // NEW: Fetch the pool_id for the existing basket
+                    const { data: basketData, error: fetchBasketError } = await supabase
+                        .from("basket")
+                        .select("pool_id")
+                        .eq("id", urlBasketId)
+                        .eq("user_id", user.id) // Ensure fetching current user's basket
+                        .single();
+
+                    if (fetchBasketError) {
+                        console.error("Error fetching existing basket's pool_id:", fetchBasketError);
+                        // Don't throw, just log and proceed without poolId if not found
+                        setCurrentBasketPoolId(null);
+                    } else if (basketData) {
+                        setCurrentBasketPoolId(basketData.id);
+                    } else {
+                        setCurrentBasketPoolId(null);
+                    }
+
+                } else {
+                    setIsEditMode(false);
+                    setExistingBasketId(null);
+                    setBasketLink("");
+                    setBasketAmount("");
+                    setCurrentBasketPoolId(null); // Reset pool ID for new basket mode
+                }
+
             } catch (err: any) {
-                console.error("Error fetching shop:", err);
-                setError(err.message || "Failed to load shop details");
+                console.error("Error fetching shop or basket details:", err);
+                setError(err.message || "Failed to load shop or basket details.");
             } finally {
                 setLoading(false);
             }
         };
 
-        if (user && shopId) {
-            fetchShop();
-        }
-    }, [user, shopId]);
+        fetchShopAndBasket();
+    }, [user, shopId, searchParams]); // Depend on searchParams to react to URL changes
 
     const calculateTotalAmount = () => {
         const amount = parseFloat(basketAmount);
         return isNaN(amount) || amount <= 0 ? 0 : amount;
     };
 
-    const canCreateBasket = () => {
-        // MODIFIED: Removed shop.min_amount check
+    const canSubmitBasket = () => {
         const totalAmount = calculateTotalAmount();
         return (
             basketLink.trim() !== "" &&
@@ -87,14 +132,13 @@ export default function BasketCreationPage() {
         );
     };
 
-    const handleCreateBasket = async () => {
-        // MODIFIED: Removed shop.min_amount check from error message and condition
-        if (!canCreateBasket() || !user || !shop) {
+    const handleSubmitBasket = async () => {
+        if (!canSubmitBasket() || !user || !shop) {
             setError("Please fill in required fields (Link, Amount).");
             return;
         }
 
-        setCreating(true);
+        setSubmitting(true);
         setError(null);
 
         try {
@@ -102,40 +146,66 @@ export default function BasketCreationPage() {
                 shop_id: shop.id,
                 amount: calculateTotalAmount(),
                 link: basketLink.trim(),
+                user_id: user.id, // Ensure user_id is included for both create/update
             };
 
-            const { data, error: rpcError } = await supabase.rpc(
-                "create_basket_and_join_pool",
-                {
-                    basket_data: basketData,
+            if (isEditMode && existingBasketId) {
+                // UPDATE existing basket
+                const { error: updateError } = await supabase
+                    .from("basket")
+                    .update(basketData)
+                    .eq("id", existingBasketId)
+                    .eq("user_id", user.id); // Ensure user can only update their own basket
+
+                if (updateError) {
+                    throw updateError;
                 }
-            );
+                console.log("Basket updated successfully.");
+                // NEW: Redirect to the actual pool_id of the updated basket
+                if (currentBasketPoolId) {
+                    router.push(`/pool/${currentBasketId}` as any);
+                } else {
+                    // Fallback if pool_id was not found for some reason (shouldn't happen if basket exists)
+                    router.push("/dashboard"); // Redirect to dashboard if pool_id is missing
+                    setError("Basket updated, but could not find associated pool to redirect.");
+                }
+            } else {
+                // CREATE new basket and join pool
+                const { data, error: rpcError } = await supabase.rpc(
+                    "create_basket_and_join_pool",
+                    {
+                        basket_data: basketData,
+                    }
+                );
 
-            if (rpcError) {
-                throw rpcError;
+                if (rpcError) {
+                    throw rpcError;
+                }
+
+                if (!data || !data.pool_id) {
+                    throw new Error("Failed to create basket and join pool: Missing pool ID.");
+                }
+
+                await supabase.rpc("track_event", {
+                    event_type_param: "basket_created",
+                    metadata_param: {
+                        user_id: user.id,
+                        shop_id: shop.id,
+                        basket_total: calculateTotalAmount(),
+                        pool_id: data.pool_id,
+                        chatroom_id: data.chatroom_id || null,
+                        basket_id: data.basket_id,
+                    },
+                });
+
+                console.log("New basket created and joined pool successfully.");
+                router.push(`/pool/${data.basket_id}` as any);
             }
-
-            if (!data || !data.pool_id) {
-                throw new Error("Failed to create basket and join pool: Missing pool ID.");
-            }
-
-            await supabase.rpc("track_event", {
-                event_type_param: "basket_created",
-                metadata_param: {
-                    user_id: user.id,
-                    shop_id: shop.id,
-                    basket_total: calculateTotalAmount(),
-                    pool_id: data.pool_id,
-                    chatroom_id: data.chatroom_id || null,
-                },
-            });
-
-            router.push(`/pool/${data.pool_id}` as any);
         } catch (err: any) {
-            console.error("Error creating basket:", err);
-            setError(err.message || "Failed to create basket");
+            console.error(`Error ${isEditMode ? "updating" : "creating"} basket:`, err);
+            setError(err.message || `Failed to ${isEditMode ? "update" : "create"} basket`);
         } finally {
-            setCreating(false);
+            setSubmitting(false);
         }
     };
 
@@ -157,7 +227,7 @@ export default function BasketCreationPage() {
         return null;
     }
 
-    if (error && !shop) {
+    if (error && !shop) { // Only show shop not found error if shop data is missing
         return (
             <div className="min-h-screen bg-shelivery-background-gray">
                 <Navigation />
@@ -189,11 +259,9 @@ export default function BasketCreationPage() {
         );
     }
 
-    if (!shop) return null;
+    if (!shop) return null; // Should be caught by the error above, but as a fallback
 
     const currentAmount = calculateTotalAmount();
-    // Removed minimumOrderMet as it's no longer used for validation here
-    // const minimumOrderMet = currentAmount >= shop.min_amount;
 
     return (
         <div className="min-h-screen bg-shelivery-background-gray">
@@ -260,7 +328,7 @@ export default function BasketCreationPage() {
                 {/* Basket Details Form */}
                 <div className="bg-white rounded-shelivery-lg p-4 mb-6 border border-gray-200">
                     <h2 className="text-lg font-semibold text-shelivery-text-primary mb-4">
-                        Enter Basket Details
+                        {isEditMode ? "Edit Basket Details" : "Enter Basket Details"}
                     </h2>
 
                     <div className="space-y-4">
@@ -313,31 +381,19 @@ export default function BasketCreationPage() {
                             </span>
                         </div>
                     </div>
-
-                    {/* Removed minimum order met warning */}
-                    {/* {!minimumOrderMet && currentAmount > 0 && (
-            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-shelivery-sm">
-              <p className="text-sm text-yellow-800">
-                Add CHF {(shop.min_amount - currentAmount).toFixed(2)} more to
-                reach the minimum order of CHF {shop.min_amount.toFixed(2)}
-              </p>
-            </div>
-          )} */}
                 </div>
 
-                {/* Create Basket Button */}
+                {/* Create/Update Basket Button */}
                 <Button
-                    onClick={handleCreateBasket}
-                    disabled={!canCreateBasket() || creating}
-                    loading={creating}
+                    onClick={handleSubmitBasket}
+                    disabled={!canSubmitBasket() || submitting}
+                    loading={submitting}
                     className="w-full"
                     size="lg"
                 >
-                    {creating
-                        ? "Creating Basket..."
-                        : canCreateBasket()
-                            ? "Join Pool & Create Basket"
-                            : "Enter basket details"} {/* Simplified button text */}
+                    {submitting
+                        ? (isEditMode ? "Saving Changes..." : "Creating Basket...")
+                        : (isEditMode ? "Save Changes" : "Join Pool & Create Basket")}
                 </Button>
             </div>
         </div>
