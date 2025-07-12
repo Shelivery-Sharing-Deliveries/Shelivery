@@ -41,7 +41,6 @@ export default function BasketCreationPage() {
             router.push("/auth");
         }
     }, [user, authLoading, router]);
-
     // Fetch shop details and handle edit mode pre-population
     useEffect(() => {
         const fetchShopAndBasket = async () => {
@@ -54,7 +53,7 @@ export default function BasketCreationPage() {
             setError(null);
 
             try {
-                // 1. Fetch Shop Details
+                // 1. Fetch Shop Details (Keep this as is for now)
                 const { data: shopData, error: fetchShopError } = await supabase
                     .from("shop")
                     .select("id, name, min_amount, logo_url, is_active")
@@ -71,36 +70,56 @@ export default function BasketCreationPage() {
                 }
                 setShop(shopData);
 
-                // 2. Check for Edit Mode and Fetch Existing Basket
+                // 2. Check for Edit Mode and Fetch Existing Basket (THIS IS THE PART TO EDIT)
                 const urlBasketId = searchParams.get("basketId");
-                const urlLink = searchParams.get("link");
-                const urlAmount = searchParams.get("amount");
+                // const urlLink = searchParams.get("link"); // <-- REMOVE THIS
+                // const urlAmount = searchParams.get("amount"); // <-- REMOVE THIS
 
-                if (urlBasketId && urlLink && urlAmount) {
+                if (urlBasketId) { // Changed condition to just check for urlBasketId
                     setIsEditMode(true);
                     setExistingBasketId(urlBasketId);
-                    setBasketLink(decodeURIComponent(urlLink));
-                    setBasketAmount(urlAmount); // Amount is a string from URL
 
-                    // NEW: Fetch the pool_id for the existing basket
-                    const { data: basketData, error: fetchBasketError } = await supabase
+                    // Fetch the full basket details for pre-population
+                    const { data: existingBasketData, error: fetchBasketError } = await supabase
                         .from("basket")
-                        .select("pool_id")
+                        .select("amount, link, pool_id, shop_id") // Select all needed fields, including shop_id for validation
                         .eq("id", urlBasketId)
-                        .eq("user_id", user.id) // Ensure fetching current user's basket
+                        .eq("user_id", user.id) // IMPORTANT: Ensure the user owns this basket
                         .single();
 
-                    if (fetchBasketError) {
-                        console.error("Error fetching existing basket's pool_id:", fetchBasketError);
-                        // Don't throw, just log and proceed without poolId if not found
+                    if (fetchBasketError || !existingBasketData) {
+                        console.error("Error fetching existing basket or not found:", fetchBasketError);
+                        // If basket not found or doesn't belong to user, treat as new basket creation for this shop
+                        setError("Existing basket not found or you don't have permission to edit it. Starting a new basket.");
+                        setIsEditMode(false);
+                        setExistingBasketId(null);
+                        setBasketLink("");
+                        setBasketAmount("");
                         setCurrentBasketPoolId(null);
-                    } else if (basketData) {
-                        setCurrentBasketPoolId(basketData.id);
-                    } else {
-                        setCurrentBasketPoolId(null);
+                        router.replace(`/shops/${shopId}/basket`); // Clean the URL query params
+                        return; // Exit early as we're not in edit mode
                     }
 
+                    // Validate if the basket's shop_id matches the one in the URL path
+                    if (existingBasketData.shop_id !== shopId) {
+                        console.warn("Mismatched shop_id for existing basket. Redirecting to new basket for this shop.");
+                        setError("The basket you tried to edit belongs to a different shop. Starting a new basket.");
+                        setIsEditMode(false);
+                        setExistingBasketId(null);
+                        setBasketLink("");
+                        setBasketAmount("");
+                        setCurrentBasketPoolId(null);
+                        router.replace(`/shops/${shopId}/basket`); // Clean the URL query params
+                        return; // Exit early
+                    }
+
+                    // Pre-populate form fields
+                    setBasketLink(existingBasketData.link);
+                    setBasketAmount(existingBasketData.amount.toString()); // Convert number to string for input
+                    setCurrentBasketPoolId(existingBasketData.pool_id);
+
                 } else {
+                    // This block runs if urlBasketId is NOT present (new basket mode)
                     setIsEditMode(false);
                     setExistingBasketId(null);
                     setBasketLink("");
@@ -111,13 +130,14 @@ export default function BasketCreationPage() {
             } catch (err: any) {
                 console.error("Error fetching shop or basket details:", err);
                 setError(err.message || "Failed to load shop or basket details.");
+                setShop(null); // Ensure shop is null on error to trigger error UI
             } finally {
                 setLoading(false);
             }
         };
 
         fetchShopAndBasket();
-    }, [user, shopId, searchParams]); // Depend on searchParams to react to URL changes
+    }, [user, shopId, searchParams, router]); // Depend on searchParams and router to react to URL changes and redirect
 
     const calculateTotalAmount = () => {
         const amount = parseFloat(basketAmount);
@@ -163,7 +183,7 @@ export default function BasketCreationPage() {
                 console.log("Basket updated successfully.");
                 // NEW: Redirect to the actual pool_id of the updated basket
                 if (currentBasketPoolId) {
-                    router.push(`/pool/${currentBasketId}` as any);
+                    router.push(`/pool/${existingBasketId}` as any);
                 } else {
                     // Fallback if pool_id was not found for some reason (shouldn't happen if basket exists)
                     router.push("/dashboard"); // Redirect to dashboard if pool_id is missing

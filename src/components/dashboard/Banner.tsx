@@ -18,7 +18,7 @@ export default function Banner({ className = "" }: BannerProps) {
       setLoading(true);
 
       const { data, error } = await supabase
-        .from("banners")
+        .from("banner")
         .select("*")
         .order("date", { ascending: false });
 

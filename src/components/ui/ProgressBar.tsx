@@ -89,7 +89,7 @@ export function ProgressBar({
       <div className="flex justify-between items-center text-sm">
         <div className="text-shelivery-text-secondary">
           {/* Use safeCurrent and safeTarget for toFixed */}
-          ${safeCurrent.toFixed(2)} / ${safeTarget.toFixed(2)}
+          {safeCurrent.toFixed(2)} CHF /  {safeTarget.toFixed(2)} CHF
         </div>
         {showPercentage && (
           <div className="text-shelivery-text-primary font-medium">

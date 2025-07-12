@@ -37,6 +37,7 @@ interface DisplayPoolData {
   userAmount: number; // Mapped to basket.amount
   minAmount: number; // Mapped to pool.min_amount
   pool_id?: string; // Optional, if you want to use it in polling or realtime updates
+  shop_id: string;
   userBasket: {
     total: number;
     itemsUrl: string;
@@ -67,6 +68,8 @@ export default function PoolPage({ params }: PoolPageProps) {
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [isButtonLoading, setIsButtonLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false); 
+
 
   const handleBack = () => {
     router.back();
@@ -133,6 +136,7 @@ export default function PoolPage({ params }: PoolPageProps) {
             userAmount: fetchedBasket.amount,
             minAmount: fetchedBasket.pool.min_amount,
             pool_id: fetchedBasket.pool_id, // Optional, if you want to use it in polling or realtime updates
+            shop_id: fetchedBasket.shop_id,
             userBasket: {
               total: fetchedBasket.amount,
               itemsUrl: fetchedBasket.link,
@@ -279,11 +283,55 @@ useEffect(() => {
   };
 
   const handleEdit = () => {
-    console.log("Edit basket");
+    if (!poolData) return; // Ensure poolData is available
+
+    // Construct the URL to your basket creation/edit page
+    // We'll pass the existing basket ID as a query parameter
+    // The path is /shops/{shop_id}/basket, so we need poolData.shopId
+    const editUrl = `/shops/${poolData.shop_id}/basket?basketId=${params.basketId}`;
+    console.log("Navigating to edit URL:", editUrl);
+    router.push(editUrl);
   };
 
-  const handleDelete = () => {
-    console.log("Delete basket");
+  // --- NEW: handleDelete for removing a basket entry ---
+  const handleDelete = async () => {
+    if (!poolData || isDeleting) return; // Prevent action if data not loaded or already deleting
+
+    // Optional: Add a confirmation dialog here for the user
+    const confirmed = window.confirm("Are you sure you want to delete this basket?");
+    if (!confirmed) {
+      return; // User cancelled deletion
+    }
+
+    setIsDeleting(true); // Start deleting loading state
+    setError(null); // Clear any previous errors
+
+    const basketIdToDelete = params.basketId;
+
+    try {
+      // Perform the delete operation
+      const { error: supabaseError } = await supabase
+        .from('basket')
+        .delete()
+        .eq('id', basketIdToDelete);
+
+      if (supabaseError) {
+        console.error('Supabase delete error:', supabaseError);
+        setError(supabaseError.message || 'Failed to delete basket.');
+        return;
+      }
+
+      console.log(`Basket ${basketIdToDelete} deleted successfully.`);
+      // After successful deletion, navigate away from this page
+      // You might want to navigate to a list of baskets, or a confirmation page
+      router.push('/dashboard'); 
+
+    } catch (generalError) {
+      console.error('General error during delete:', generalError);
+      setError('An unexpected error occurred during deletion.');
+    } finally {
+      setIsDeleting(false); // End deleting loading state
+    }
   };
 
   if (isPageLoading) {
@@ -361,7 +409,7 @@ useEffect(() => {
           {/* Shop Logo */}
           <div className="w-16 h-16 rounded-xl overflow-hidden border border-[#EFF1F3]">
             <Image
-              src={poolData?.shopLogo || "/default-logo.png"} // Fallback for shop logo
+              src={poolData?.shopLogo || "/shop-logo/default-logo.png"} // Fallback for shop logo
               alt={poolData?.shopName + " Logo"}
               width={64}
               height={64}
@@ -388,11 +436,11 @@ useEffect(() => {
           <div className="flex justify-between items-center mb-2">
             {isReady && (
               <span className="text-[#111827] font-poppins text-xs font-semibold">
-                You ${poolData.userAmount}
+                You {poolData.userAmount} CHF
               </span>
             )}
             <span className="text-[#111827] font-poppins text-[10px] font-semibold ml-auto">
-              Pool Total ${poolData.poolTotal}
+              Pool Total {poolData.poolTotal} CHF
             </span>
           </div>
 
@@ -437,7 +485,7 @@ useEffect(() => {
                 Total
               </span>
               <span className="text-[#374151] font-poppins text-sm">
-                ${poolData.userBasket.total}
+                {poolData.userBasket.total} CHF
               </span>
             </div>
           </div>
