@@ -199,7 +199,7 @@ export default function ChatroomPage() {
         console.log("loadChatroomData: Fetching chat memberships...");
         const { data: membershipsData, error: membershipsError } =
           await supabase
-            .from("chat_memberships")
+            .from("chat_membership")
             .select("user_id")
             .eq("chatroom_id", chatroomId)
             .is("left_at", null);
@@ -275,7 +275,7 @@ export default function ChatroomPage() {
         // Get messages - simplified query
         console.log("loadChatroomData: Fetching messages...");
         const { data: messagesData, error: messagesError } = await supabase
-          .from("messages")
+          .from("message")
           .select("*")
           .eq("chatroom_id", chatroomId)
           .order("sent_at", { ascending: true });
@@ -376,7 +376,7 @@ export default function ChatroomPage() {
         {
           event: "INSERT",
           schema: "public",
-          table: "messages",
+          table: "message",
           filter: `chatroom_id=eq.${chatroomId}`,
         },
         async (payload) => {
@@ -446,7 +446,7 @@ export default function ChatroomPage() {
     }
     console.log("sendMessage: Attempting to send message...");
     try {
-      const { error } = await supabase.from("messages").insert({
+      const { error } = await supabase.from("message").insert({
         chatroom_id: chatroomId,
         user_id: currentUser.id,
         content: content.trim(),
@@ -533,7 +533,7 @@ export default function ChatroomPage() {
     console.log("leaveGroup: Attempting to leave group...");
     try {
       const { error } = await supabase
-        .from("chat_memberships")
+        .from("chat_membership")
         .update({ left_at: new Date().toISOString() })
         .eq("chatroom_id", chatroomId)
         .eq("user_id", currentUser.id);
@@ -590,7 +590,7 @@ export default function ChatroomPage() {
     console.log("removeMember: Attempting to remove member:", userId);
     try {
       const { error } = await supabase
-        .from("chat_memberships")
+        .from("chat_membership")
         .update({ left_at: new Date().toISOString() })
         .eq("chatroom_id", chatroomId)
         .eq("user_id", userId);
