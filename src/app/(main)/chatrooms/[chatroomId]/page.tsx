@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
 import { SimpleChatHeader } from "@/components/chatroom/SimpleChatHeader";
 import { ChatMessages } from "@/components/chatroom/ChatMessages";
 import { MessageInput } from "@/components/chatroom/MessageInput";
@@ -44,8 +45,12 @@ interface User {
   email: string;
   dormitory_id: number | null;
   profile: any;
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  updated_at: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  favorite_store: string | null;
+  image: string | null;
 }
 
 interface ChatMember extends User {
@@ -77,7 +82,7 @@ interface MessageType {
 export default function ChatroomPage() {
   const params = useParams();
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const { user, loading: authLoading } = useAuth();
   const chatroomId = params.chatroomId as string;
 
   console.log("ChatroomPage: Component Rendered");
@@ -92,55 +97,41 @@ export default function ChatroomPage() {
   const [showTimeExtension, setShowTimeExtension] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
 
-  // Get current user
+  // Get current user profile from database
   useEffect(() => {
     const getCurrentUser = async () => {
-      console.log("getCurrentUser: Starting user fetch...");
-      const {
-        data: { user },
-        error: userError, // Added error capture for auth.getUser()
-      } = await supabase.auth.getUser();
-
-      if (userError) {
-        console.error("getCurrentUser: Error fetching auth user:", userError);
-        // Decide if you want to set loading to false here or let loadChatroomData handle it
-        // If no user, loadChatroomData won't run, so it might be good to indicate loading finished.
-        // For now, keeping original flow, but be aware.
-        // setLoading(false);
+      if (authLoading || !user) {
+        console.log("getCurrentUser: Waiting for auth or no user found");
         return;
       }
 
-      if (user) {
-        console.log("getCurrentUser: Auth user found:", user.id);
-        const { data: profile, error: profileError } = await supabase
-          .from("user")
-          .select("*")
-          .eq("id", user.id)
-          .single();
+      console.log("getCurrentUser: Auth user found:", user.id);
+      const { data: profile, error: profileError } = await supabase
+        .from("user")
+        .select("*")
+        .eq("id", user.id)
+        .single();
 
-        if (profileError) {
-          console.error("getCurrentUser: Error fetching user profile:", profileError);
-          // setLoading(false); // Consider setting loading false here if profile fetch fails
-          return;
-        }
-
-        console.log("getCurrentUser: User profile set:", profile?.id);
-        setCurrentUser(profile);
-      } else {
-        console.log("getCurrentUser: No authenticated user found.");
-        // If no user is logged in, the page might not be fully functional,
-        // but the loading state should still resolve.
-        // This is a critical point: if currentUser remains null, loadChatroomData won't run.
-        setLoading(false); // Indicate loading is done, even if no user.
+      if (profileError) {
+        console.error(
+          "getCurrentUser: Error fetching user profile:",
+          profileError
+        );
+        setLoading(false);
+        return;
       }
+
+      console.log("getCurrentUser: User profile set:", profile?.id);
+      setCurrentUser(profile);
     };
+
     getCurrentUser();
-  }, [supabase]); // Dependency on supabase ensures it runs once when component mounts
+  }, [user, authLoading]);
 
   // Load chatroom data
   useEffect(() => {
     // This effect depends on currentUser, so it won't run until currentUser is set.
-    if (!currentUser) {
+    if (!currentUser || authLoading) {
       console.log("loadChatroomData: Waiting for currentUser...");
       return;
     }
@@ -151,7 +142,10 @@ export default function ChatroomPage() {
     }
 
     const loadChatroomData = async () => {
-      console.log("loadChatroomData: Starting data fetch for chatroom:", chatroomId);
+      console.log(
+        "loadChatroomData: Starting data fetch for chatroom:",
+        chatroomId
+      );
       console.log("loadChatroomData: Current User ID:", currentUser?.id);
 
       try {
@@ -162,15 +156,15 @@ export default function ChatroomPage() {
           .select(
             `
             *,
-            pool:pools(
+            pool:pool(
               id,
               shop_id,
               dormitory_id,
               current_amount,
               min_amount,
               created_at,
-              shop:shops(id, name, min_amount, created_at),
-              dormitory:dormitories(id, name)
+              shop:shop(id, name, min_amount, created_at),
+              dormitory:dormitory(id, name)
             )
           `
           )
@@ -178,20 +172,28 @@ export default function ChatroomPage() {
           .single();
 
         if (chatroomError) {
-          console.error("loadChatroomData: Error fetching chatroom:", chatroomError);
+          console.error(
+            "loadChatroomData: Error fetching chatroom:",
+            chatroomError
+          );
           throw chatroomError; // Re-throw to catch block
         }
         if (!chatroomData) {
-            console.warn("loadChatroomData: No chatroom data found for ID:", chatroomId);
-            // If chatroom doesn't exist, we should still stop loading.
-            setLoading(false);
-            return; // Exit early
+          console.warn(
+            "loadChatroomData: No chatroom data found for ID:",
+            chatroomId
+          );
+          // If chatroom doesn't exist, we should still stop loading.
+          setLoading(false);
+          return; // Exit early
         }
         console.log("loadChatroomData: Chatroom data fetched:", chatroomData);
         setChatroom(chatroomData);
         setIsAdmin(chatroomData.admin_id === currentUser.id);
-        console.log("loadChatroomData: Is Admin:", chatroomData.admin_id === currentUser.id);
-
+        console.log(
+          "loadChatroomData: Is Admin:",
+          chatroomData.admin_id === currentUser.id
+        );
 
         // Get members - simplified query
         console.log("loadChatroomData: Fetching chat memberships...");
@@ -203,7 +205,10 @@ export default function ChatroomPage() {
             .is("left_at", null);
 
         if (membershipsError) {
-          console.error("loadChatroomData: Error fetching memberships:", membershipsError);
+          console.error(
+            "loadChatroomData: Error fetching memberships:",
+            membershipsError
+          );
           throw membershipsError;
         }
         console.log("loadChatroomData: Memberships fetched:", membershipsData);
@@ -211,28 +216,40 @@ export default function ChatroomPage() {
         // Get user details for members
         if (membershipsData && membershipsData.length > 0) {
           const userIds = membershipsData.map((m) => m.user_id);
-          console.log("loadChatroomData: Fetching member user profiles for IDs:", userIds);
+          console.log(
+            "loadChatroomData: Fetching member user profiles for IDs:",
+            userIds
+          );
           const { data: usersData, error: usersError } = await supabase
             .from("user")
             .select("*")
             .in("id", userIds);
 
           if (usersError) {
-            console.error("loadChatroomData: Error fetching member users:", usersError);
+            console.error(
+              "loadChatroomData: Error fetching member users:",
+              usersError
+            );
             throw usersError;
           }
-          console.log("loadChatroomData: Member user profiles fetched:", usersData);
+          console.log(
+            "loadChatroomData: Member user profiles fetched:",
+            usersData
+          );
 
           // Get baskets for these users
           console.log("loadChatroomData: Fetching baskets for members...");
           const { data: basketsData, error: basketsError } = await supabase
-            .from("baskets")
+            .from("basket")
             .select("*")
             .in("user_id", userIds)
             .eq("status", "in_chat");
 
           if (basketsError) {
-            console.error("loadChatroomData: Error fetching baskets:", basketsError);
+            console.error(
+              "loadChatroomData: Error fetching baskets:",
+              basketsError
+            );
             throw basketsError;
           }
           console.log("loadChatroomData: Baskets fetched:", basketsData);
@@ -249,8 +266,10 @@ export default function ChatroomPage() {
           setMembers(processedMembers);
           console.log("loadChatroomData: Members state updated.");
         } else {
-            console.log("loadChatroomData: No members found for this chatroom or memberships data is empty.");
-            setMembers([]); // Ensure members is an empty array if none found
+          console.log(
+            "loadChatroomData: No members found for this chatroom or memberships data is empty."
+          );
+          setMembers([]); // Ensure members is an empty array if none found
         }
 
         // Get messages - simplified query
@@ -262,33 +281,45 @@ export default function ChatroomPage() {
           .order("sent_at", { ascending: true });
 
         if (messagesError) {
-          console.error("loadChatroomData: Error fetching messages:", messagesError);
+          console.error(
+            "loadChatroomData: Error fetching messages:",
+            messagesError
+          );
           throw messagesError;
         }
         console.log("loadChatroomData: Messages fetched:", messagesData);
-
 
         // Get user data for messages
         if (messagesData && messagesData.length > 0) {
           const uniqueUserIds = messagesData.map((m) => m.user_id);
           const messageUserIds = Array.from(new Set(uniqueUserIds));
 
-          console.log("loadChatroomData: Fetching message user profiles for IDs:", messageUserIds);
+          console.log(
+            "loadChatroomData: Fetching message user profiles for IDs:",
+            messageUserIds
+          );
           const { data: messageUsersData, error: messageUsersError } =
             await supabase.from("user").select("*").in("id", messageUserIds);
 
           if (messageUsersError) {
-            console.error("loadChatroomData: Error fetching message users:", messageUsersError);
+            console.error(
+              "loadChatroomData: Error fetching message users:",
+              messageUsersError
+            );
             throw messageUsersError;
           }
-          console.log("loadChatroomData: Message user profiles fetched:", messageUsersData);
+          console.log(
+            "loadChatroomData: Message user profiles fetched:",
+            messageUsersData
+          );
 
           const processedMessages: MessageType[] = messagesData.map(
             (message) => ({
               ...message,
               user: messageUsersData?.find(
                 (user) => user.id === message.user_id
-              ) || { // Fallback user object
+              ) || {
+                // Fallback user object
                 id: message.user_id,
                 email: "Unknown",
                 dormitory_id: null,
@@ -301,14 +332,18 @@ export default function ChatroomPage() {
           setMessages(processedMessages);
           console.log("loadChatroomData: Messages state updated.");
         } else {
-            console.log("loadChatroomData: No messages found for this chatroom.");
-            setMessages([]); // Ensure messages is an empty array if none found
+          console.log("loadChatroomData: No messages found for this chatroom.");
+          setMessages([]); // Ensure messages is an empty array if none found
         }
 
-        console.log("loadChatroomData: All data fetches completed successfully.");
-
+        console.log(
+          "loadChatroomData: All data fetches completed successfully."
+        );
       } catch (error) {
-        console.error("loadChatroomData: Caught an error during chatroom data loading:", error);
+        console.error(
+          "loadChatroomData: Caught an error during chatroom data loading:",
+          error
+        );
         // This catch block ensures that if any error occurs in the try block,
         // we still attempt to set loading to false.
       } finally {
@@ -318,15 +353,20 @@ export default function ChatroomPage() {
     };
 
     loadChatroomData();
-  }, [currentUser, chatroomId, supabase]); // Dependencies are correct here.
+  }, [currentUser, chatroomId, authLoading]); // Dependencies are correct here.
 
   // Real-time subscriptions
   useEffect(() => {
-    if (!chatroomId) {
-        console.log("Realtime: chatroomId not available for subscriptions.");
-        return;
+    if (!chatroomId || authLoading) {
+      console.log(
+        "Realtime: chatroomId not available for subscriptions or auth loading."
+      );
+      return;
     }
-    console.log("Realtime: Setting up Supabase real-time subscriptions for chatroom:", chatroomId);
+    console.log(
+      "Realtime: Setting up Supabase real-time subscriptions for chatroom:",
+      chatroomId
+    );
 
     // Subscribe to new messages
     const messagesSubscription = supabase
@@ -349,7 +389,10 @@ export default function ChatroomPage() {
             .single();
 
           if (userDataError) {
-            console.error("Realtime: Error fetching user data for new message:", userDataError);
+            console.error(
+              "Realtime: Error fetching user data for new message:",
+              userDataError
+            );
             return;
           }
 
@@ -394,7 +437,7 @@ export default function ChatroomPage() {
       messagesSubscription.unsubscribe();
       chatroomSubscription.unsubscribe();
     };
-  }, [chatroomId, supabase]); // Dependency on supabase ensures it re-runs if supabase instance changes (unlikely) or chatroomId changes.
+  }, [chatroomId, authLoading]); // Dependency ensures it re-runs if chatroomId changes or auth state changes.
 
   const sendMessage = async (content: string) => {
     if (!currentUser || !content.trim()) {
@@ -411,7 +454,9 @@ export default function ChatroomPage() {
       if (error) {
         console.error("sendMessage: Error inserting message:", error);
       } else {
-        console.log("sendMessage: Message inserted successfully (realtime will update state).");
+        console.log(
+          "sendMessage: Message inserted successfully (realtime will update state)."
+        );
       }
     } catch (error) {
       console.error("sendMessage: Caught error during message send:", error);
@@ -420,8 +465,8 @@ export default function ChatroomPage() {
 
   const markAsOrdered = async () => {
     if (!isAdmin) {
-        console.warn("markAsOrdered: User is not admin, cannot mark as ordered.");
-        return;
+      console.warn("markAsOrdered: User is not admin, cannot mark as ordered.");
+      return;
     }
     console.log("markAsOrdered: Attempting to mark as ordered...");
     try {
@@ -431,21 +476,29 @@ export default function ChatroomPage() {
         .eq("id", chatroomId);
 
       if (error) {
-        console.error("markAsOrdered: Error updating chatroom state to ordered:", error);
+        console.error(
+          "markAsOrdered: Error updating chatroom state to ordered:",
+          error
+        );
       } else {
         setNotification("Order has been marked as placed!");
         setTimeout(() => setNotification(null), 3000);
         console.log("markAsOrdered: Chatroom state updated to 'ordered'.");
       }
     } catch (error) {
-      console.error("markAsOrdered: Caught error during mark as ordered:", error);
+      console.error(
+        "markAsOrdered: Caught error during mark as ordered:",
+        error
+      );
     }
   };
 
   const markAsDelivered = async () => {
     if (!isAdmin) {
-        console.warn("markAsDelivered: User is not admin, cannot mark as delivered.");
-        return;
+      console.warn(
+        "markAsDelivered: User is not admin, cannot mark as delivered."
+      );
+      return;
     }
     console.log("markAsDelivered: Attempting to mark as delivered...");
     try {
@@ -455,21 +508,27 @@ export default function ChatroomPage() {
         .eq("id", chatroomId);
 
       if (error) {
-        console.error("markAsDelivered: Error updating chatroom state to resolved:", error);
+        console.error(
+          "markAsDelivered: Error updating chatroom state to resolved:",
+          error
+        );
       } else {
         setNotification("Order has been marked as delivered!");
         setTimeout(() => setNotification(null), 3000);
         console.log("markAsDelivered: Chatroom state updated to 'resolved'.");
       }
     } catch (error) {
-      console.error("markAsDelivered: Caught error during mark as delivered:", error);
+      console.error(
+        "markAsDelivered: Caught error during mark as delivered:",
+        error
+      );
     }
   };
 
   const leaveGroup = async () => {
     if (!currentUser) {
-        console.warn("leaveGroup: No current user to leave group.");
-        return;
+      console.warn("leaveGroup: No current user to leave group.");
+      return;
     }
     console.log("leaveGroup: Attempting to leave group...");
     try {
@@ -480,10 +539,15 @@ export default function ChatroomPage() {
         .eq("user_id", currentUser.id);
 
       if (error) {
-        console.error("leaveGroup: Error updating chat membership to left:", error);
+        console.error(
+          "leaveGroup: Error updating chat membership to left:",
+          error
+        );
       } else {
         router.push("/dashboard");
-        console.log("leaveGroup: Successfully left group, redirecting to dashboard.");
+        console.log(
+          "leaveGroup: Successfully left group, redirecting to dashboard."
+        );
       }
     } catch (error) {
       console.error("leaveGroup: Caught error during leave group:", error);
@@ -492,8 +556,10 @@ export default function ChatroomPage() {
 
   const makeAdmin = async (userId: string) => {
     if (!isAdmin) {
-        console.warn("makeAdmin: Current user is not admin, cannot make another user admin.");
-        return;
+      console.warn(
+        "makeAdmin: Current user is not admin, cannot make another user admin."
+      );
+      return;
     }
     console.log("makeAdmin: Attempting to make user", userId, "admin.");
     try {
@@ -516,8 +582,10 @@ export default function ChatroomPage() {
 
   const removeMember = async (userId: string) => {
     if (!isAdmin || userId === currentUser?.id) {
-        console.warn("removeMember: Cannot remove member. Either not admin or trying to remove self.");
-        return;
+      console.warn(
+        "removeMember: Cannot remove member. Either not admin or trying to remove self."
+      );
+      return;
     }
     console.log("removeMember: Attempting to remove member:", userId);
     try {
@@ -528,7 +596,10 @@ export default function ChatroomPage() {
         .eq("user_id", userId);
 
       if (error) {
-        console.error("removeMember: Error removing member from chat_memberships:", error);
+        console.error(
+          "removeMember: Error removing member from chat_memberships:",
+          error
+        );
       } else {
         setMembers((prev) => prev.filter((member) => member.id !== userId));
         setNotification("Member removed from group");
@@ -541,7 +612,7 @@ export default function ChatroomPage() {
   };
 
   // This is the point where the UI decides what to render based on the 'loading' state
-  if (loading) {
+  if (authLoading || loading) {
     console.log("Render: Displaying Loading state...");
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -552,7 +623,9 @@ export default function ChatroomPage() {
 
   // This will only be reached if loading is false
   if (!chatroom) {
-    console.log("Render: Loading is false, but chatroom is null. Displaying 'not found' state.");
+    console.log(
+      "Render: Loading is false, but chatroom is null. Displaying 'not found' state."
+    );
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-lg">Chatroom not found</div>
