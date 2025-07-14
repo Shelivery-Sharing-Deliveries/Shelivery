@@ -80,6 +80,9 @@ export default function ChatroomPage() {
   const supabase = createClientComponentClient();
   const chatroomId = params.chatroomId as string;
 
+  console.log("ChatroomPage: Component Rendered");
+  console.log("ChatroomPage: chatroomId from params:", chatroomId);
+
   const [chatroom, setChatroom] = useState<Chatroom | null>(null);
   const [members, setMembers] = useState<ChatMember[]>([]);
   const [messages, setMessages] = useState<MessageType[]>([]);
@@ -92,30 +95,70 @@ export default function ChatroomPage() {
   // Get current user
   useEffect(() => {
     const getCurrentUser = async () => {
+      console.log("getCurrentUser: Starting user fetch...");
       const {
         data: { user },
+        error: userError, // Added error capture for auth.getUser()
       } = await supabase.auth.getUser();
+
+      if (userError) {
+        console.error("getCurrentUser: Error fetching auth user:", userError);
+        // Decide if you want to set loading to false here or let loadChatroomData handle it
+        // If no user, loadChatroomData won't run, so it might be good to indicate loading finished.
+        // For now, keeping original flow, but be aware.
+        // setLoading(false);
+        return;
+      }
+
       if (user) {
-        const { data: profile } = await supabase
-          .from("users")
+        console.log("getCurrentUser: Auth user found:", user.id);
+        const { data: profile, error: profileError } = await supabase
+          .from("user")
           .select("*")
           .eq("id", user.id)
           .single();
+
+        if (profileError) {
+          console.error("getCurrentUser: Error fetching user profile:", profileError);
+          // setLoading(false); // Consider setting loading false here if profile fetch fails
+          return;
+        }
+
+        console.log("getCurrentUser: User profile set:", profile?.id);
         setCurrentUser(profile);
+      } else {
+        console.log("getCurrentUser: No authenticated user found.");
+        // If no user is logged in, the page might not be fully functional,
+        // but the loading state should still resolve.
+        // This is a critical point: if currentUser remains null, loadChatroomData won't run.
+        setLoading(false); // Indicate loading is done, even if no user.
       }
     };
     getCurrentUser();
-  }, [supabase]);
+  }, [supabase]); // Dependency on supabase ensures it runs once when component mounts
 
   // Load chatroom data
   useEffect(() => {
+    // This effect depends on currentUser, so it won't run until currentUser is set.
+    if (!currentUser) {
+      console.log("loadChatroomData: Waiting for currentUser...");
+      return;
+    }
+    if (!chatroomId) {
+      console.error("loadChatroomData: chatroomId is not available.");
+      setLoading(false); // Cannot load if no chatroomId
+      return;
+    }
+
     const loadChatroomData = async () => {
-      if (!currentUser) return;
+      console.log("loadChatroomData: Starting data fetch for chatroom:", chatroomId);
+      console.log("loadChatroomData: Current User ID:", currentUser?.id);
 
       try {
         // Get chatroom with pool and shop info
+        console.log("loadChatroomData: Fetching chatroom data...");
         const { data: chatroomData, error: chatroomError } = await supabase
-          .from("chatrooms")
+          .from("chatroom")
           .select(
             `
             *,
@@ -134,11 +177,24 @@ export default function ChatroomPage() {
           .eq("id", chatroomId)
           .single();
 
-        if (chatroomError) throw chatroomError;
+        if (chatroomError) {
+          console.error("loadChatroomData: Error fetching chatroom:", chatroomError);
+          throw chatroomError; // Re-throw to catch block
+        }
+        if (!chatroomData) {
+            console.warn("loadChatroomData: No chatroom data found for ID:", chatroomId);
+            // If chatroom doesn't exist, we should still stop loading.
+            setLoading(false);
+            return; // Exit early
+        }
+        console.log("loadChatroomData: Chatroom data fetched:", chatroomData);
         setChatroom(chatroomData);
         setIsAdmin(chatroomData.admin_id === currentUser.id);
+        console.log("loadChatroomData: Is Admin:", chatroomData.admin_id === currentUser.id);
+
 
         // Get members - simplified query
+        console.log("loadChatroomData: Fetching chat memberships...");
         const { data: membershipsData, error: membershipsError } =
           await supabase
             .from("chat_memberships")
@@ -146,26 +202,40 @@ export default function ChatroomPage() {
             .eq("chatroom_id", chatroomId)
             .is("left_at", null);
 
-        if (membershipsError) throw membershipsError;
+        if (membershipsError) {
+          console.error("loadChatroomData: Error fetching memberships:", membershipsError);
+          throw membershipsError;
+        }
+        console.log("loadChatroomData: Memberships fetched:", membershipsData);
 
         // Get user details for members
         if (membershipsData && membershipsData.length > 0) {
           const userIds = membershipsData.map((m) => m.user_id);
+          console.log("loadChatroomData: Fetching member user profiles for IDs:", userIds);
           const { data: usersData, error: usersError } = await supabase
-            .from("users")
+            .from("user")
             .select("*")
             .in("id", userIds);
 
-          if (usersError) throw usersError;
+          if (usersError) {
+            console.error("loadChatroomData: Error fetching member users:", usersError);
+            throw usersError;
+          }
+          console.log("loadChatroomData: Member user profiles fetched:", usersData);
 
           // Get baskets for these users
+          console.log("loadChatroomData: Fetching baskets for members...");
           const { data: basketsData, error: basketsError } = await supabase
             .from("baskets")
             .select("*")
             .in("user_id", userIds)
             .eq("status", "in_chat");
 
-          if (basketsError) throw basketsError;
+          if (basketsError) {
+            console.error("loadChatroomData: Error fetching baskets:", basketsError);
+            throw basketsError;
+          }
+          console.log("loadChatroomData: Baskets fetched:", basketsData);
 
           // Combine user and basket data
           const processedMembers: ChatMember[] =
@@ -177,33 +247,48 @@ export default function ChatroomPage() {
             })) || [];
 
           setMembers(processedMembers);
+          console.log("loadChatroomData: Members state updated.");
+        } else {
+            console.log("loadChatroomData: No members found for this chatroom or memberships data is empty.");
+            setMembers([]); // Ensure members is an empty array if none found
         }
 
         // Get messages - simplified query
+        console.log("loadChatroomData: Fetching messages...");
         const { data: messagesData, error: messagesError } = await supabase
           .from("messages")
           .select("*")
           .eq("chatroom_id", chatroomId)
           .order("sent_at", { ascending: true });
 
-        if (messagesError) throw messagesError;
+        if (messagesError) {
+          console.error("loadChatroomData: Error fetching messages:", messagesError);
+          throw messagesError;
+        }
+        console.log("loadChatroomData: Messages fetched:", messagesData);
+
 
         // Get user data for messages
         if (messagesData && messagesData.length > 0) {
           const uniqueUserIds = messagesData.map((m) => m.user_id);
           const messageUserIds = Array.from(new Set(uniqueUserIds));
 
+          console.log("loadChatroomData: Fetching message user profiles for IDs:", messageUserIds);
           const { data: messageUsersData, error: messageUsersError } =
-            await supabase.from("users").select("*").in("id", messageUserIds);
+            await supabase.from("user").select("*").in("id", messageUserIds);
 
-          if (messageUsersError) throw messageUsersError;
+          if (messageUsersError) {
+            console.error("loadChatroomData: Error fetching message users:", messageUsersError);
+            throw messageUsersError;
+          }
+          console.log("loadChatroomData: Message user profiles fetched:", messageUsersData);
 
           const processedMessages: MessageType[] = messagesData.map(
             (message) => ({
               ...message,
               user: messageUsersData?.find(
                 (user) => user.id === message.user_id
-              ) || {
+              ) || { // Fallback user object
                 id: message.user_id,
                 email: "Unknown",
                 dormitory_id: null,
@@ -213,22 +298,35 @@ export default function ChatroomPage() {
               },
             })
           );
-
           setMessages(processedMessages);
+          console.log("loadChatroomData: Messages state updated.");
+        } else {
+            console.log("loadChatroomData: No messages found for this chatroom.");
+            setMessages([]); // Ensure messages is an empty array if none found
         }
+
+        console.log("loadChatroomData: All data fetches completed successfully.");
+
       } catch (error) {
-        console.error("Error loading chatroom:", error);
+        console.error("loadChatroomData: Caught an error during chatroom data loading:", error);
+        // This catch block ensures that if any error occurs in the try block,
+        // we still attempt to set loading to false.
       } finally {
-        setLoading(false);
+        console.log("loadChatroomData: Setting loading to FALSE.");
+        setLoading(false); // This is the crucial line we want to ensure is always hit
       }
     };
 
     loadChatroomData();
-  }, [currentUser, chatroomId, supabase]);
+  }, [currentUser, chatroomId, supabase]); // Dependencies are correct here.
 
   // Real-time subscriptions
   useEffect(() => {
-    if (!chatroomId) return;
+    if (!chatroomId) {
+        console.log("Realtime: chatroomId not available for subscriptions.");
+        return;
+    }
+    console.log("Realtime: Setting up Supabase real-time subscriptions for chatroom:", chatroomId);
 
     // Subscribe to new messages
     const messagesSubscription = supabase
@@ -242,12 +340,18 @@ export default function ChatroomPage() {
           filter: `chatroom_id=eq.${chatroomId}`,
         },
         async (payload) => {
+          console.log("Realtime: New message received:", payload.new);
           // Get user data for the new message
-          const { data: userData } = await supabase
-            .from("users")
+          const { data: userData, error: userDataError } = await supabase
+            .from("user")
             .select("*")
             .eq("id", payload.new.user_id)
             .single();
+
+          if (userDataError) {
+            console.error("Realtime: Error fetching user data for new message:", userDataError);
+            return;
+          }
 
           if (userData) {
             const newMessage: MessageType = {
@@ -260,6 +364,7 @@ export default function ChatroomPage() {
               user: userData,
             };
             setMessages((prev) => [...prev, newMessage]);
+            console.log("Realtime: Messages updated with new message.");
           }
         }
       )
@@ -273,118 +378,171 @@ export default function ChatroomPage() {
         {
           event: "UPDATE",
           schema: "public",
-          table: "chatrooms",
+          table: "chatroom",
           filter: `id=eq.${chatroomId}`,
         },
         (payload) => {
+          console.log("Realtime: Chatroom update received:", payload.new);
           setChatroom((prev) => (prev ? { ...prev, ...payload.new } : null));
+          console.log("Realtime: Chatroom state updated.");
         }
       )
       .subscribe();
 
     return () => {
+      console.log("Realtime: Unsubscribing from real-time channels.");
       messagesSubscription.unsubscribe();
       chatroomSubscription.unsubscribe();
     };
-  }, [chatroomId, supabase]);
+  }, [chatroomId, supabase]); // Dependency on supabase ensures it re-runs if supabase instance changes (unlikely) or chatroomId changes.
 
   const sendMessage = async (content: string) => {
-    if (!currentUser || !content.trim()) return;
-
+    if (!currentUser || !content.trim()) {
+      console.log("sendMessage: Cannot send message, user or content missing.");
+      return;
+    }
+    console.log("sendMessage: Attempting to send message...");
     try {
-      await supabase.from("messages").insert({
+      const { error } = await supabase.from("messages").insert({
         chatroom_id: chatroomId,
         user_id: currentUser.id,
         content: content.trim(),
       });
+      if (error) {
+        console.error("sendMessage: Error inserting message:", error);
+      } else {
+        console.log("sendMessage: Message inserted successfully (realtime will update state).");
+      }
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("sendMessage: Caught error during message send:", error);
     }
   };
 
   const markAsOrdered = async () => {
-    if (!isAdmin) return;
-
+    if (!isAdmin) {
+        console.warn("markAsOrdered: User is not admin, cannot mark as ordered.");
+        return;
+    }
+    console.log("markAsOrdered: Attempting to mark as ordered...");
     try {
-      await supabase
-        .from("chatrooms")
+      const { error } = await supabase
+        .from("chatroom")
         .update({ state: "ordered" })
         .eq("id", chatroomId);
 
-      setNotification("Order has been marked as placed!");
-      setTimeout(() => setNotification(null), 3000);
+      if (error) {
+        console.error("markAsOrdered: Error updating chatroom state to ordered:", error);
+      } else {
+        setNotification("Order has been marked as placed!");
+        setTimeout(() => setNotification(null), 3000);
+        console.log("markAsOrdered: Chatroom state updated to 'ordered'.");
+      }
     } catch (error) {
-      console.error("Error marking as ordered:", error);
+      console.error("markAsOrdered: Caught error during mark as ordered:", error);
     }
   };
 
   const markAsDelivered = async () => {
-    if (!isAdmin) return;
-
+    if (!isAdmin) {
+        console.warn("markAsDelivered: User is not admin, cannot mark as delivered.");
+        return;
+    }
+    console.log("markAsDelivered: Attempting to mark as delivered...");
     try {
-      await supabase
-        .from("chatrooms")
+      const { error } = await supabase
+        .from("chatroom")
         .update({ state: "resolved" })
         .eq("id", chatroomId);
 
-      setNotification("Order has been marked as delivered!");
-      setTimeout(() => setNotification(null), 3000);
+      if (error) {
+        console.error("markAsDelivered: Error updating chatroom state to resolved:", error);
+      } else {
+        setNotification("Order has been marked as delivered!");
+        setTimeout(() => setNotification(null), 3000);
+        console.log("markAsDelivered: Chatroom state updated to 'resolved'.");
+      }
     } catch (error) {
-      console.error("Error marking as delivered:", error);
+      console.error("markAsDelivered: Caught error during mark as delivered:", error);
     }
   };
 
   const leaveGroup = async () => {
-    if (!currentUser) return;
-
+    if (!currentUser) {
+        console.warn("leaveGroup: No current user to leave group.");
+        return;
+    }
+    console.log("leaveGroup: Attempting to leave group...");
     try {
-      await supabase
+      const { error } = await supabase
         .from("chat_memberships")
         .update({ left_at: new Date().toISOString() })
         .eq("chatroom_id", chatroomId)
         .eq("user_id", currentUser.id);
 
-      router.push("/dashboard");
+      if (error) {
+        console.error("leaveGroup: Error updating chat membership to left:", error);
+      } else {
+        router.push("/dashboard");
+        console.log("leaveGroup: Successfully left group, redirecting to dashboard.");
+      }
     } catch (error) {
-      console.error("Error leaving group:", error);
+      console.error("leaveGroup: Caught error during leave group:", error);
     }
   };
 
   const makeAdmin = async (userId: string) => {
-    if (!isAdmin) return;
-
+    if (!isAdmin) {
+        console.warn("makeAdmin: Current user is not admin, cannot make another user admin.");
+        return;
+    }
+    console.log("makeAdmin: Attempting to make user", userId, "admin.");
     try {
-      await supabase
-        .from("chatrooms")
+      const { error } = await supabase
+        .from("chatroom")
         .update({ admin_id: userId })
         .eq("id", chatroomId);
 
-      setNotification("Admin role transferred successfully!");
-      setTimeout(() => setNotification(null), 3000);
+      if (error) {
+        console.error("makeAdmin: Error updating chatroom admin_id:", error);
+      } else {
+        setNotification("Admin role transferred successfully!");
+        setTimeout(() => setNotification(null), 3000);
+        console.log("makeAdmin: Admin role transferred.");
+      }
     } catch (error) {
-      console.error("Error making admin:", error);
+      console.error("makeAdmin: Caught error during make admin:", error);
     }
   };
 
   const removeMember = async (userId: string) => {
-    if (!isAdmin || userId === currentUser?.id) return;
-
+    if (!isAdmin || userId === currentUser?.id) {
+        console.warn("removeMember: Cannot remove member. Either not admin or trying to remove self.");
+        return;
+    }
+    console.log("removeMember: Attempting to remove member:", userId);
     try {
-      await supabase
+      const { error } = await supabase
         .from("chat_memberships")
         .update({ left_at: new Date().toISOString() })
         .eq("chatroom_id", chatroomId)
         .eq("user_id", userId);
 
-      setMembers((prev) => prev.filter((member) => member.id !== userId));
-      setNotification("Member removed from group");
-      setTimeout(() => setNotification(null), 3000);
+      if (error) {
+        console.error("removeMember: Error removing member from chat_memberships:", error);
+      } else {
+        setMembers((prev) => prev.filter((member) => member.id !== userId));
+        setNotification("Member removed from group");
+        setTimeout(() => setNotification(null), 3000);
+        console.log("removeMember: Member removed successfully.");
+      }
     } catch (error) {
-      console.error("Error removing member:", error);
+      console.error("removeMember: Caught error during remove member:", error);
     }
   };
 
+  // This is the point where the UI decides what to render based on the 'loading' state
   if (loading) {
+    console.log("Render: Displaying Loading state...");
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-lg">Loading chatroom...</div>
@@ -392,7 +550,9 @@ export default function ChatroomPage() {
     );
   }
 
+  // This will only be reached if loading is false
   if (!chatroom) {
+    console.log("Render: Loading is false, but chatroom is null. Displaying 'not found' state.");
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-lg">Chatroom not found</div>
@@ -400,13 +560,14 @@ export default function ChatroomPage() {
     );
   }
 
+  console.log("Render: Displaying Chatroom content.");
   return (
     <div className="flex flex-col h-screen bg-white">
       {/* Header */}
       <SimpleChatHeader
         chatroomName={`${chatroom.pool.shop.name} Basket Chatroom`}
         memberCount={members.length}
-        timeLeft="24h Left"
+        timeLeft="24h Left" // This is a static value, consider making it dynamic if needed
         onBack={() => router.push("/dashboard")}
       />
 
@@ -443,7 +604,7 @@ export default function ChatroomPage() {
           state={chatroom.state}
           poolTotal={chatroom.pool.current_amount}
           orderCount={members.length}
-          timeLeft="22h 20m"
+          timeLeft="22h 20m" // This is a static value, consider making it dynamic if needed
           isAdmin={isAdmin}
           onMarkOrdered={markAsOrdered}
           onMarkDelivered={markAsDelivered}
