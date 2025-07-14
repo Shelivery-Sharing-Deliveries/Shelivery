@@ -18,6 +18,7 @@ interface Chatroom {
   pool_id: string;
   state: "waiting" | "active" | "ordered" | "resolved";
   admin_id: string | null;
+  last_amount: number;
   created_at: string;
   updated_at: string;
   pool: {
@@ -675,7 +676,7 @@ export default function ChatroomPage() {
         {/* Order Status Card */}
         <SimpleOrderStatusCard
           state={chatroom.state}
-          poolTotal={chatroom.pool.current_amount}
+          poolTotal={chatroom.last_amount}
           orderCount={members.length}
           timeLeft="22h 20m" // This is a static value, consider making it dynamic if needed
           isAdmin={isAdmin}

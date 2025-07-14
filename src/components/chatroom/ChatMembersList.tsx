@@ -93,7 +93,7 @@ export function ChatMembersList({
                   )}
                 </div>
                 <div className="text-xs text-gray-600">
-                  ${getMemberBasketAmount(member)} order
+                  {getMemberBasketAmount(member)} CHF order
                 </div>
               </div>
             </div>

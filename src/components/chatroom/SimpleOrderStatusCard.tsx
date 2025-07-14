@@ -81,7 +81,7 @@ export function SimpleOrderStatusCard({
           <div className="flex items-center justify-center gap-1 text-gray-600 mb-1">
             <DollarSign className="w-4 h-4" />
           </div>
-          <div className="font-bold text-lg text-gray-900">${poolTotal}</div>
+          <div className="font-bold text-lg text-gray-900">{poolTotal}CHF</div>
           <div className="text-xs text-gray-600">Total</div>
         </div>
 
