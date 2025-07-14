@@ -97,7 +97,7 @@ export default function ChatroomPage() {
       } = await supabase.auth.getUser();
       if (user) {
         const { data: profile } = await supabase
-          .from("users")
+          .from("user")
           .select("*")
           .eq("id", user.id)
           .single();
@@ -115,7 +115,7 @@ export default function ChatroomPage() {
       try {
         // Get chatroom with pool and shop info
         const { data: chatroomData, error: chatroomError } = await supabase
-          .from("chatrooms")
+          .from("chatroom")
           .select(
             `
             *,
@@ -152,7 +152,7 @@ export default function ChatroomPage() {
         if (membershipsData && membershipsData.length > 0) {
           const userIds = membershipsData.map((m) => m.user_id);
           const { data: usersData, error: usersError } = await supabase
-            .from("users")
+            .from("user")
             .select("*")
             .in("id", userIds);
 
@@ -194,7 +194,7 @@ export default function ChatroomPage() {
           const messageUserIds = Array.from(new Set(uniqueUserIds));
 
           const { data: messageUsersData, error: messageUsersError } =
-            await supabase.from("users").select("*").in("id", messageUserIds);
+            await supabase.from("user").select("*").in("id", messageUserIds);
 
           if (messageUsersError) throw messageUsersError;
 
@@ -244,7 +244,7 @@ export default function ChatroomPage() {
         async (payload) => {
           // Get user data for the new message
           const { data: userData } = await supabase
-            .from("users")
+            .from("user")
             .select("*")
             .eq("id", payload.new.user_id)
             .single();
@@ -273,7 +273,7 @@ export default function ChatroomPage() {
         {
           event: "UPDATE",
           schema: "public",
-          table: "chatrooms",
+          table: "chatroom",
           filter: `id=eq.${chatroomId}`,
         },
         (payload) => {
@@ -307,7 +307,7 @@ export default function ChatroomPage() {
 
     try {
       await supabase
-        .from("chatrooms")
+        .from("chatroom")
         .update({ state: "ordered" })
         .eq("id", chatroomId);
 
@@ -323,7 +323,7 @@ export default function ChatroomPage() {
 
     try {
       await supabase
-        .from("chatrooms")
+        .from("chatroom")
         .update({ state: "resolved" })
         .eq("id", chatroomId);
 
@@ -355,7 +355,7 @@ export default function ChatroomPage() {
 
     try {
       await supabase
-        .from("chatrooms")
+        .from("chatroom")
         .update({ admin_id: userId })
         .eq("id", chatroomId);
 
