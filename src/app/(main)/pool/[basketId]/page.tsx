@@ -163,50 +163,6 @@ export default function PoolPage({ params }: PoolPageProps) {
     fetchPoolData();
   }, [params.basketId]);
 
-// --- useEffect for Polling ---
-useEffect(() => {
-  if (!poolData?.pool_id) {
-    return;
-  }
-
-  const POLLING_INTERVAL_MS = 500; // Poll every 5 seconds
-
-  const intervalId = setInterval(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('pool')
-        .select('current_amount, min_amount')
-        .eq('id', poolData.pool_id)
-        .single();
-
-      if (error) {
-        return;
-      }
-
-      if (data) {
-        setPoolData(prevData => {
-          if (prevData) {
-            if (prevData.currentAmount !== data.current_amount || prevData.minAmount !== data.min_amount) {
-              return {
-                ...prevData,
-                currentAmount: data.current_amount,
-                minAmount: data.min_amount,
-              };
-            }
-          }
-          return prevData;
-        });
-      }
-    } catch (pollError) {
-      // Handle polling error if necessary
-    }
-  }, POLLING_INTERVAL_MS);
-
-  return () => {
-    clearInterval(intervalId);
-  };
-}, [poolData?.pool_id]); // Dependency array: the effect re-runs if pool_id changes.
-
 // --- useEffect for Realtime Subscription ---
 useEffect(() => {
   if (!poolData?.pool_id) {
