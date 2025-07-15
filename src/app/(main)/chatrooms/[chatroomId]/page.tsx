@@ -75,6 +75,7 @@ interface MessageType {
   chatroom_id: string;
   user_id: string;
   content: string;
+  type: 'text' | 'image' | 'audio';
   sent_at: string;
   read_at: string | null;
   user: User;
@@ -325,8 +326,12 @@ export default function ChatroomPage() {
                 email: "Unknown",
                 dormitory_id: null,
                 profile: {},
-                created_at: "",
-                updated_at: "",
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                first_name: null,
+                last_name: null,
+                favorite_store: null,
+                image: null,
               },
             })
           );
@@ -403,6 +408,7 @@ export default function ChatroomPage() {
               chatroom_id: payload.new.chatroom_id,
               user_id: payload.new.user_id,
               content: payload.new.content,
+              type: payload.new.type || 'text',
               sent_at: payload.new.sent_at,
               read_at: payload.new.read_at,
               user: userData,
@@ -443,7 +449,7 @@ export default function ChatroomPage() {
   // Function for uploading voice or image messages to private "chat-uploads" bucket
   const uploadFileToStorage = async (
     file: File,
-    folder: "image" | "audio"
+    folder: "images" | "audio"
   ): Promise<string | null> => {
     if (!chatroomId) {
       console.error("uploadFileToStorage: chatroomId is missing.");

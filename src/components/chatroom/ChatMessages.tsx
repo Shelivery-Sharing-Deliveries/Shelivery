@@ -209,25 +209,33 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
                             : "bg-white text-gray-900 rounded-bl-lg border border-gray-200"
                         }`}
                       >
-                        {message.type === "image" ? (
-                          <img
-                            src={signedUrls[message.id] || ""}
-                            alt="Sent image"
-                            className="max-w-xs rounded-xl object-cover"
-                          />
-                        ) : message.type === "audio" ? (
-                          <audio
-                            controls
-                            src={signedUrls[message.id] || ""}
-                            className="w-full mt-2"
-                          >
-                            Your browser does not support the audio element.
-                          </audio>
-                        ) : (
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                            {message.content}
-                          </p>
-                        )}
+                       {(message.type === "image" || message.type === "audio") ? (
+  signedUrls[message.id] ? (
+    message.type === "image" ? (
+      <img
+        src={signedUrls[message.id]}
+        alt="Sent image"
+        className="max-w-full h-auto rounded-xl"
+      />
+    ) : (
+      <audio
+        controls
+        src={signedUrls[message.id]}
+        className="w-full mt-2"
+      >
+        Your browser does not support the audio element.
+      </audio>
+    )
+  ) : (
+    <div className="w-full max-w-xs aspect-square bg-gray-200 animate-pulse rounded-xl"></div>
+  )
+) : (
+  <p className="text-sm leading-relaxed whitespace-pre-wrap">
+    {message.content}
+  </p>
+)}
+
+
                       </div>
 
                       {!showAvatar && (

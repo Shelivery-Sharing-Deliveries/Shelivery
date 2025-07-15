@@ -165,7 +165,7 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
           className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
           title="Add attachment"
         >
-          <Plus className="h-5 w-5" />
+          <Plus className="h-full w-full" />
         </button>
 
         <input
@@ -196,13 +196,7 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
 
           {/* Input Actions */}
           <div className="absolute right-2 bottom-2 flex items-center gap-1">
-            <button
-              type="button"
-              className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-              title="Add emoji"
-            >
-              <Smile className="h-4 w-4" />
-            </button>
+            
 
             {message.trim() ? (
               <button
@@ -210,7 +204,7 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
                 className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-full transition-colors"
                 title="Send message"
               >
-                <Send className="h-4 w-4" />
+                <Send className="h-full w-full" />
               </button>
             ) : recordedAudioUrl ? (
               <div className="flex items-center gap-1">
@@ -221,7 +215,7 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
                   className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-full transition-colors"
                   title="Send voice message"
                 >
-                  <Send className="h-4 w-4" />
+                  <Send className="h-full w-full" />
                 </button>
                 <button
                   type="button"
@@ -254,7 +248,7 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
                 className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
                 title="Hold to record voice message"
               >
-                <Mic className="h-4 w-4" />
+                <Mic className="h-full w-full" />
               </button>
             )}
           </div>

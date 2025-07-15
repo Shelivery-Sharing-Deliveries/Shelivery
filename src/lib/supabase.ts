@@ -194,6 +194,7 @@ export interface Database {
           chatroom_id: string
           user_id: string
           content: string
+          type: 'text' | 'image' | 'audio'
           sent_at: string
           read_at: string | null
         }
@@ -202,6 +203,7 @@ export interface Database {
           chatroom_id: string
           user_id: string
           content: string
+          type?: 'text' | 'image' | 'audio'
           sent_at?: string
           read_at?: string | null
         }
@@ -210,6 +212,7 @@ export interface Database {
           chatroom_id?: string
           user_id?: string
           content?: string
+          type?: 'text' | 'image' | 'audio'
           sent_at?: string
           read_at?: string | null
         }
