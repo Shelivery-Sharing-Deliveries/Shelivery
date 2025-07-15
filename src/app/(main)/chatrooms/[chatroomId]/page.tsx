@@ -526,34 +526,34 @@ export default function ChatroomPage() {
     }
   };
 
-  const leaveGroup = async () => {
-    if (!currentUser) {
-      console.warn("leaveGroup: No current user to leave group.");
-      return;
-    }
-    console.log("leaveGroup: Attempting to leave group...");
-    try {
-      const { error } = await supabase
-        .from("chat_membership")
-        .update({ left_at: new Date().toISOString() })
-        .eq("chatroom_id", chatroomId)
-        .eq("user_id", currentUser.id);
+    const leaveGroup = async () => {
+        if (!currentUser) {
+            console.warn("leaveGroup: No current user to leave group.");
+            return;
+        }
+        console.log("leaveGroup: Attempting to leave group via backend function...");
 
-      if (error) {
-        console.error(
-          "leaveGroup: Error updating chat membership to left:",
-          error
-        );
-      } else {
-        router.push("/dashboard");
-        console.log(
-          "leaveGroup: Successfully left group, redirecting to dashboard."
-        );
-      }
-    } catch (error) {
-      console.error("leaveGroup: Caught error during leave group:", error);
-    }
-  };
+        try {
+            // Call the new Supabase RPC function
+            const { error } = await supabase.rpc('leave_chatroom', {
+                chatroom_id_param: chatroomId, // Ensure parameter name matches your SQL function's parameter
+            });
+
+            if (error) {
+                console.error("leaveGroup: Error calling backend function:", error);
+                // Optionally display a user-friendly error message to the user
+                setNotification(`Failed to leave group: ${error.message}`);
+                setTimeout(() => setNotification(null), 3000);
+            } else {
+                router.push("/dashboard"); // Redirect on success
+                console.log("leaveGroup: Successfully left group, redirecting to dashboard.");
+            }
+        } catch (error) {
+            console.error("leaveGroup: Caught unexpected error during leave group RPC call:", error);
+            setNotification("An unexpected error occurred while processing your request.");
+            setTimeout(() => setNotification(null), 3000);
+        }
+    };
 
   const makeAdmin = async (userId: string) => {
     if (!isAdmin) {
