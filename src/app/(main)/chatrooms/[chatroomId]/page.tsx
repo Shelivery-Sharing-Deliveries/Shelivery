@@ -12,6 +12,8 @@ import { ChatMembersList } from "@/components/chatroom/ChatMembersList";
 import { NotificationBanner } from "@/components/chatroom/NotificationBanner";
 import { TimeExtensionModal } from "@/components/chatroom/TimeExtensionModal";
 import { Button } from "@/components/ui/Button";
+import LoadingBall from "@/components/ui/LoadingBall"; // Assuming the file is LoadingBall.tsx inside components/ui
+
 
 interface Chatroom {
   id: string;
@@ -673,7 +675,7 @@ export default function ChatroomPage() {
     console.log("Render: Displaying Loading state...");
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading chatroom...</div>
+        <div className="text-lg"><LoadingBall size="large" color="shelivery-primary-yellow" /></div>
       </div>
     );
   }
