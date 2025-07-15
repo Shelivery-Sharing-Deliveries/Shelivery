@@ -440,76 +440,77 @@ export default function ChatroomPage() {
     };
   }, [chatroomId, authLoading]); // Dependency ensures it re-runs if chatroomId changes or auth state changes.
 
-  // Function for uploading voice or image messages
+  // Function for uploading voice or image messages to private "chat-uploads" bucket
   const uploadFileToStorage = async (
-  file: File,
-  folder: "images" | "audio"
-): Promise<string | null> => {
-  const randomSuffix = Math.random().toString(36).substring(2, 10);
-  const fileName = `${Date.now()}_${randomSuffix}_${file.name}`;
+    file: File,
+    folder: "image" | "audio"
+  ): Promise<string | null> => {
+    if (!chatroomId) {
+      console.error("uploadFileToStorage: chatroomId is missing.");
+      return null;
+    }
+    const randomSuffix = Math.random().toString(36).substring(2, 10);
+    const fileName = `${folder}/${chatroomId}_${Date.now()}_${randomSuffix}_${file.name}`;
 
-  const { data, error } = await supabase.storage
-    .from(folder)
-    .upload(fileName, file, {
-      cacheControl: "3600",
-      upsert: false,
-    });
+    // Upload to private "chat-uploads" bucket
+    const { error } = await supabase.storage
+      .from("chat-uploads")
+      .upload(fileName, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
 
-  if (error) {
-    console.error("File upload failed:", error);
-    return null;
-  }
-  const { data } = supabase.storage
-    .from(folder)
-    .getPublicUrl(fileName);
+    if (error) {
+      console.error("File upload failed:", error);
+      return null;
+    }
 
-  return data?.publicUrl ?? null;
-  return publicUrl?.publicUrl ?? null;
-};
+    // Return only the file path (not a signed URL)
+    return fileName;
+  };
 
   // Function to send messages and different content types as image or voice messages
   const sendMessage = async (
-  content: string | { type: "audio" | "image"; url: string }
-) => {
-  if (!currentUser || !content) {
-    console.log("sendMessage: Cannot send message, user or content missing.");
-    return;
-  }
-
-  let messageContent = "";
-  let messageType = "text"; // Default message type
-
-  if (typeof content === "string") {
-    if (!content.trim()) {
-      console.log("sendMessage: Empty text message. Not sending.");
+    content: string | { type: "audio" | "image"; url: string }
+  ) => {
+    if (!currentUser || !content) {
+      console.log("sendMessage: Cannot send message, user or content missing.");
       return;
     }
-    messageContent = content.trim();
-  } else {
-    messageContent = content.url; // Store URL (base64 for images, blob URL for audio)
-    messageType = content.type;   // "audio" or "image"
-  }
 
-  console.log(`sendMessage: Sending ${messageType} message...`);
+    let messageContent = "";
+    let messageType = "text"; // Default message type
 
-  try {
-    const { error } = await supabase.from("message").insert({
-      chatroom_id: chatroomId,
-      user_id: currentUser.id,
-      content: messageContent,  // image/audio URL or plain text
-      type: messageType,        // New field to distinguish message type
-    });
-
-    if (error) {
-      console.error("sendMessage: Error inserting message:", error);
+    if (typeof content === "string") {
+      if (!content.trim()) {
+        console.log("sendMessage: Empty text message. Not sending.");
+        return;
+      }
+      messageContent = content.trim();
     } else {
-      console.log("sendMessage: Message inserted successfully.");
+      messageContent = content.url; // Now this is the file path, not a signed URL
+      messageType = content.type;   // "audio" or "image"
     }
-  } catch (error) {
-    console.error("sendMessage: Caught error during message send:", error);
-  }
-};
 
+    console.log(`sendMessage: Sending ${messageType} message...`);
+
+    try {
+      const { error } = await supabase.from("message").insert({
+        chatroom_id: chatroomId,
+        user_id: currentUser.id,
+        content: messageContent,  // file path or plain text
+        type: messageType,        // "text", "image", or "audio"
+      });
+
+      if (error) {
+        console.error("sendMessage: Error inserting message:", error);
+      } else {
+        console.log("sendMessage: Message inserted successfully.");
+      }
+    } catch (error) {
+      console.error("sendMessage: Caught error during message send:", error);
+    }
+  };
 
 
 
