@@ -92,6 +92,7 @@ export default function DashboardPage() {
                             id,
                             amount,
                             status,
+                            chatroom_id,
                             shop (
                                 name,
                                 logo_url
@@ -105,12 +106,14 @@ export default function DashboardPage() {
                     }
 
                     if (basketsData) {
-                        const mappedBaskets: DisplayBasket[] = basketsData.map((basket: any) => ({
+                        // Add chatroom_id and status to DisplayBasket
+                        const mappedBaskets: (DisplayBasket & { chatroomId?: string; status: 'in_pool' | 'in_chat' | 'resolved' })[] = basketsData.map((basket: any) => ({
                             id: basket.id,
                             shopName: basket.shop?.name || "Unknown Shop",
                             shopLogo: basket.shop?.logo_url || null,
                             total: basket.amount ? `CHF ${basket.amount.toFixed(2)}` : "CHF 0.00",
                             status: basket.status,
+                            chatroomId: basket.chatroom_id || undefined,
                         }));
                         setBaskets(mappedBaskets);
                     }
@@ -134,8 +137,17 @@ export default function DashboardPage() {
         router.push("/invite-friend");
     };
 
+    // Find the basket by id to determine its status and chatroomId
     const handleBasketClick = (basketId: string) => {
-        router.push(`/pool/${basketId}`);
+        const basket = baskets.find(b => b.id === basketId);
+        if (!basket) return;
+
+        if (basket.status === "in_chat" && (basket as any).chatroomId) {
+            router.push(`/chatrooms/${(basket as any).chatroomId}`);
+        } else if (basket.status === "in_pool") {
+            router.push(`/pool/${basketId}`);
+        }
+        // Optionally handle 'resolved' or other statuses if needed
     };
 
     return (
