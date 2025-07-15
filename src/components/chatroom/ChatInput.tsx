@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Send, Plus, Smile, Mic } from "lucide-react";
 
 interface ChatInputProps {
@@ -13,13 +13,39 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
   const [message, setMessage] = useState("");
   const imageInputRef = useRef<HTMLInputElement>(null);
 
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null);
+
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | null>(null);
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Image Handling
+  const handleImageSelection = (file: File) => {
+    setSelectedImageFile(file);
+    const previewUrl = URL.createObjectURL(file);
+    setSelectedImagePreview(previewUrl);
+  };
+
+  const sendSelectedImage = async () => {
+    if (!selectedImageFile) return;
+    await handleFileUpload(selectedImageFile, "image");
+    URL.revokeObjectURL(selectedImagePreview!);
+    setSelectedImageFile(null);
+    setSelectedImagePreview(null);
+  };
+
+  const cancelSelectedImage = () => {
+    if (selectedImagePreview) URL.revokeObjectURL(selectedImagePreview);
+    setSelectedImageFile(null);
+    setSelectedImagePreview(null);
+  };
+
+  // Audio Recording
   const startRecording = async () => {
     setRecordedAudioUrl(null);
     try {
@@ -97,16 +123,40 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
 
   if (disabled) {
     return (
-      <div className="px-4 py-3 bg-gray-100 border-t border-gray-200">
-        <div className="text-center text-gray-500 text-sm">
-          This chat has been resolved and is now read-only
-        </div>
+      <div className="px-4 py-3 bg-gray-100 border-t border-gray-200 text-center text-gray-500 text-sm">
+        This chat has been resolved and is now read-only
       </div>
     );
   }
 
   return (
     <div className="px-4 py-3 bg-white border-t border-gray-200">
+      {selectedImagePreview && (
+  <div className="mb-2 flex items-center gap-2">
+    <img
+      src={selectedImagePreview}
+      alt="Preview"
+      className="h-16 w-auto rounded-md border border-gray-300 object-cover"
+    />
+    <div className="flex flex-col gap-1">
+      <button
+        type="button"
+        onClick={sendSelectedImage}
+        className="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition"
+      >
+        Send Image
+      </button>
+      <button
+        type="button"
+        onClick={cancelSelectedImage}
+        className="px-2 py-1 bg-gray-300 text-gray-700 text-xs rounded hover:bg-gray-400 transition"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
+
       <form onSubmit={handleSubmit} className="flex items-end gap-3">
         {/* Attachment Button */}
         <button
@@ -125,7 +175,7 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
           ref={imageInputRef}
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) handleFileUpload(file, "image");
+            if (file) handleImageSelection(file);
           }}
         />
 
