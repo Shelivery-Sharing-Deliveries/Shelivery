@@ -1,7 +1,7 @@
 // app/pool/[basketId]/page.tsx
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -22,17 +22,16 @@ interface BasketData {
     id: string;
     user_id: string;
     shop_id: string;
-    pool_id: string | null;
-    chatroom_id: string | null;
+    pool_id: string | null; // Made nullable as it can be NULL when in chatroom
+    chatroom_id: string | null; // Added chatroom_id
     amount: number;
     link: string;
     is_ready: boolean;
-    status: 'resolved' | 'in_pool' | 'in_chat';
-    shop: ShopData;
-    pool: PoolInfo | null;
+    status: 'resolved' | 'in_pool' | 'in_chat'; // Added status
+    shop: ShopData; // Nested shop data from join
+    pool: PoolInfo | null; // Nested pool data from join, made nullable as pool_id can be null
 }
 
-// Interface for the structured data after fetching and processing
 interface DisplayPoolData {
     shopName: string;
     shopLogo: string;
@@ -45,10 +44,10 @@ interface DisplayPoolData {
     userBasket: {
         total: number;
         itemsUrl: string;
-        status: 'resolved' | 'in_pool' | 'in_chat';
-        chatroomId: string | null;
+        status: 'resolved' | 'in_pool' | 'in_chat'; // Added status
+        chatroomId: string | null; // Added chatroom ID
     };
-    participants: { id: number; avatar: string; amount: number }[]; // Placeholder for now
+    participants: { id: number; avatar: string; amount: number }[];
 }
 
 interface PoolPageProps {
@@ -57,7 +56,6 @@ interface PoolPageProps {
     };
 }
 
-// Ensure mockParticipants is defined AT THE TOP LEVEL, before the component
 const mockParticipants = [
     { id: 1, avatar: "/avatars/User Avatar.png", amount: 20 },
     { id: 2, avatar: "/avatars/Others Avatar 01.png", amount: 30 },
@@ -75,20 +73,93 @@ export default function PoolPage({ params }: PoolPageProps) {
     const [isPageLoading, setIsPageLoading] = useState(true);
     const [isButtonLoading, setIsButtonLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [isDeleting, setIsDeleting] = useState(false);
-
-    // Use a ref to store the pool_id once it's available,
-    // so it doesn't trigger useEffect re-runs when poolData changes.
-    const poolIdRef = useRef<string | null>(null);
 
     const handleBack = () => {
         router.back();
     };
 
+    // Function to fetch and process basket data (used for initial load and polling)
+    const fetchAndProcessBasketData = async (basketId: string) => {
+        try {
+            const { data, error: supabaseError } = await supabase
+                .from('basket') // Use singular 'basket'
+                .select(`
+          id,
+          amount,
+          link,
+          is_ready,
+          status,             
+          shop_id,
+          pool_id,
+          chatroom_id,        
+          shop (              
+            name,
+            logo_url
+          ),
+          pool (              
+            min_amount,
+            current_amount
+          )
+        `)
+                .eq('id', basketId)
+                .single();
+
+            if (supabaseError) {
+                console.error("FETCH_ERROR: Error fetching basket data:", supabaseError.message);
+                throw new Error(`Failed to load basket data: ${supabaseError.message}`);
+            }
+
+            if (!data) {
+                throw new Error("Basket not found.");
+            }
+
+            const fetchedBasket: BasketData = data as unknown as BasketData;
+
+            // CRITICAL: Check for chatroom_id and status to redirect immediately
+            if (fetchedBasket.status === 'in_chat' && fetchedBasket.chatroom_id) {
+                console.log(`REDIRECT_TRIGGER: Basket ${basketId} is in chat state. Redirecting to chatroom ${fetchedBasket.chatroom_id}`);
+                router.replace(`/chatrooms/${fetchedBasket.chatroom_id}`);
+                return null; // Indicate that a redirect is happening
+            }
+
+            // Handle cases where shop or pool data might be missing (e.g., if basket is resolved)
+            if (!fetchedBasket.shop || (fetchedBasket.status === 'in_pool' && !fetchedBasket.pool)) {
+                if (fetchedBasket.status !== 'in_chat' && fetchedBasket.status !== 'resolved') {
+                    throw new Error("Missing shop or pool data for this basket. Check foreign keys or basket status.");
+                }
+            }
+
+            const structuredData: DisplayPoolData = {
+                shopName: fetchedBasket.shop?.name || 'Unknown Shop',
+                shopLogo: fetchedBasket.shop?.logo_url || "/shop-logos/default-logo.png",
+                poolTotal: fetchedBasket.pool?.min_amount || 0,
+                currentAmount: fetchedBasket.pool?.current_amount || 0,
+                userAmount: fetchedBasket.amount,
+                minAmount: fetchedBasket.pool?.min_amount || 0,
+                pool_id: fetchedBasket.pool_id,
+                shop_id: fetchedBasket.shop_id,
+                userBasket: {
+                    total: fetchedBasket.amount,
+                    itemsUrl: fetchedBasket.link,
+                    status: fetchedBasket.status,
+                    chatroomId: fetchedBasket.chatroom_id,
+                },
+                participants: mockParticipants,
+            };
+
+            return { structuredData, fetchedBasket };
+
+        } catch (generalError: any) {
+            console.error("FETCH_ERROR: General fetch error:", generalError);
+            setError(generalError.message || "An unexpected error occurred while loading data.");
+            return null;
+        }
+    };
+
     // --- useEffect for Initial Data Fetch ---
     useEffect(() => {
-        async function fetchPoolData() {
-            console.log("FETCH: Initial data fetch for basket ID:", params.basketId);
+        const loadInitialData = async () => {
+            console.log("FETCH_INIT: Starting initial data load for basket ID:", params.basketId);
             setIsPageLoading(true);
             setError(null);
 
@@ -98,184 +169,38 @@ export default function PoolPage({ params }: PoolPageProps) {
                 return;
             }
 
-            try {
-                const { data, error: supabaseError } = await supabase
-                    .from('basket') // Use singular 'basket'
-                    .select(`
-            id,
-            amount,
-            link,
-            is_ready,
-            status,
-            shop_id,
-            pool_id,
-            chatroom_id,
-            shop (
-              name,
-              logo_url
-            ),
-            pool (
-              min_amount,
-              current_amount
-            )
-          `)
-                    .eq('id', params.basketId)
-                    .single();
-
-                if (supabaseError) {
-                    console.error("FETCH_ERROR: Error fetching pool data:", supabaseError.message);
-                    setError(`Failed to load basket data: ${supabaseError.message}`);
-                    setPoolData(null);
-                    return;
-                }
-
-                if (data) {
-                    console.log("FETCH_SUCCESS: Fetched basket data:", data);
-
-                    const fetchedBasket: BasketData = data as unknown as BasketData;
-
-                    // Crucial: Check for chatroom_id and status to redirect immediately
-                    if (fetchedBasket.status === 'in_chat' && fetchedBasket.chatroom_id) {
-                        console.log(`REDIRECT_CHECK: Basket ${params.basketId} is in chat state. Redirecting to chatroom ${fetchedBasket.chatroom_id}`);
-                        router.replace(`/chatrooms/${fetchedBasket.chatroom_id}`);
-                        return; // Stop further processing on this page
-                    }
-
-                    // Handle cases where basket might be resolved or in an unexpected state without a pool
-                    if (!fetchedBasket.shop || (fetchedBasket.status === 'in_pool' && !fetchedBasket.pool)) {
-                        if (fetchedBasket.status !== 'in_chat' && fetchedBasket.status !== 'resolved') {
-                            setError("Missing shop or pool data for this basket. Check foreign keys or basket status.");
-                            setPoolData(null);
-                            return;
-                        }
-                    }
-
-                    const structuredData: DisplayPoolData = {
-                        shopName: fetchedBasket.shop?.name || 'Unknown Shop',
-                        shopLogo: fetchedBasket.shop?.logo_url || "/shop-logos/default-logo.png",
-                        poolTotal: fetchedBasket.pool?.min_amount || 0,
-                        currentAmount: fetchedBasket.pool?.current_amount || 0,
-                        userAmount: fetchedBasket.amount,
-                        minAmount: fetchedBasket.pool?.min_amount || 0,
-                        pool_id: fetchedBasket.pool_id,
-                        shop_id: fetchedBasket.shop_id,
-                        userBasket: {
-                            total: fetchedBasket.amount,
-                            itemsUrl: fetchedBasket.link,
-                            status: fetchedBasket.status,
-                            chatroomId: fetchedBasket.chatroom_id,
-                        },
-                        participants: mockParticipants, // This line uses mockParticipants
-                    };
-
-                    console.log("FETCH_SUCCESS: Structured pool data for display:", structuredData);
-                    setPoolData(structuredData);
-                    setIsReady(fetchedBasket.is_ready);
-
-                    // Store pool_id in ref once available
-                    if (fetchedBasket.pool_id) {
-                        poolIdRef.current = fetchedBasket.pool_id;
-                    }
-
-                } else {
-                    console.log("FETCH_WARNING: Basket not found for ID:", params.basketId);
-                    setError("Basket not found.");
-                    setPoolData(null);
-                }
-            } catch (generalError) {
-                console.error("FETCH_ERROR: General fetch error:", generalError);
-                setError("An unexpected error occurred while loading data.");
-                setPoolData(null);
-            } finally {
-                setIsPageLoading(false);
+            const result = await fetchAndProcessBasketData(params.basketId);
+            if (result) {
+                setPoolData(result.structuredData);
+                setIsReady(result.fetchedBasket.is_ready);
+                console.log("FETCH_INIT_SUCCESS: Initial poolData set.");
+            } else {
+                console.log("FETCH_INIT_COMPLETE: No data set, possibly redirected or error occurred.");
             }
-        }
+            setIsPageLoading(false);
+        };
 
-        fetchPoolData();
-    }, [params.basketId, router]);
+        loadInitialData();
+    }, [params.basketId, router]); // Added router to dependencies
 
-
-    // --- useEffect for Realtime Subscription ---
+    // --- useEffect for Realtime Pool Subscription (for progress bar) and Basket Polling (for status/redirect) ---
     useEffect(() => {
         if (!params.basketId) {
-            console.log("REALTIME_INIT: Subscription skipped - basketId not available yet.");
+            console.log("REALTIME_POLLING_INIT: Subscriptions/Polling skipped - basketId not available yet.");
             return;
         }
 
-        // Basket Channel Subscription
-        console.log("REALTIME_INIT: Attempting to subscribe to basket channel for ID:", params.basketId);
-        const basketChannel = supabase
-            .channel(`basket_updates:${params.basketId}`)
-            .on(
-                'postgres_changes',
-                { event: 'UPDATE', schema: 'public', table: 'basket', filter: `id=eq.${params.basketId}` },
-                (payload) => {
-                    console.log("REALTIME_BASKET_UPDATE: RECEIVED payload:", payload.new);
-                    const updatedBasket = payload.new as BasketData;
-
-                    if (updatedBasket.status === 'in_chat' && updatedBasket.chatroom_id) {
-                        console.log(`REALTIME_REDIRECT: Basket ${updatedBasket.id} updated to in_chat. Initiating redirect to chatroom ${updatedBasket.chatroom_id}`);
-                        router.replace(`/chatrooms/${updatedBasket.chatroom_id}`);
-                    } else {
-                        console.log(`REALTIME_BASKET_UPDATE: Status is '${updatedBasket.status}'. Not yet in 'in_chat' or missing chatroom_id. Updating local state and refetching.`);
-                        setIsReady(updatedBasket.is_ready);
-                        // Re-fetch pool data to ensure current_amount updates if relevant
-                        supabase
-                            .from('basket')
-                            .select(`
-                    id, amount, link, is_ready, status, shop (name, logo_url), pool (min_amount, current_amount), pool_id, chatroom_id
-                `)
-                            .eq('id', params.basketId)
-                            .single()
-                            .then(({ data: reFetchedData, error: reFetchError }) => {
-                                if (reFetchedData && !reFetchError) {
-                                    const reFetchedBasket: BasketData = reFetchedData as unknown as BasketData;
-                                    const structuredData: DisplayPoolData = {
-                                        shopName: reFetchedBasket.shop?.name || 'Unknown Shop',
-                                        shopLogo: reFetchedBasket.shop?.logo_url || "/shop-logos/default-logo.png",
-                                        poolTotal: reFetchedBasket.pool?.min_amount || 0,
-                                        currentAmount: reFetchedBasket.pool?.current_amount || 0,
-                                        userAmount: reFetchedBasket.amount,
-                                        minAmount: reFetchedBasket.pool?.min_amount || 0,
-                                        pool_id: reFetchedBasket.pool_id,
-                                        shop_id: reFetchedBasket.shop_id,
-                                        userBasket: {
-                                            total: reFetchedBasket.amount,
-                                            itemsUrl: reFetchedBasket.link,
-                                            status: reFetchedBasket.status,
-                                            chatroomId: reFetchedBasket.chatroom_id,
-                                        },
-                                        participants: mockParticipants,
-                                    };
-                                    setPoolData(structuredData);
-                                    console.log("REALTIME_BASKET_UPDATE: Local poolData updated from re-fetch.");
-                                } else if (reFetchError) {
-                                    console.error("REALTIME_BASKET_UPDATE_ERROR: Error refetching on basket update:", reFetchError);
-                                }
-                            });
-                    }
-                }
-            )
-            .subscribe((status, err) => {
-                if (status === 'SUBSCRIBED') {
-                    console.log(`REALTIME_BASKET_STATUS: Channel '${basketChannel.topic}' SUBSCRIBED.`);
-                } else if (status === 'CHANNEL_ERROR') {
-                    console.error(`REALTIME_BASKET_STATUS_ERROR: Channel '${basketChannel.topic}' encountered an error:`, err);
-                } else {
-                    console.log(`REALTIME_BASKET_STATUS: Channel '${basketChannel.topic}' status: ${status}`);
-                }
-            });
-
-        // Pool Channel Subscription (use poolIdRef.current for stability)
-        let poolChannel: any;
-        // Only attempt to subscribe to pool channel if poolIdRef has a value
-        if (poolIdRef.current) {
-            console.log("REALTIME_INIT: Attempting to subscribe to pool channel for ID (from ref):", poolIdRef.current);
-            poolChannel = supabase
-                .channel(`pool_updates:${poolIdRef.current}`)
+        // 1. Pool Channel Realtime Subscription (for progress bar updates)
+        let poolSubscription: any;
+        // Only subscribe to pool channel if poolData and pool_id are available
+        // This will re-run if poolData.pool_id changes (e.g., on initial fetch)
+        if (poolData?.pool_id) {
+            console.log(`REALTIME_INIT: Starting realtime subscription for pool ID: ${poolData.pool_id}`);
+            poolSubscription = supabase
+                .channel(`pool_updates:${poolData.pool_id}`) // Unique channel name
                 .on(
                     'postgres_changes',
-                    { event: 'UPDATE', schema: 'public', table: 'pool', filter: `id=eq.${poolIdRef.current}` },
+                    { event: 'UPDATE', schema: 'public', table: 'pool', filter: `id=eq.${poolData.pool_id}` }, // Use singular 'pool'
                     (payload) => {
                         console.log("REALTIME_POOL_UPDATE: RECEIVED payload:", payload.new);
                         setPoolData(prevData => {
@@ -292,24 +217,47 @@ export default function PoolPage({ params }: PoolPageProps) {
                 )
                 .subscribe((status, err) => {
                     if (status === 'SUBSCRIBED') {
-                        console.log(`REALTIME_POOL_STATUS: Channel '${poolChannel.topic}' SUBSCRIBED.`);
+                        console.log(`REALTIME_POOL_STATUS: Channel '${poolSubscription.topic}' SUBSCRIBED.`);
                     } else if (status === 'CHANNEL_ERROR') {
-                        console.error(`REALTIME_POOL_STATUS_ERROR: Channel '${poolChannel.topic}' encountered an error:`, err);
+                        console.error(`REALTIME_POOL_STATUS_ERROR: Channel '${poolSubscription.topic}' encountered an error:`, err);
                     } else {
-                        console.log(`REALTIME_POOL_STATUS: Channel '${poolChannel.topic}' status: ${status}`);
+                        console.log(`REALTIME_POOL_STATUS: Channel '${poolSubscription.topic}' status: ${status}`);
                     }
                 });
         }
 
-        return () => {
-            console.log('REALTIME_CLEANUP: Cleaning up Realtime subscriptions...');
-            supabase.removeChannel(basketChannel);
-            if (poolChannel) {
-                supabase.removeChannel(poolChannel);
+        // 2. Basket Polling Fallback (for status change and redirect)
+        console.log("POLLING_INIT: Starting polling for basket status...");
+        const pollingInterval = setInterval(async () => {
+            console.log("POLLING: Fetching latest basket status via poll...");
+            const result = await fetchAndProcessBasketData(params.basketId);
+            if (result) {
+                // If result is not null, it means no redirect happened yet (or error was handled)
+                setPoolData(result.structuredData);
+                setIsReady(result.fetchedBasket.is_ready);
+                console.log(`POLLING_SUCCESS: Basket status: ${result.fetchedBasket.status}`);
+            } else {
+                // If result is null, it means fetchAndProcessBasketData either redirected or hit an error.
+                // In case of redirect, this interval will be cleared by the cleanup function.
+                console.log("POLLING_INFO: Fetch result was null (possibly redirected or error handled).");
             }
-            console.log('REALTIME_CLEANUP: Realtime subscriptions stopped.');
+        }, 3000); // Poll every 3 seconds (adjust as needed)
+
+
+        // Cleanup function for both subscriptions and polling interval
+        return () => {
+            console.log('CLEANUP: Cleaning up Realtime subscriptions and polling interval...');
+            if (poolSubscription) {
+                supabase.removeChannel(poolSubscription);
+            }
+            clearInterval(pollingInterval); // Clear the polling interval
+            console.log('CLEANUP: Realtime subscriptions and polling stopped.');
         };
-    }, [params.basketId, router]); // poolData?.pool_id removed from dependencies!
+    }, [params.basketId, router, poolData?.pool_id]); // poolData?.pool_id is kept as a dependency
+    // to ensure the pool subscription is correctly
+    // initialized or re-initialized if the basket's
+    // associated pool changes.
+
 
     // --- handleToggleReady for updating is_ready status ---
     const handleToggleReady = async () => {
@@ -326,7 +274,7 @@ export default function PoolPage({ params }: PoolPageProps) {
                 .from('basket')
                 .update({ is_ready: newIsReadyState })
                 .eq('id', basketIdToUpdate)
-                .select('id, status, chatroom_id')
+                .select('id, status, chatroom_id') // Select status and chatroom_id to check for immediate redirect
                 .single();
 
             if (supabaseError) {
@@ -339,6 +287,7 @@ export default function PoolPage({ params }: PoolPageProps) {
                 setIsReady(newIsReadyState);
                 console.log(`UPDATE_SUCCESS: Basket ${basketIdToUpdate} 'is_ready' set to ${newIsReadyState}. New status from direct update response: ${data.status}`);
 
+                // Immediate redirect check after the update operation
                 if (data.status === 'in_chat' && data.chatroom_id) {
                     console.log("REDIRECT_IMMEDIATE: Basket status immediately became in_chat after direct update. Redirecting.");
                     router.replace(`/chatrooms/${data.chatroom_id}`);
@@ -355,22 +304,35 @@ export default function PoolPage({ params }: PoolPageProps) {
         }
     };
 
+    // --- handleGoToChat for navigating to chatroom ---
+    const handleGoToChat = () => {
+        if (poolData?.userBasket.chatroomId) {
+            console.log(`NAVIGATE_CHAT: Going to chatroom ${poolData.userBasket.chatroomId}`);
+            router.push(`/chatrooms/${poolData.userBasket.chatroomId}`);
+        } else {
+            console.warn("NAVIGATE_CHAT_WARNING: Chatroom ID not available for navigation.");
+            setError("Chatroom not ready yet.");
+        }
+    };
+
     const handleEdit = () => {
         if (!poolData) return;
+
         const editUrl = `/shops/${poolData.shop_id}/basket?basketId=${params.basketId}`;
         console.log("NAVIGATE: Navigating to edit URL:", editUrl);
         router.push(editUrl);
     };
 
+    // --- handleDelete for removing a basket entry ---
     const handleDelete = async () => {
-        if (!poolData || isDeleting) return;
+        if (!poolData || isButtonLoading) return;
 
         const confirmed = window.confirm("Are you sure you want to delete this basket?");
         if (!confirmed) {
             return;
         }
 
-        setIsDeleting(true);
+        setIsButtonLoading(true);
         setError(null);
 
         const basketIdToDelete = params.basketId;
@@ -394,7 +356,7 @@ export default function PoolPage({ params }: PoolPageProps) {
             console.error('DELETE_ERROR: General error during delete:', generalError);
             setError('An unexpected error occurred during deletion.');
         } finally {
-            setIsDeleting(false);
+            setIsButtonLoading(false);
         }
     };
 
@@ -420,7 +382,7 @@ export default function PoolPage({ params }: PoolPageProps) {
         );
     }
 
-    if (!poolData || poolData.userBasket.status === 'resolved') {
+    if (!poolData || (poolData.userBasket.status === 'resolved' && !poolData.userBasket.chatroomId)) {
         return (
             <div className="min-h-screen bg-white w-full max-w-[375px] mx-auto flex flex-col items-center justify-center p-4">
                 <p className="text-gray-600 font-poppins text-center mb-4">Basket not found, deleted, or no longer active in a pool.</p>
@@ -435,6 +397,27 @@ export default function PoolPage({ params }: PoolPageProps) {
     }
 
     const currentProgressBarAmount = poolData.currentAmount;
+    const isPoolFilled = poolData.currentAmount >= poolData.minAmount && poolData.minAmount > 0;
+
+    // Determine button text and action based on state
+    let buttonText = "";
+    let buttonColorClass = "";
+    let buttonOnClick = () => { };
+
+    if (isPoolFilled && isReady && poolData.userBasket.chatroomId) {
+        buttonText = isButtonLoading ? "Entering Chat..." : "Chat";
+        buttonColorClass = "bg-[#4C8FD3] hover:bg-[#3A70A6]"; // Primary blue color
+        buttonOnClick = handleGoToChat;
+    } else if (isReady) {
+        buttonText = isButtonLoading ? "Cancelling..." : "Cancel";
+        buttonColorClass = "bg-[#F04438] hover:bg-[#D92D20]"; // Red for Cancel
+        buttonOnClick = handleToggleReady;
+    } else {
+        buttonText = isButtonLoading ? "Setting Ready..." : "Ready To Order";
+        buttonColorClass = "bg-[#FFDB0D] hover:bg-[#F7C600]"; // Yellow for Ready
+        buttonOnClick = handleToggleReady;
+    }
+
 
     return (
         <div className="min-h-screen bg-white w-full max-w-[375px] mx-auto">
@@ -472,7 +455,7 @@ export default function PoolPage({ params }: PoolPageProps) {
                     {/* Shop Logo */}
                     <div className="w-16 h-16 rounded-xl overflow-hidden border border-[#EFF1F3]">
                         <Image
-                            src={poolData.shopLogo}
+                            src={poolData.shopLogo || "/shop-logo/default-logo.png"}
                             alt={poolData.shopName + " Logo"}
                             width={64}
                             height={64}
@@ -625,17 +608,15 @@ export default function PoolPage({ params }: PoolPageProps) {
                 )}
             </div>
 
-            {/* Bottom Action Button */}
+            {/* Bottom Action Button - Dynamic Text and Color */}
             <button
-                onClick={handleToggleReady}
+                onClick={buttonOnClick}
                 disabled={isButtonLoading}
-                className={`w-[343px] h-14 rounded-2xl px-4 py-3 flex items-center justify-center ${isReady
-                        ? "bg-[#F04438] hover:bg-[#D92D20]"
-                        : "bg-[#FFDB0D] hover:bg-[#F7C600]"
+                className={`w-[343px] h-14 rounded-2xl px-4 py-3 flex items-center justify-center ${buttonColorClass
                     } transition-colors ${isButtonLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
                 <span className="text-white font-poppins text-lg font-semibold">
-                    {isButtonLoading ? (isReady ? "Cancelling..." : "Setting Ready...") : (isReady ? "Cancel" : "Ready To Order")}
+                    {buttonText}
                 </span>
             </button>
         </div>
