@@ -50,31 +50,46 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
     setRecordedAudioUrl(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+  
+      let mimeType = '';
+      if (MediaRecorder.isTypeSupported('audio/webm')) {
+        mimeType = 'audio/webm';
+      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        mimeType = 'audio/mp4';
+      } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
+        mimeType = 'audio/ogg';
+      }
+  
+      const mediaRecorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+  
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
-
+  
       mediaRecorder.ondataavailable = (event) => {
         audioChunksRef.current.push(event.data);
       };
-
+  
       mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        const blob = new Blob(audioChunksRef.current, { type: mimeType || 'audio/webm' });
         const url = URL.createObjectURL(blob);
         setRecordedAudioUrl(url);
       };
-
+  
       mediaRecorder.start();
       setIsRecording(true);
       setRecordingTime(0);
-
+  
       timerRef.current = setInterval(() => {
         setRecordingTime((prev) => prev + 1);
       }, 1000);
     } catch (error) {
-      console.error("Error accessing microphone", error);
+      console.error('Error accessing microphone', error);
+      alert('Microphone access failed. Ensure your browser has permission and supports audio recording.');
     }
   };
+  
 
   const stopRecording = () => {
     mediaRecorderRef.current?.stop();
@@ -236,7 +251,7 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
                   className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full transition-colors"
                   title="Release to stop recording"
                 >
-                  <Mic className="h-4 w-4 animate-pulse" />
+                  <Mic className="h-full w-full animate-pulse" />
                 </button>
               </div>
             ) : (
