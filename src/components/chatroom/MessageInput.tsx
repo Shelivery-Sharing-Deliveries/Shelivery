@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 interface MessageInputProps {
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string | { type: "audio" | "image"; url: string }) => void;
 }
 
 export function MessageInput({ onSendMessage }: MessageInputProps) {
   const [message, setMessage] = useState("");
+  const [recording, setRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,13 +27,58 @@ export function MessageInput({ onSendMessage }: MessageInputProps) {
     }
   };
 
+  const toggleRecording = async () => {
+    if (recording) {
+      mediaRecorderRef.current?.stop();
+      setRecording(false);
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+
+        audioChunksRef.current = [];
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            audioChunksRef.current.push(e.data);
+          }
+        };
+
+        mediaRecorder.onstop = () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+          const audioURL = URL.createObjectURL(audioBlob);
+
+          onSendMessage({ type: "audio", url: audioURL });
+
+          stream.getTracks().forEach((track) => track.stop());
+        };
+
+        mediaRecorderRef.current = mediaRecorder;
+        mediaRecorder.start();
+        setRecording(true);
+      } catch (err) {
+        console.error("Microphone access denied", err);
+      }
+    }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        onSendMessage({ type: "image", url: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="border-t border-gray-200">
       <div className="flex items-center gap-3 p-4">
-        <button
-          type="button"
-          className="flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-gray-600"
-        >
+
+        {/* Image Upload Button */}
+        <label className="flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-gray-600 cursor-pointer">
           <svg
             className="w-6 h-6"
             fill="none"
@@ -44,8 +92,15 @@ export function MessageInput({ onSendMessage }: MessageInputProps) {
               d="M12 6v6m0 0v6m0-6h6m-6 0H6"
             />
           </svg>
-        </button>
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageUpload}
+          />
+        </label>
 
+        {/* Text Input */}
         <div className="flex-1">
           <input
             type="text"
@@ -57,9 +112,13 @@ export function MessageInput({ onSendMessage }: MessageInputProps) {
           />
         </div>
 
+        {/* Voice Recording Button */}
         <button
           type="button"
-          className="flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-gray-600"
+          onClick={toggleRecording}
+          className={`flex items-center justify-center w-8 h-8 rounded-full ${
+            recording ? "text-red-500" : "text-gray-400 hover:text-gray-600"
+          }`}
         >
           <svg
             className="w-6 h-6"

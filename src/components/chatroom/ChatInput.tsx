@@ -4,16 +4,16 @@ import { useState } from "react";
 import { Send, Plus, Smile, Mic } from "lucide-react";
 
 interface ChatInputProps {
-  onSendMessage: (content: string) => void;
+  onSendMessage: (content: string | { type: "audio" | "image"; url: string }) => void;
+  onUploadFile: (file: File, folder: "images" | "audio") => Promise<string | null>;
   disabled?: boolean;
 }
 
-export function ChatInput({ onSendMessage, disabled }: ChatInputProps) {
+export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputProps) {
   const [message, setMessage] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
     if (message.trim() && !disabled) {
       onSendMessage(message.trim());
       setMessage("");
@@ -24,6 +24,16 @@ export function ChatInput({ onSendMessage, disabled }: ChatInputProps) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
+    }
+  };
+
+  const handleFileUpload = async (file: File, type: "audio" | "image") => {
+    const folder = type === "audio" ? "audio" : "images";
+    const url = await onUploadFile(file, folder);
+    if (url) {
+      onSendMessage({ type, url });
+    } else {
+      console.error("Upload failed.");
     }
   };
 
@@ -40,16 +50,39 @@ export function ChatInput({ onSendMessage, disabled }: ChatInputProps) {
   return (
     <div className="px-4 py-3 bg-white border-t border-gray-200">
       <form onSubmit={handleSubmit} className="flex items-end gap-3">
-        {/* Add attachment button */}
-        <button
-          type="button"
-          className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-          title="Add attachment"
-        >
-          <Plus className="h-5 w-5" />
-        </button>
 
-        {/* Message input container */}
+        {/* File Upload Buttons */}
+        <div className="flex items-center gap-1">
+          {/* Image Upload */}
+          <label className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full cursor-pointer transition-colors">
+            <Plus className="h-5 w-5" />
+            <input
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileUpload(file, "image");
+              }}
+            />
+          </label>
+
+          {/* Audio Upload */}
+          <label className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full cursor-pointer transition-colors">
+            <Mic className="h-5 w-5" />
+            <input
+              type="file"
+              accept="audio/*"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileUpload(file, "audio");
+              }}
+            />
+          </label>
+        </div>
+
+        {/* Message input */}
         <div className="flex-1 relative">
           <textarea
             value={message}
@@ -75,7 +108,7 @@ export function ChatInput({ onSendMessage, disabled }: ChatInputProps) {
               <Smile className="h-4 w-4" />
             </button>
 
-            {message.trim() ? (
+            {message.trim() && (
               <button
                 type="submit"
                 className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-full transition-colors"
@@ -83,17 +116,10 @@ export function ChatInput({ onSendMessage, disabled }: ChatInputProps) {
               >
                 <Send className="h-4 w-4" />
               </button>
-            ) : (
-              <button
-                type="button"
-                className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-                title="Voice message"
-              >
-                <Mic className="h-4 w-4" />
-              </button>
             )}
           </div>
         </div>
+
       </form>
     </div>
   );

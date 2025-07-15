@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { SimpleChatHeader } from "@/components/chatroom/SimpleChatHeader";
 import { ChatMessages } from "@/components/chatroom/ChatMessages";
-import { MessageInput } from "@/components/chatroom/MessageInput";
+import { ChatInput } from "@/components/chatroom/ChatInput";
 import { SimpleOrderStatusCard } from "@/components/chatroom/SimpleOrderStatusCard";
 import { ChatMembersList } from "@/components/chatroom/ChatMembersList";
 import { NotificationBanner } from "@/components/chatroom/NotificationBanner";
@@ -440,29 +440,78 @@ export default function ChatroomPage() {
     };
   }, [chatroomId, authLoading]); // Dependency ensures it re-runs if chatroomId changes or auth state changes.
 
-  const sendMessage = async (content: string) => {
-    if (!currentUser || !content.trim()) {
-      console.log("sendMessage: Cannot send message, user or content missing.");
+  // Function for uploading voice or image messages
+  const uploadFileToStorage = async (
+  file: File,
+  folder: "images" | "audio"
+): Promise<string | null> => {
+  const randomSuffix = Math.random().toString(36).substring(2, 10);
+  const fileName = `${Date.now()}_${randomSuffix}_${file.name}`;
+
+  const { data, error } = await supabase.storage
+    .from(folder)
+    .upload(fileName, file, {
+      cacheControl: "3600",
+      upsert: false,
+    });
+
+  if (error) {
+    console.error("File upload failed:", error);
+    return null;
+  }
+  const { data } = supabase.storage
+    .from(folder)
+    .getPublicUrl(fileName);
+
+  return data?.publicUrl ?? null;
+  return publicUrl?.publicUrl ?? null;
+};
+
+  // Function to send messages and different content types as image or voice messages
+  const sendMessage = async (
+  content: string | { type: "audio" | "image"; url: string }
+) => {
+  if (!currentUser || !content) {
+    console.log("sendMessage: Cannot send message, user or content missing.");
+    return;
+  }
+
+  let messageContent = "";
+  let messageType = "text"; // Default message type
+
+  if (typeof content === "string") {
+    if (!content.trim()) {
+      console.log("sendMessage: Empty text message. Not sending.");
       return;
     }
-    console.log("sendMessage: Attempting to send message...");
-    try {
-      const { error } = await supabase.from("message").insert({
-        chatroom_id: chatroomId,
-        user_id: currentUser.id,
-        content: content.trim(),
-      });
-      if (error) {
-        console.error("sendMessage: Error inserting message:", error);
-      } else {
-        console.log(
-          "sendMessage: Message inserted successfully (realtime will update state)."
-        );
-      }
-    } catch (error) {
-      console.error("sendMessage: Caught error during message send:", error);
+    messageContent = content.trim();
+  } else {
+    messageContent = content.url; // Store URL (base64 for images, blob URL for audio)
+    messageType = content.type;   // "audio" or "image"
+  }
+
+  console.log(`sendMessage: Sending ${messageType} message...`);
+
+  try {
+    const { error } = await supabase.from("message").insert({
+      chatroom_id: chatroomId,
+      user_id: currentUser.id,
+      content: messageContent,  // image/audio URL or plain text
+      type: messageType,        // New field to distinguish message type
+    });
+
+    if (error) {
+      console.error("sendMessage: Error inserting message:", error);
+    } else {
+      console.log("sendMessage: Message inserted successfully.");
     }
-  };
+  } catch (error) {
+    console.error("sendMessage: Caught error during message send:", error);
+  }
+};
+
+
+
 
   const markAsOrdered = async () => {
     if (!isAdmin) {
@@ -641,7 +690,7 @@ export default function ChatroomPage() {
       <SimpleChatHeader
         chatroomName={`${chatroom.pool.shop.name} Basket Chatroom`}
         memberCount={members.length}
-        timeLeft="24h Left" // This is a static value, consider making it dynamic if needed
+        timeLeft="24h Left" // TODO: Make this value dynamic based on chatroom or pool timing
         onBack={() => router.push("/dashboard")}
       />
 
@@ -667,7 +716,11 @@ export default function ChatroomPage() {
 
         {/* Message Input */}
         <div className="border-t border-gray-200">
-          <MessageInput onSendMessage={sendMessage} />
+          <ChatInput
+            onSendMessage={sendMessage}
+            onUploadFile={uploadFileToStorage}
+            disabled={chatroom.state === "resolved"}
+          />
         </div>
       </div>
 
@@ -678,7 +731,7 @@ export default function ChatroomPage() {
           state={chatroom.state}
           poolTotal={chatroom.last_amount}
           orderCount={members.length}
-          timeLeft="22h 20m" // This is a static value, consider making it dynamic if needed
+          timeLeft="22h 20m" // TODO: Make this value dynamic based on actual time left
           isAdmin={isAdmin}
           onMarkOrdered={markAsOrdered}
           onMarkDelivered={markAsDelivered}
