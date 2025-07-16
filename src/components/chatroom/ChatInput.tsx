@@ -118,13 +118,14 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
     return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e?: React.FormEvent | React.KeyboardEvent) => {
+    e?.preventDefault();
     if (message.trim() && !disabled) {
       onSendMessage(message.trim());
       setMessage("");
     }
   };
+  
 
   const handleFileUpload = async (file: File, type: "audio" | "image") => {
     const folder = type === "audio" ? "audio" : "images";
@@ -196,18 +197,25 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
 
         {/* Message Input */}
         <div className="flex-1 relative">
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Message..."
-            className="w-full resize-none rounded-2xl border border-gray-300 bg-white px-4 py-3 pr-20 text-sm placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            rows={1}
-            style={{
-              minHeight: "44px",
-              maxHeight: "120px",
-              overflowY: message.split("\n").length > 2 ? "auto" : "hidden",
-            }}
-          />
+        <textarea
+  value={message}
+  onChange={(e) => setMessage(e.target.value)}
+  onKeyDown={(e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e as any); // cast to any to satisfy TS for now
+    }
+  }}
+  placeholder="Message..."
+  className="w-full resize-none rounded-2xl border border-gray-300 bg-white px-4 py-3 pr-20 text-sm placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+  rows={1}
+  style={{
+    minHeight: "44px",
+    maxHeight: "120px",
+    overflowY: message.split("\n").length > 2 ? "auto" : "hidden",
+  }}
+/>
+
 
           {/* Input Actions */}
           <div className="absolute right-2 bottom-2 flex items-center gap-1">

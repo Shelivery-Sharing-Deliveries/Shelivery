@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, MoreVertical } from "lucide-react";
 import { TimeLeft } from "@/components/chatroom/TimeLeft";
 
 
@@ -9,6 +9,8 @@ interface SimpleChatHeaderProps {
   memberCount: number;
   timeLeft: string;
   onBack: () => void;
+  onMenuClick?: () => void;
+  showMenuButton?: boolean;
 }
 
 export function SimpleChatHeader({
@@ -16,6 +18,8 @@ export function SimpleChatHeader({
   memberCount,
   timeLeft,
   onBack,
+  onMenuClick,
+  showMenuButton = true,
 }: SimpleChatHeaderProps) {
   return (
     <div className="bg-white border-b border-gray-200 px-4 py-4">
@@ -36,6 +40,15 @@ export function SimpleChatHeader({
             <span><TimeLeft expireAt={timeLeft} /></span>
           </div>
         </div>
+
+        {showMenuButton && onMenuClick && (
+          <button
+            onClick={onMenuClick}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <MoreVertical className="h-5 w-5 text-gray-700" />
+          </button>
+        )}
       </div>
     </div>
   );

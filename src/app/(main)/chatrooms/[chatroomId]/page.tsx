@@ -7,11 +7,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { SimpleChatHeader } from "@/components/chatroom/SimpleChatHeader";
 import { ChatMessages } from "@/components/chatroom/ChatMessages";
 import { ChatInput } from "@/components/chatroom/ChatInput";
-import { SimpleOrderStatusCard } from "@/components/chatroom/SimpleOrderStatusCard";
-import { ChatMembersList } from "@/components/chatroom/ChatMembersList";
+import { OrderDetailsView } from "@/components/chatroom/OrderDetailsView";
 import { NotificationBanner } from "@/components/chatroom/NotificationBanner";
 import { TimeExtensionModal } from "@/components/chatroom/TimeExtensionModal";
-import { Button } from "@/components/ui/Button";
 import LoadingBall from "@/components/ui/LoadingBall"; // Assuming the file is LoadingBall.tsx inside components/ui
 
 
@@ -101,6 +99,7 @@ export default function ChatroomPage() {
   const [loading, setLoading] = useState(true);
   const [showTimeExtension, setShowTimeExtension] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<'chat' | 'orderDetails'>('chat');
 
   // Get current user profile from database
   useEffect(() => {
@@ -701,14 +700,67 @@ export default function ChatroomPage() {
   }
 
   console.log("Render: Displaying Chatroom content.");
+  
+  // Show Order Details View
+  if (currentView === 'orderDetails') {
+    return (
+      <>
+        {/* Notification Banner */}
+        {notification && (
+          <NotificationBanner
+            title="Success"
+            message={notification}
+            type="success"
+            onDismiss={() => setNotification(null)}
+          />
+        )}
+        
+        <OrderDetailsView
+          chatroomName={`${chatroom.pool.shop.name} Basket Chatroom`}
+          onBack={() => setCurrentView('chat')}
+          state={chatroom.state}
+          poolTotal={chatroom.last_amount}
+          orderCount={members.length}
+          timeLeft={chatroom.expire_at}
+          isAdmin={isAdmin}
+          onMarkOrdered={markAsOrdered}
+          onMarkDelivered={markAsDelivered}
+          members={members}
+          currentUser={currentUser}
+          adminId={chatroom.admin_id || ""}
+          onMakeAdmin={makeAdmin}
+          onRemoveMember={removeMember}
+          onLeaveGroup={leaveGroup}
+        />
+
+        {/* Time Extension Modal */}
+        {showTimeExtension && (
+          <TimeExtensionModal
+            isOpen={showTimeExtension}
+            timeLeft={{ hours: 2, minutes: 30 }}
+            onClose={() => setShowTimeExtension(false)}
+            onExtend={() => {
+              setShowTimeExtension(false);
+              setNotification("Time extended successfully!");
+              setTimeout(() => setNotification(null), 3000);
+            }}
+          />
+        )}
+      </>
+    );
+  }
+
+  // Show Chat View (default)
   return (
     <div className="flex flex-col h-screen bg-white">
       {/* Header */}
       <SimpleChatHeader
         chatroomName={`${chatroom.pool.shop.name} Basket Chatroom`}
         memberCount={members.length}
-        timeLeft={chatroom.expire_at} // TODO: Make this value dynamic based on chatroom or pool timing
+        timeLeft={chatroom.expire_at}
         onBack={() => router.push("/dashboard")}
+        onMenuClick={() => setCurrentView('orderDetails')}
+        showMenuButton={true}
       />
 
       {/* Notification Banner */}
@@ -738,42 +790,6 @@ export default function ChatroomPage() {
             onUploadFile={uploadFileToStorage}
             disabled={chatroom.state === "resolved"}
           />
-        </div>
-      </div>
-
-      {/* Order Status and Members */}
-      <div className="border-t border-gray-200 p-4 space-y-6">
-        {/* Order Status Card */}
-        <SimpleOrderStatusCard
-          state={chatroom.state}
-          poolTotal={chatroom.last_amount}
-          orderCount={members.length}
-          timeLeft={chatroom.expire_at}
-          isAdmin={isAdmin}
-          onMarkOrdered={markAsOrdered}
-          onMarkDelivered={markAsDelivered}
-        />
-
-        {/* Members List */}
-        <ChatMembersList
-          members={members}
-          currentUser={currentUser}
-          adminId={chatroom.admin_id || ""}
-          isCurrentUserAdmin={isAdmin}
-          onMakeAdmin={makeAdmin}
-          onRemoveMember={removeMember}
-        />
-
-        {/* Action Buttons */}
-        <div className="flex flex-col gap-2">
-          <Button
-            variant="error"
-            size="md"
-            onClick={leaveGroup}
-            className="w-full"
-          >
-            {chatroom.state === "resolved" ? "Leave Group" : "Leave Order"}
-          </Button>
         </div>
       </div>
 
