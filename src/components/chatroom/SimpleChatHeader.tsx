@@ -1,6 +1,8 @@
 "use client";
 
 import { ArrowLeft } from "lucide-react";
+import { TimeLeft } from "@/components/chatroom/TimeLeft";
+
 
 interface SimpleChatHeaderProps {
   chatroomName: string;
@@ -31,7 +33,7 @@ export function SimpleChatHeader({
             <span>
               {memberCount} member{memberCount !== 1 ? "s" : ""}
             </span>
-            <span>{timeLeft}</span>
+            <span><TimeLeft expireAt={timeLeft} /></span>
           </div>
         </div>
       </div>

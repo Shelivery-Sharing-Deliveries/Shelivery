@@ -19,10 +19,11 @@ interface Chatroom {
   id: string;
   pool_id: string;
   state: "waiting" | "active" | "ordered" | "resolved";
-  admin_id: string | null;
+  admin_id: string ;
   last_amount: number;
   created_at: string;
   updated_at: string;
+  expire_at: string ; // Added expire_at to match the query
   pool: {
     id: string;
     shop_id: number;
@@ -521,7 +522,8 @@ export default function ChatroomPage() {
   };
 
 
-
+  // Function to mark the order as placed
+  // This function updates the chatroom state to "ordered" and notifies the user.    
   const markAsOrdered = async () => {
     if (!isAdmin) {
       console.warn("markAsOrdered: User is not admin, cannot mark as ordered.");
@@ -551,7 +553,13 @@ export default function ChatroomPage() {
       );
     }
   };
-
+  // Function to mark the order as delivered
+  // This function updates the chatroom state to "resolved" and notifies the user.
+  // It should only be callable by the admin of the chatroom.
+  // If the user is not an admin, it will log a warning and return early.
+  // If the update is successful, it will set a notification message for the user.
+  // If there is an error during the update, it will log the error to the console
+  // and not set the notification.
   const markAsDelivered = async () => {
     if (!isAdmin) {
       console.warn(
@@ -583,7 +591,12 @@ export default function ChatroomPage() {
       );
     }
   };
-
+  
+  // Function to leave the group or order
+  // This function updates the chat_membership to set left_at timestamp
+  // and redirects the user to the dashboard.
+  // If the chatroom is resolved, it will say "Leave Group", otherwise "Leave Order".
+  
   const leaveGroup = async () => {
     if (!currentUser) {
       console.warn("leaveGroup: No current user to leave group.");
@@ -612,7 +625,13 @@ export default function ChatroomPage() {
       console.error("leaveGroup: Caught error during leave group:", error);
     }
   };
-
+  // Function to make another user an admin
+  // This function updates the chatroom's admin_id to the specified userId.
+  // It should only be callable by the current admin.
+  // If the current user is not an admin, it will log a warning and return early.
+  // If the update is successful, it will set a notification message for the user.
+  // If there is an error during the update, it will log the error to the console
+  // and not set the notification.
   const makeAdmin = async (userId: string) => {
     if (!isAdmin) {
       console.warn(
@@ -699,7 +718,7 @@ export default function ChatroomPage() {
       <SimpleChatHeader
         chatroomName={`${chatroom.pool.shop.name} Basket Chatroom`}
         memberCount={members.length}
-        timeLeft="24h Left" // TODO: Make this value dynamic based on chatroom or pool timing
+        timeLeft={chatroom.expire_at} // TODO: Make this value dynamic based on chatroom or pool timing
         onBack={() => router.push("/dashboard")}
       />
 
@@ -740,7 +759,7 @@ export default function ChatroomPage() {
           state={chatroom.state}
           poolTotal={chatroom.last_amount}
           orderCount={members.length}
-          timeLeft="22h 20m" // TODO: Make this value dynamic based on actual time left
+          timeLeft={chatroom.expire_at}
           isAdmin={isAdmin}
           onMarkOrdered={markAsOrdered}
           onMarkDelivered={markAsDelivered}
