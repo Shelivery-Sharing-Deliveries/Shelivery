@@ -146,15 +146,15 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
   }
 
   return (
-    <div className="px-4 py-3 bg-white border-t border-gray-200">
+    <div className="px-4 py-3 bg-white border-t border-gray-200 max-h-32 overflow-y-auto">
       {selectedImagePreview && (
   <div className="mb-2 flex items-center gap-2">
     <img
       src={selectedImagePreview}
       alt="Preview"
-      className="h-16 w-auto rounded-md border border-gray-300 object-cover"
+      className="h-12 w-auto rounded-md border border-gray-300 object-cover flex-shrink-0"
     />
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 flex-shrink-0">
       <button
         type="button"
         onClick={sendSelectedImage}
@@ -211,7 +211,7 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
   rows={1}
   style={{
     minHeight: "44px",
-    maxHeight: "120px",
+    maxHeight: "80px",
     overflowY: message.split("\n").length > 2 ? "auto" : "hidden",
   }}
 />

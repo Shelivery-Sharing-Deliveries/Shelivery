@@ -73,7 +73,7 @@ export function OrderDetailsView({
   onLeaveGroup,
 }: OrderDetailsViewProps) {
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="fixed inset-0 flex flex-col bg-white">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-4">
         <div className="flex items-center gap-4">
@@ -91,7 +91,7 @@ export function OrderDetailsView({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Order Status Card */}
         <SimpleOrderStatusCard
           state={state}

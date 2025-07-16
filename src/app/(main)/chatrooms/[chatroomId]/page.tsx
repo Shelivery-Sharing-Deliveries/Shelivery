@@ -752,29 +752,33 @@ export default function ChatroomPage() {
 
   // Show Chat View (default)
   return (
-    <div className="flex flex-col h-dvh bg-white">
+    <div className="fixed inset-0 flex flex-col bg-white">
       {/* Header */}
-      <SimpleChatHeader
-        chatroomName={`${chatroom.pool.shop.name} Basket Chatroom`}
-        memberCount={members.length}
-        timeLeft={chatroom.expire_at}
-        onBack={() => router.push("/dashboard")}
-        onMenuClick={() => setCurrentView('orderDetails')}
-        showMenuButton={true}
-      />
+      <div className="flex-shrink-0">
+        <SimpleChatHeader
+          chatroomName={`${chatroom.pool.shop.name} Basket Chatroom`}
+          memberCount={members.length}
+          timeLeft={chatroom.expire_at}
+          onBack={() => router.push("/dashboard")}
+          onMenuClick={() => setCurrentView('orderDetails')}
+          showMenuButton={true}
+        />
+      </div>
 
       {/* Notification Banner */}
       {notification && (
-        <NotificationBanner
-          title="Success"
-          message={notification}
-          type="success"
-          onDismiss={() => setNotification(null)}
-        />
+        <div className="flex-shrink-0">
+          <NotificationBanner
+            title="Success"
+            message={notification}
+            type="success"
+            onDismiss={() => setNotification(null)}
+          />
+        </div>
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Chat Messages */}
         <div className="flex-1 overflow-y-auto">
           <ChatMessages
@@ -784,7 +788,7 @@ export default function ChatroomPage() {
         </div>
 
         {/* Message Input */}
-        <div className="border-t border-gray-200">
+        <div className="flex-shrink-0">
           <ChatInput
             onSendMessage={sendMessage}
             onUploadFile={uploadFileToStorage}
