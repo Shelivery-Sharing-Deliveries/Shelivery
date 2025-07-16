@@ -10,8 +10,12 @@ interface User {
   email: string;
   dormitory_id: number | null;
   profile: any;
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  updated_at: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  favorite_store: string | null;
+  image: string | null;
 }
 
 interface ChatMember extends User {
@@ -50,7 +54,13 @@ export function ChatMembersList({
   const [showActions, setShowActions] = useState<string | null>(null);
 
   const getMemberDisplayName = (member: ChatMember) => {
-    return member.profile?.display_name || member.email.split("@")[0];
+    if (member.first_name && member.last_name) {
+      return `${member.first_name} ${member.last_name}`;
+    }
+    if (member.first_name) {
+      return member.first_name;
+    }
+    return member.email.split("@")[0];
   };
 
   const getMemberBasketAmount = (member: ChatMember) => {
@@ -74,8 +84,8 @@ export function ChatMembersList({
             <div className="flex items-center gap-3">
               <div className="relative">
                 <Avatar
-                  src={member.profile?.avatar_url}
-                  name={getMemberDisplayName(member)}
+                  src={member.image}
+                  name={getMemberDisplayName(member) || "User"}
                   size="sm"
                 />
                 {member.id === adminId && (
@@ -95,6 +105,17 @@ export function ChatMembersList({
                 <div className="text-xs text-gray-600">
                   {getMemberBasketAmount(member)} CHF order
                 </div>
+                {/* Order link - only visible to admin */}
+                {isCurrentUserAdmin && member.basket?.link && (
+                  <a
+                    href={member.basket.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:text-blue-800 underline block mt-1"
+                  >
+                    View Order
+                  </a>
+                )}
               </div>
             </div>
 

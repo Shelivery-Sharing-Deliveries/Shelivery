@@ -55,6 +55,10 @@ interface OrderDetailsViewProps {
   onLeaveGroup: () => void;
 }
 
+
+
+
+
 export function OrderDetailsView({
   chatroomName,
   onBack,
@@ -85,46 +89,45 @@ export function OrderDetailsView({
           </button>
           <div className="flex-1">
             <h1 className="font-bold text-lg text-gray-900">{chatroomName}</h1>
-            <p className="text-sm text-gray-600">Place the Order</p>
+            <span className="font-normal">
+                  {members.length} Member{members.length !== 1 ? "s" : ""}
+                </span>
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        {/* Order Status Card */}
-        <SimpleOrderStatusCard
-          state={state}
-          poolTotal={poolTotal}
-          orderCount={orderCount}
-          timeLeft={timeLeft}
-          isAdmin={isAdmin}
-          onMarkOrdered={onMarkOrdered || (() => {})}
-          onMarkDelivered={onMarkDelivered || (() => {})}
-        />
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden px-4 py-4 gap-y-4">
+  <SimpleOrderStatusCard
+    state={state}
+    poolTotal={poolTotal}
+    orderCount={orderCount}
+    timeLeft={timeLeft}
+    isAdmin={isAdmin}
+    onMarkOrdered={onMarkOrdered || (() => {})}
+    onMarkDelivered={onMarkDelivered || (() => {})}
+  />
 
-        {/* Members List */}
-        <ChatMembersList
-          members={members}
-          currentUser={currentUser}
-          adminId={adminId}
-          isCurrentUserAdmin={isAdmin}
-          onMakeAdmin={onMakeAdmin}
-          onRemoveMember={onRemoveMember}
-        />
+  <ChatMembersList
+    members={members}
+    currentUser={currentUser}
+    adminId={adminId}
+    isCurrentUserAdmin={isAdmin}
+    onMakeAdmin={onMakeAdmin}
+    onRemoveMember={onRemoveMember}
+  />
 
-        {/* Action Buttons */}
-        <div className="flex flex-col gap-2 pb-6">
-          <Button
-            variant="error"
-            size="md"
-            onClick={onLeaveGroup}
-            className="w-full"
-          >
-            {state === "resolved" ? "Leave Group" : "Leave Order"}
-          </Button>
-        </div>
-      </div>
+  <div className="flex flex-col gap-2 pb-6">
+    <Button
+      variant="error"
+      size="md"
+      onClick={onLeaveGroup}
+      className="w-full"
+    >
+      {state === "resolved" ? "Leave Group" : "Leave Order"}
+    </Button>
+  </div>
+</div>
     </div>
   );
 }
