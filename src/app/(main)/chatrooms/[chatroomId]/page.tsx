@@ -752,7 +752,7 @@ export default function ChatroomPage() {
 
   // Show Chat View (default)
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="flex flex-col h-dvh bg-white">
       {/* Header */}
       <SimpleChatHeader
         chatroomName={`${chatroom.pool.shop.name} Basket Chatroom`}
