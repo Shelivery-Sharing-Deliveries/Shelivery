@@ -165,16 +165,17 @@ export function OrderDetailsView({
           onRemoveMember={onRemoveMember}
         />
 
-        <div className="flex flex-col gap-2 pb-6">
-          <Button
-            variant="error"
-            size="md"
-            onClick={onLeaveGroup}
-            className="w-full"
-          >
-            {state === "resolved" ? "Leave Group" : "Leave Order"}
-          </Button>
-        </div>
+<div className="flex flex-col gap-2 pb-6">
+  <Button
+    variant="error"
+    size="md"
+    onClick={onLeaveGroup}
+    className="w-full"
+    disabled={state === "ordered"} // Disable when state is 'ordered'
+  >
+    {state === "resolved" ? "Leave Group" : "Leave Order"}
+  </Button>
+</div>
       </div>
     </div>
   );

@@ -220,9 +220,6 @@ export const useChatroomActions = ({
 
       if (error) {
         console.error("leaveGroup: Error calling backend function:", error);
-        // Optionally display a user-friendly error message to the user
-        setNotification(`Failed to leave group: ${error.message}`);
-        setTimeout(() => setNotification(null), 3000);
       } else {
         router.push("/dashboard"); // Redirect on success
         console.log(
@@ -234,10 +231,11 @@ export const useChatroomActions = ({
         "leaveGroup: Caught unexpected error during leave group RPC call:",
         error
       );
-      setNotification(
-        "An unexpected error occurred while processing your request."
-      );
-      setTimeout(() => setNotification(null), 3000);
+      if (error) {
+        console.error("leaveGroup: Error calling backend function:", error);
+      }
+      
+      
     }
   };
 
