@@ -12,16 +12,15 @@ import { NotificationBanner } from "@/components/chatroom/NotificationBanner";
 import { TimeExtensionModal } from "@/components/chatroom/TimeExtensionModal";
 import LoadingBall from "@/components/ui/LoadingBall"; // Assuming the file is LoadingBall.tsx inside components/ui
 
-
 interface Chatroom {
   id: string;
   pool_id: string;
   state: "waiting" | "active" | "ordered" | "resolved";
-  admin_id: string ;
+  admin_id: string;
   last_amount: number;
   created_at: string;
   updated_at: string;
-  expire_at: string ; // Added expire_at to match the query
+  expire_at: string; // Added expire_at to match the query
   pool: {
     id: string;
     shop_id: number;
@@ -76,7 +75,7 @@ interface MessageType {
   chatroom_id: string;
   user_id: string;
   content: string;
-  type: 'text' | 'image' | 'audio';
+  type: "text" | "image" | "audio";
   sent_at: string;
   read_at: string | null;
   user: User;
@@ -99,7 +98,9 @@ export default function ChatroomPage() {
   const [loading, setLoading] = useState(true);
   const [showTimeExtension, setShowTimeExtension] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
-  const [currentView, setCurrentView] = useState<'chat' | 'orderDetails'>('chat');
+  const [currentView, setCurrentView] = useState<"chat" | "orderDetails">(
+    "chat"
+  );
 
   // Get current user profile from database
   useEffect(() => {
@@ -362,6 +363,35 @@ export default function ChatroomPage() {
 
     loadChatroomData();
   }, [currentUser, chatroomId, authLoading]); // Dependencies are correct here.
+  const refreshChatroom = async () => {
+    console.log("Realtime: Refreshing full chatroom data...");
+    const { data, error } = await supabase
+      .from("chatroom")
+      .select(
+        `
+            *,
+            pool:pool(
+              id,
+              shop_id,
+              dormitory_id,
+              current_amount,
+              min_amount,
+              created_at,
+              shop:shop(id, name, min_amount, created_at),
+              dormitory:dormitory(id, name)
+            )
+          `
+      )
+      .eq("id", chatroomId)
+      .single();
+
+    if (error) {
+      console.error("Realtime: Error refreshing chatroom data:", error);
+    } else {
+      setChatroom(data);
+      console.log("Realtime: Chatroom data refreshed.");
+    }
+  };
 
   // Real-time subscriptions
   useEffect(() => {
@@ -410,7 +440,7 @@ export default function ChatroomPage() {
               chatroom_id: payload.new.chatroom_id,
               user_id: payload.new.user_id,
               content: payload.new.content,
-              type: payload.new.type || 'text',
+              type: payload.new.type || "text",
               sent_at: payload.new.sent_at,
               read_at: payload.new.read_at,
               user: userData,
@@ -433,10 +463,9 @@ export default function ChatroomPage() {
           table: "chatroom",
           filter: `id=eq.${chatroomId}`,
         },
-        (payload) => {
-          console.log("Realtime: Chatroom update received:", payload.new);
-          setChatroom((prev) => (prev ? { ...prev, ...payload.new } : null));
-          console.log("Realtime: Chatroom state updated.");
+        () => {
+          console.log("Realtime: Chatroom updated, refreshing data...");
+          refreshChatroom(); // Refresh the chatroom data
         }
       )
       .subscribe();
@@ -497,7 +526,7 @@ export default function ChatroomPage() {
       messageContent = content.trim();
     } else {
       messageContent = content.url; // Now this is the file path, not a signed URL
-      messageType = content.type;   // "audio" or "image"
+      messageType = content.type; // "audio" or "image"
     }
 
     console.log(`sendMessage: Sending ${messageType} message...`);
@@ -506,8 +535,8 @@ export default function ChatroomPage() {
       const { error } = await supabase.from("message").insert({
         chatroom_id: chatroomId,
         user_id: currentUser.id,
-        content: messageContent,  // file path or plain text
-        type: messageType,        // "text", "image", or "audio"
+        content: messageContent, // file path or plain text
+        type: messageType, // "text", "image", or "audio"
       });
 
       if (error) {
@@ -520,9 +549,8 @@ export default function ChatroomPage() {
     }
   };
 
-
   // Function to mark the order as placed
-  // This function updates the chatroom state to "ordered" and notifies the user.    
+  // This function updates the chatroom state to "ordered" and notifies the user.
   const markAsOrdered = async () => {
     if (!isAdmin) {
       console.warn("markAsOrdered: User is not admin, cannot mark as ordered.");
@@ -541,6 +569,7 @@ export default function ChatroomPage() {
           error
         );
       } else {
+        await refreshChatroom(); // Immediately fetch fresh chatroom state
         setNotification("Order has been marked as placed!");
         setTimeout(() => setNotification(null), 3000);
         console.log("markAsOrdered: Chatroom state updated to 'ordered'.");
@@ -579,6 +608,7 @@ export default function ChatroomPage() {
           error
         );
       } else {
+        await refreshChatroom(); // Immediately fetch fresh chatroom state
         setNotification("Order has been marked as delivered!");
         setTimeout(() => setNotification(null), 3000);
         console.log("markAsDelivered: Chatroom state updated to 'resolved'.");
@@ -591,34 +621,43 @@ export default function ChatroomPage() {
     }
   };
 
-    const leaveGroup = async () => {
-        if (!currentUser) {
-            console.warn("leaveGroup: No current user to leave group.");
-            return;
-        }
-        console.log("leaveGroup: Attempting to leave group via backend function...");
+  const leaveGroup = async () => {
+    if (!currentUser) {
+      console.warn("leaveGroup: No current user to leave group.");
+      return;
+    }
+    console.log(
+      "leaveGroup: Attempting to leave group via backend function..."
+    );
 
-        try {
-            // Call the new Supabase RPC function
-            const { error } = await supabase.rpc('leave_chatroom', {
-                chatroom_id_param: chatroomId, // Ensure parameter name matches your SQL function's parameter
-            });
+    try {
+      // Call the new Supabase RPC function
+      const { error } = await supabase.rpc("leave_chatroom", {
+        chatroom_id_param: chatroomId, // Ensure parameter name matches your SQL function's parameter
+      });
 
-            if (error) {
-                console.error("leaveGroup: Error calling backend function:", error);
-                // Optionally display a user-friendly error message to the user
-                setNotification(`Failed to leave group: ${error.message}`);
-                setTimeout(() => setNotification(null), 3000);
-            } else {
-                router.push("/dashboard"); // Redirect on success
-                console.log("leaveGroup: Successfully left group, redirecting to dashboard.");
-            }
-        } catch (error) {
-            console.error("leaveGroup: Caught unexpected error during leave group RPC call:", error);
-            setNotification("An unexpected error occurred while processing your request.");
-            setTimeout(() => setNotification(null), 3000);
-        }
-    };
+      if (error) {
+        console.error("leaveGroup: Error calling backend function:", error);
+        // Optionally display a user-friendly error message to the user
+        setNotification(`Failed to leave group: ${error.message}`);
+        setTimeout(() => setNotification(null), 3000);
+      } else {
+        router.push("/dashboard"); // Redirect on success
+        console.log(
+          "leaveGroup: Successfully left group, redirecting to dashboard."
+        );
+      }
+    } catch (error) {
+      console.error(
+        "leaveGroup: Caught unexpected error during leave group RPC call:",
+        error
+      );
+      setNotification(
+        "An unexpected error occurred while processing your request."
+      );
+      setTimeout(() => setNotification(null), 3000);
+    }
+  };
 
   const makeAdmin = async (userId: string) => {
     if (!isAdmin) {
@@ -637,6 +676,7 @@ export default function ChatroomPage() {
       if (error) {
         console.error("makeAdmin: Error updating chatroom admin_id:", error);
       } else {
+        await refreshChatroom(); // Immediately fetch fresh chatroom state
         setNotification("Admin role transferred successfully!");
         setTimeout(() => setNotification(null), 3000);
         console.log("makeAdmin: Admin role transferred.");
@@ -682,7 +722,9 @@ export default function ChatroomPage() {
     console.log("Render: Displaying Loading state...");
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg"><LoadingBall size="large" color="shelivery-primary-yellow" /></div>
+        <div className="text-lg">
+          <LoadingBall size="large" color="shelivery-primary-yellow" />
+        </div>
       </div>
     );
   }
@@ -700,9 +742,9 @@ export default function ChatroomPage() {
   }
 
   console.log("Render: Displaying Chatroom content.");
-  
+
   // Show Order Details View
-  if (currentView === 'orderDetails') {
+  if (currentView === "orderDetails") {
     return (
       <>
         {/* Notification Banner */}
@@ -714,10 +756,10 @@ export default function ChatroomPage() {
             onDismiss={() => setNotification(null)}
           />
         )}
-        
+
         <OrderDetailsView
           chatroomName={`${chatroom.pool.shop.name} Basket Chatroom`}
-          onBack={() => setCurrentView('chat')}
+          onBack={() => setCurrentView("chat")}
           state={chatroom.state}
           poolTotal={chatroom.last_amount}
           orderCount={members.length}
@@ -760,7 +802,7 @@ export default function ChatroomPage() {
           memberCount={members.length}
           timeLeft={chatroom.expire_at}
           onBack={() => router.push("/dashboard")}
-          onMenuClick={() => setCurrentView('orderDetails')}
+          onMenuClick={() => setCurrentView("orderDetails")}
           showMenuButton={true}
         />
       </div>
