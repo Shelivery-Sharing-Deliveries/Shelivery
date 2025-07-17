@@ -8,7 +8,12 @@ import { SimpleChatHeader } from "@/components/chatroom/SimpleChatHeader";
 import { ChatMessages } from "@/components/chatroom/ChatMessages";
 import { ChatInput } from "@/components/chatroom/ChatInput";
 import { OrderDetailsView } from "@/components/chatroom/OrderDetailsView";
-import { NotificationBanner } from "@/components/chatroom/NotificationBanner";
+import {
+  NotificationBanner,
+  OrderDeliveredBanner,
+  TimeRunningOutBanner,
+  OrderPlacedBanner,
+} from "@/components/chatroom/NotificationBanner";
 import { TimeExtensionModal } from "@/components/chatroom/TimeExtensionModal";
 import LoadingBall from "@/components/ui/LoadingBall"; // Assuming the file is LoadingBall.tsx inside components/ui
 
@@ -101,6 +106,11 @@ export default function ChatroomPage() {
   const [currentView, setCurrentView] = useState<"chat" | "orderDetails">(
     "chat"
   );
+  const [orderPlaced, setOrderPlaced] = useState(false);
+  const [orderDelivered, setOrderDelivered] = useState(false);
+  const [timeRunningOut, setTimeRunningOut] = useState(false);
+  const [newMemberJoined, setNewMemberJoined] = useState(false);
+  const [adminAssigned, setAdminAssigned] = useState(false);
 
   // Get current user profile from database
   useEffect(() => {
@@ -463,9 +473,18 @@ export default function ChatroomPage() {
           table: "chatroom",
           filter: `id=eq.${chatroomId}`,
         },
-        () => {
-          console.log("Realtime: Chatroom updated, refreshing data...");
-          refreshChatroom(); // Refresh the chatroom data
+        (payload) => {
+          const newStatus = payload.new?.state;
+
+          if (newStatus === "ordered") {
+            setOrderPlaced(true);
+            setTimeout(() => setOrderPlaced(false), 5000);
+          } else if (newStatus === "resolved") {
+            setOrderDelivered(true);
+            setTimeout(() => setOrderDelivered(false), 5000);
+          }
+
+          refreshChatroom();
         }
       )
       .subscribe();
@@ -757,6 +776,13 @@ export default function ChatroomPage() {
           />
         )}
 
+        {orderPlaced && (
+          <OrderPlacedBanner onDismiss={() => setOrderPlaced(false)} />
+        )}
+        {orderDelivered && (
+          <OrderDeliveredBanner onDismiss={() => setOrderDelivered(false)} />
+        )}
+
         <OrderDetailsView
           chatroomName={`${chatroom.pool.shop.name} Basket Chatroom`}
           onBack={() => setCurrentView("chat")}
@@ -817,6 +843,33 @@ export default function ChatroomPage() {
             onDismiss={() => setNotification(null)}
           />
         </div>
+      )}
+      {orderPlaced && (
+        <OrderPlacedBanner onDismiss={() => setOrderPlaced(false)} />
+      )}
+      {orderDelivered && (
+        <OrderDeliveredBanner onDismiss={() => setOrderDelivered(false)} />
+      )}
+      {timeRunningOut && (
+        <TimeRunningOutBanner
+          timeLeft="10 minutes"
+          onExtend={() => {
+            /* your extend logic */
+          }}
+          onDismiss={() => setTimeRunningOut(false)}
+        />
+      )}
+      {newMemberJoined && (
+        <NewMemberBanner
+          memberName="Alice"
+          onDismiss={() => setNewMemberJoined(false)}
+        />
+      )}
+      {adminAssigned && (
+        <AdminAssignedBanner
+          adminName="Bob"
+          onDismiss={() => setAdminAssigned(false)}
+        />
       )}
 
       {/* Main Content */}
