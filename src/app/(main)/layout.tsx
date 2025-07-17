@@ -1,17 +1,19 @@
-// app/(main)/layout.tsx
-"use client"; // This is crucial to make this a Client Component
+"use client"; // must be client component
 
-import AuthGuard from '@/lib/AuthGuard'; // Import your AuthGuard from /lib
+import { NotificationProvider } from "@/components/ui/NotificationsContext";
+import AuthGuard from '@/lib/AuthGuard';
 
 export default function MainLayout({
-    children,
+  children,
 }: {
-    children: React.ReactNode;
+  children: React.ReactNode;
 }) {
-    return (
-        <AuthGuard>
-            {/* Any layout specific to protected pages can go here, e.g., a common header/footer */}
-            {children}
-        </AuthGuard>
-    );
+  return (
+    <NotificationProvider>
+      <AuthGuard>
+        {/* Your protected layout content */}
+        {children}
+      </AuthGuard>
+    </NotificationProvider>
+  );
 }
