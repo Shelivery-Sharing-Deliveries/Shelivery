@@ -13,6 +13,8 @@ import {
   OrderDeliveredBanner,
   TimeRunningOutBanner,
   OrderPlacedBanner,
+  NewMemberBanner,
+  AdminAssignedBanner,
 } from "@/components/chatroom/NotificationBanner";
 import { TimeExtensionModal } from "@/components/chatroom/TimeExtensionModal";
 import LoadingBall from "@/components/ui/LoadingBall"; // Assuming the file is LoadingBall.tsx inside components/ui
@@ -399,6 +401,8 @@ export default function ChatroomPage() {
       console.error("Realtime: Error refreshing chatroom data:", error);
     } else {
       setChatroom(data);
+      setIsAdmin(data.admin_id === user?.id);
+
       console.log("Realtime: Chatroom data refreshed.");
     }
   };
@@ -483,7 +487,6 @@ export default function ChatroomPage() {
             setOrderDelivered(true);
             setTimeout(() => setOrderDelivered(false), 5000);
           }
-
           refreshChatroom();
         }
       )
@@ -766,23 +769,6 @@ export default function ChatroomPage() {
   if (currentView === "orderDetails") {
     return (
       <>
-        {/* Notification Banner */}
-        {notification && (
-          <NotificationBanner
-            title="Success"
-            message={notification}
-            type="success"
-            onDismiss={() => setNotification(null)}
-          />
-        )}
-
-        {orderPlaced && (
-          <OrderPlacedBanner onDismiss={() => setOrderPlaced(false)} />
-        )}
-        {orderDelivered && (
-          <OrderDeliveredBanner onDismiss={() => setOrderDelivered(false)} />
-        )}
-
         <OrderDetailsView
           chatroomName={`${chatroom.pool.shop.name} Basket Chatroom`}
           onBack={() => setCurrentView("chat")}
@@ -799,6 +785,19 @@ export default function ChatroomPage() {
           onMakeAdmin={makeAdmin}
           onRemoveMember={removeMember}
           onLeaveGroup={leaveGroup}
+          orderPlaced={orderPlaced}
+          orderDelivered={orderDelivered}
+          timeRunningOut={timeRunningOut}
+          newMemberJoined={newMemberJoined}
+          adminAssigned={adminAssigned}
+          onDismissOrderPlaced={() => setOrderPlaced(false)}
+          onDismissOrderDelivered={() => setOrderDelivered(false)}
+          onDismissTimeRunningOut={() => setTimeRunningOut(false)}
+          onDismissNewMember={() => setNewMemberJoined(false)}
+          onDismissAdminAssigned={() => setAdminAssigned(false)}
+          onExtendTime={() => {
+            /* your extend logic */
+          }}
         />
 
         {/* Time Extension Modal */}
