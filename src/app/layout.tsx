@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next/types";
 import { Inter } from "next/font/google";
 import "@/styles/globals.css";
+import { Navigation } from "@/components/ui/Navigation";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -58,8 +59,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#2563eb" },
-    { media: "(prefers-color-scheme: dark)", color: "#1e40af" },
+    { media: "(prefers-color-scheme: light)", color: "#245b7b" },
+    { media: "(prefers-color-scheme: dark)", color: "#245b7b" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -92,6 +93,7 @@ export default function RootLayout({
         <div className="relative flex min-h-screen flex-col">
           <div className="flex-1">{children}</div>
         </div>
+        
       </body>
     </html>
   );

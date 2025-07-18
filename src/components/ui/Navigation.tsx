@@ -156,9 +156,9 @@ export function Navigation({ className = "" }: NavigationProps) {
   };
 
   return (
-    <div className="w-full flex justify-center bg-[#245B7B]">
+    <div className="w-full bg-[#245B7B]">
       <div
-        className={`w-[343px] h-[74px] flex justify-center items-center gap-[45px] px-4 py-1.5 pb-6 ${className}`}
+        className={`w-full max-w-[calc(100vw-25px)] md:max-w-[343px] mx-auto h-[74px] flex justify-center items-center gap-[45px] px-4 py-1.5 pb-6 ${className}`}
       >
         {navItems.map((item) => {
           // Enhanced active state check to include choose-shop for Stores

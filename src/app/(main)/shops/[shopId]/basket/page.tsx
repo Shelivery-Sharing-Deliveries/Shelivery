@@ -232,7 +232,7 @@ export default function BasketCreationPage() {
     if (authLoading || loading) {
         return (
             <div className="min-h-screen bg-shelivery-background-gray">
-                <Navigation />
+                
                 <div className="flex items-center justify-center pt-20">
                     <div className="text-center">
                         <div className="w-8 h-8 border-4 border-shelivery-primary-yellow border-t-transparent rounded-full animate-spin mx-auto mb-4" />
@@ -250,7 +250,7 @@ export default function BasketCreationPage() {
     if (error && !shop) { // Only show shop not found error if shop data is missing
         return (
             <div className="min-h-screen bg-shelivery-background-gray">
-                <Navigation />
+                
                 <div className="flex items-center justify-center pt-20 p-4">
                     <div className="text-center max-w-md">
                         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -274,8 +274,10 @@ export default function BasketCreationPage() {
                         <p className="text-shelivery-text-secondary mb-6">{error}</p>
                         <Button onClick={() => router.push("/shops")}>Browse Shops</Button>
                     </div>
+                    
                 </div>
             </div>
+            
         );
     }
 
@@ -285,7 +287,7 @@ export default function BasketCreationPage() {
 
     return (
         <div className="min-h-screen bg-shelivery-background-gray">
-            <Navigation />
+            
 
             <div className="pt-20 pb-6 px-4 max-w-2xl mx-auto">
                 {/* Header */}
@@ -415,6 +417,9 @@ export default function BasketCreationPage() {
                         ? (isEditMode ? "Saving Changes..." : "Creating Basket...")
                         : (isEditMode ? "Save Changes" : "Join Pool & Create Basket")}
                 </Button>
+            </div>
+            <div className="fixed bottom-0 left-0 right-0">
+                <Navigation />
             </div>
         </div>
     );

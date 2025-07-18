@@ -9,11 +9,10 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   return (
-    <NotificationProvider>
-      <AuthGuard>
-        {/* Your protected layout content */}
+    <AuthGuard>
+      <NotificationProvider>
         {children}
-      </AuthGuard>
-    </NotificationProvider>
+      </NotificationProvider>
+    </AuthGuard>
   );
 }

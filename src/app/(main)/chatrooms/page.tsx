@@ -170,7 +170,6 @@ export default function ChatroomsPage() {
                         <p className="text-shelivery-text-secondary">Loading chatrooms...</p>
                     </div>
                 </div>
-                <Navigation />
             </div>
         );
     }
@@ -184,8 +183,8 @@ export default function ChatroomsPage() {
     if (error) {
         return (
             <div className="min-h-screen bg-shelivery-background-gray">
-                <Navigation />
-                <div className="flex items-center justify-center pt-20 p-4">
+
+                <div className="pt-20 pb-24 px-4 w-[calc(100vw-25px)] md:max-w-2xl mx-auto">
                     <div className="text-center max-w-md">
                         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <svg
@@ -209,13 +208,14 @@ export default function ChatroomsPage() {
                         <Button onClick={() => window.location.reload()}>Try Again</Button>
                     </div>
                 </div>
+                <Navigation />
             </div>
         );
     }
 
     return (
         <div className="min-h-screen bg-shelivery-background-gray">
-            <div className="pt-20 pb-6 px-4 max-w-2xl mx-auto">
+            <div className="pt-20 pb-24 px-4 w-[calc(100vw-25px)] md:max-w-2xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-bold text-shelivery-text-primary mb-2">
@@ -327,7 +327,9 @@ export default function ChatroomsPage() {
                     </div>
                 )}
             </div>
-            <Navigation />
+            <div className="fixed bottom-0 left-0 right-0">
+                <Navigation />
+            </div>
         </div>
     );
 }

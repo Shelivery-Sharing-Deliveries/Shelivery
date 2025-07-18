@@ -511,16 +511,6 @@ export default function ChatroomPage() {
             };
             setMessages((prev) => [...prev, newMessage]);
             console.log("Realtime: Messages updated with new message.");
-
-            // Show notification for new message from other users
-            const userName = userData.first_name || userData.email.split('@')[0] || 'Someone';
-            notify({
-              type: "info",
-              title: "New Message",
-              message: `${userName}: ${payload.new.content.length > 50 ? payload.new.content.substring(0, 50) + '...' : payload.new.content}`,
-              duration: 3000,
-              dismissible: true,
-            });
           }
         }
       )
@@ -538,48 +528,6 @@ export default function ChatroomPage() {
         },
         async (payload) => {
           console.log("Realtime: Chatroom update received:", payload);
-          const oldAdminId = payload.old?.admin_id;
-          const newAdminId = payload.new?.admin_id;
-    
-          if (newAdminId && oldAdminId !== newAdminId) {
-            // Get new admin user data
-            const { data: adminData } = await supabase
-              .from("user")
-              .select("first_name, email")
-              .eq("id", newAdminId)
-              .single();
-            
-            const adminName = adminData?.first_name || adminData?.email?.split('@')[0] || 'Someone';
-            notify({
-              type: "info",
-              title: "New Admin Assigned",
-              message: `${adminName} is now the admin.`,
-              duration: 5000,
-              dismissible: true,
-            });
-          }
-    
-          const oldStatus = payload.old?.state;
-          const newStatus = payload.new?.state;
-    
-          if (newStatus === "ordered" && newStatus !== oldStatus) {
-            notify({
-              type: "success",
-              title: "Order Placed",
-              message: "Your order has been paid successfully!",
-              duration: 5000,
-              dismissible: true,
-            });
-            console.log("Realtime: Chatroom marked as ordered.");
-          } else if (newStatus === "resolved" && newStatus !== oldStatus) {
-            notify({
-              type: "success",
-              title: "Order Delivered",
-              message: "Your order has been delivered successfully!",
-              duration: 5000,
-              dismissible: true,
-            });
-          }
           refreshChatroom();
         }
       )
