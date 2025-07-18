@@ -286,10 +286,10 @@ export default function BasketCreationPage() {
     const currentAmount = calculateTotalAmount();
 
     return (
-        <div className="min-h-screen bg-shelivery-background-gray">
+        <div className="min-h-screen bg-[#245B7B] relative flex justify-center">
             
 
-            <div className="pt-20 pb-6 px-4 max-w-2xl mx-auto">
+            <div className="w-[calc(100vw-25px)] md:w-[375px] bg-white rounded-t-[30px] min-h-screen px-3 py-[18px] pb-[90px] md:mx-[10px]">
                 {/* Header */}
                 <div className="mb-6">
                     <button

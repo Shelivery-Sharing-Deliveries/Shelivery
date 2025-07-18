@@ -138,8 +138,8 @@ export default function ShopsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-shelivery-background-gray">
-      <div className="pt-20 pb-24 px-4 w-[calc(100vw-25px)] md:max-w-2xl mx-auto">
+    <div className="min-h-screen bg-[#245B7B] relative flex justify-center">
+      <div className="w-[calc(100vw-25px)] md:w-[375px] bg-white rounded-t-[30px] min-h-screen px-3 py-[18px] pb-[90px] md:mx-[10px]">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-shelivery-text-primary mb-2">
