@@ -57,21 +57,18 @@ export default function DashboardPage() {
 
     // Fetch user profile and baskets
     useEffect(() => {
-        // Only proceed if user is loaded and not null, meaning AuthGuard has done its job
-        if (!authLoading && user) {
-            async function fetchData() {
-                setLoadingBaskets(true);
-                setError(null);
+        const fetchData = async () => {
+            if (!user) return;
+            
+            setLoadingBaskets(true);
+            setError(null);
 
-                // We can now directly use the `user` object from `useAuth`
-                const currentUser = user;
-
-                // Fetch user profile data
-                const { data: userData, error: userError } = await supabase
-                    .from("user")
-                    .select("first_name, image")
-                    .eq("id", currentUser.id)
-                    .single();
+            // Fetch user profile data
+            const { data: userData, error: userError } = await supabase
+                .from("user")
+                .select("first_name, image")
+                .eq("id", user.id)
+                .single();
 
                 if (userError) {
                     console.error("Error fetching user profile:", userError);
@@ -84,22 +81,22 @@ export default function DashboardPage() {
                     });
                 }
 
-                // Fetch baskets for the current user, joining with the 'shop' table
-                try {
-                    const { data: basketsData, error: basketsError } = await supabase
-                        .from("basket")
-                        .select(`
-                            id,
-                            amount,
-                            status,
-                            chatroom_id,
-                            shop (
-                                name,
-                                logo_url
-                            )
-                        `)
-                        .eq("user_id", currentUser.id)
-                        .order("created_at", { ascending: false });
+            // Fetch baskets for the current user, joining with the 'shop' table
+            try {
+                const { data: basketsData, error: basketsError } = await supabase
+                    .from("basket")
+                    .select(`
+                        id,
+                        amount,
+                        status,
+                        chatroom_id,
+                        shop (
+                            name,
+                            logo_url
+                        )
+                    `)
+                    .eq("user_id", user.id)
+                    .order("created_at", { ascending: false });
 
                     if (basketsError) {
                         throw basketsError;
@@ -120,11 +117,13 @@ export default function DashboardPage() {
                 } catch (err: any) {
                     console.error("Error fetching baskets:", err);
                     setError(err.message || "Failed to load baskets.");
-                } finally {
-                    setLoadingBaskets(false);
-                }
+            } finally {
+                setLoadingBaskets(false);
             }
+        };
 
+        // Only proceed if user is loaded and not null, meaning AuthGuard has done its job
+        if (!authLoading && user) {
             fetchData();
         }
     }, [user, authLoading]); // Depend on 'user' and 'authLoading' from useAuth
@@ -152,8 +151,8 @@ export default function DashboardPage() {
 
     return (
         <div className="min-h-screen bg-[#245B7B] relative flex justify-center">
-            {/* Main Content Container - 375px width */}
-            <div className="w-[375px] bg-white rounded-t-[30px] min-h-screen px-3 py-[18px] pb-[90px] mx-[10px]">
+            {/* Main Content Container - Responsive width */}
+            <div className="w-[calc(100vw-25px)] md:w-[375px] bg-white rounded-t-[30px] min-h-screen px-3 py-[18px] pb-[90px] md:mx-[10px]">
                 {/* Header */}
                 <div className="flex justify-between mb-[19px]">
                     <h1 className="text-[16px] font-bold leading-8 text-black">

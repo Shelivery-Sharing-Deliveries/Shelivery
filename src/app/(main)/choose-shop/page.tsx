@@ -74,8 +74,8 @@ export default function ChooseShopPage() {
 
   return (
     <div className="min-h-screen bg-[#245B7B] relative flex justify-center">
-      {/* Main Content Container - 375px width */}
-      <div className="w-[375px] bg-white rounded-t-[30px] min-h-screen mx-[10px] relative">
+      {/* Main Content Container - Responsive width */}
+      <div className="w-[calc(100vw-25px)] md:w-[375px] bg-white rounded-t-[30px] min-h-screen md:mx-[10px] relative">
         {/* Header */}
         <Header />
 
@@ -97,10 +97,7 @@ export default function ChooseShopPage() {
 
         {/* Bottom Button - Only show when a shop is selected */}
         {selectedShopId && (
-          <div
-            className="fixed bottom-[90px] left-1/2 transform -translate-x-1/2 w-[321px] z-10"
-            style={{ marginLeft: "10px" }} // Account for the 10px margin of the main container
-          >
+          <div className="fixed bottom-[90px] left-1/2 transform -translate-x-1/2 w-[calc(100vw-45px)] md:w-[321px] z-10 md:ml-[10px]">
             <Button
               onClick={handleNext}
               className="w-full h-[56px] bg-[#FFDB0D] text-black font-semibold text-[18px] rounded-[16px] hover:bg-[#FFDB0D]/90 transition-all duration-200"

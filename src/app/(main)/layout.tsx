@@ -12,8 +12,7 @@ export default function MainLayout({
     <AuthGuard>
       <NotificationProvider>
         {children}
-    </NotificationProvider>
-  </AuthGuard>
-
+      </NotificationProvider>
+    </AuthGuard>
   );
 }

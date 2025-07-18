@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next/types";
 import { Inter } from "next/font/google";
 import "@/styles/globals.css";
+import { Navigation } from "@/components/ui/Navigation";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -92,6 +93,7 @@ export default function RootLayout({
         <div className="relative flex min-h-screen flex-col">
           <div className="flex-1">{children}</div>
         </div>
+        
       </body>
     </html>
   );
