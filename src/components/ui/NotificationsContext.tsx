@@ -118,7 +118,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         },
         (payload) => {
           const notif = payload.new;
-
+          setTimeout(() => {
           notify({
             id: notif.id,
             type: notif.type || "info",
@@ -127,6 +127,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             dismissible: true,
             duration: 5000,
           });
+          }, 0);
+          //console.log("New notification received:", notif);
         }
       )
       .subscribe();
