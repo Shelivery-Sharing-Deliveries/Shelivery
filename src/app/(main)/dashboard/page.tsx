@@ -1,3 +1,4 @@
+// app/dashboard/page.tsx
 "use client";
 
 import { Navigation, Button } from "@/components/ui";
@@ -7,9 +8,9 @@ import Baskets from "@/components/dashboard/Baskets";
 import Banner from "@/components/dashboard/Banner";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-// REMOVED: User as SupabaseUser import, as we primarily rely on `useAuth` user object or infer from context
 import { useEffect, useState } from "react";
-import { useAuth } from "@/hooks/useAuth"; // Import useAuth to get the user directly
+import { useAuth } from "@/hooks/useAuth";
+import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/solid'; // Import icons for collapsible section
 
 // Define the interface for the Shop data as it exists in the 'shop' table
 interface ShopData {
@@ -43,17 +44,20 @@ interface DisplayBasket {
     shopName: string;
     shopLogo: string | null;
     total: string;
-    status: 'in_pool' | 'in_chat' | 'resolved';
+    status: 'in_pool' | 'in_chat' | 'resolved'; // Ensure status is part of DisplayBasket
+    chatroomId?: string; // Add chatroomId as optional for navigation
 }
 
 export default function DashboardPage() {
     const [userProfile, setUserProfile] = useState<{ userName: string; userAvatar: string } | null>(null);
-    const [baskets, setBaskets] = useState<DisplayBasket[]>([]);
-    const [loadingBaskets, setLoadingBaskets] = useState(true); // For loading *baskets* specifically
+    const [activeBaskets, setActiveBaskets] = useState<DisplayBasket[]>([]); // New state for active baskets
+    const [resolvedBaskets, setResolvedBaskets] = useState<DisplayBasket[]>([]); // New state for resolved baskets
+    const [loadingBaskets, setLoadingBaskets] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [showOldOrders, setShowOldOrders] = useState(false); // State to manage collapsible section
 
     const router = useRouter();
-    const { user, loading: authLoading } = useAuth(); // Get user and auth loading state from your hook
+    const { user, loading: authLoading } = useAuth();
 
     // Fetch user profile and baskets
     useEffect(() => {
@@ -63,12 +67,11 @@ export default function DashboardPage() {
                 setLoadingBaskets(true);
                 setError(null);
 
-                // We can now directly use the `user` object from `useAuth`
                 const currentUser = user;
 
                 // Fetch user profile data
                 const { data: userData, error: userError } = await supabase
-                    .from("user")
+                    .from("user") // Assuming 'user' is your custom profile table
                     .select("first_name, image")
                     .eq("id", currentUser.id)
                     .single();
@@ -106,16 +109,22 @@ export default function DashboardPage() {
                     }
 
                     if (basketsData) {
-                        // Add chatroom_id and status to DisplayBasket
-                        const mappedBaskets: (DisplayBasket & { chatroomId?: string; status: 'in_pool' | 'in_chat' | 'resolved' })[] = basketsData.map((basket: any) => ({
+                        // Map the fetched data to DisplayBasket interface
+                        const mappedBaskets: DisplayBasket[] = basketsData.map((basket: any) => ({
                             id: basket.id,
                             shopName: basket.shop?.name || "Unknown Shop",
                             shopLogo: basket.shop?.logo_url || null,
                             total: basket.amount ? `CHF ${basket.amount.toFixed(2)}` : "CHF 0.00",
                             status: basket.status,
-                            chatroomId: basket.chatroom_id || undefined,
+                            chatroomId: basket.chatroom_id || undefined, // Ensure chatroomId is included
                         }));
-                        setBaskets(mappedBaskets);
+
+                        // Filter into active and resolved baskets
+                        const active = mappedBaskets.filter(b => b.status === 'in_pool' || b.status === 'in_chat');
+                        const resolved = mappedBaskets.filter(b => b.status === 'resolved');
+
+                        setActiveBaskets(active);
+                        setResolvedBaskets(resolved);
                     }
                 } catch (err: any) {
                     console.error("Error fetching baskets:", err);
@@ -137,17 +146,27 @@ export default function DashboardPage() {
         router.push("/invite-friend");
     };
 
-    // Find the basket by id to determine its status and chatroomId
+    // MODIFIED: handleBasketClick function
     const handleBasketClick = (basketId: string) => {
-        const basket = baskets.find(b => b.id === basketId);
-        if (!basket) return;
-
-        if (basket.status === "in_chat" && (basket as any).chatroomId) {
-            router.push(`/chatrooms/${(basket as any).chatroomId}`);
-        } else if (basket.status === "in_pool") {
-            router.push(`/pool/${basketId}`);
+        // Search in both active and resolved baskets
+        const basket = [...activeBaskets, ...resolvedBaskets].find(b => b.id === basketId);
+        if (!basket) {
+            console.warn(`Basket with ID ${basketId} not found.`);
+            return;
         }
-        // Optionally handle 'resolved' or other statuses if needed
+
+        console.log(`Basket clicked: ${basket.id}, Status: ${basket.status}, Chatroom ID: ${basket.chatroomId}`);
+
+        if (basket.status === "in_chat" && basket.chatroomId) {
+            router.push(`/chatrooms/${basket.chatroomId}`);
+        } else if (basket.status === "in_pool") {
+            router.push(`/pool/${basket.id}`);
+        } else if (basket.status === "resolved" && basket.chatroomId) { // <-- NEW CONDITION HERE
+            // If the basket is resolved and has a chatroom ID, navigate to the chatroom
+            router.push(`/chatrooms/${basket.chatroomId}`);
+        }
+        // For resolved baskets without a chatroomId (e.g., if it was a direct order,
+        // though your current setup implies all have chatrooms), no navigation would occur.
     };
 
     return (
@@ -166,7 +185,6 @@ export default function DashboardPage() {
 
                 {/* Dashboard Components */}
                 <div className="px-0">
-                    {/* Only show loading for *baskets* if AuthGuard has confirmed the user */}
                     {authLoading || !user ? (
                         <div className="flex items-center justify-center py-8">
                             <div className="w-8 h-8 border-4 border-[#FFDB0D] border-t-transparent rounded-full animate-spin mr-2" />
@@ -191,14 +209,42 @@ export default function DashboardPage() {
                                         Retry
                                     </Button>
                                 </div>
-                            ) : baskets.length === 0 ? (
-                                <div className="text-center py-8 text-gray-500">
-                                    <p>You have no active baskets.</p>
-                                </div>
                             ) : (
-                                <Baskets baskets={baskets} onBasketClick={handleBasketClick} />
+                                <>
+                                    {activeBaskets.length === 0 ? (
+                                        <div className="text-center py-8 text-gray-500">
+                                            <p>You have no active baskets.</p>
+                                        </div>
+                                    ) : (
+                                        <Baskets baskets={activeBaskets} onBasketClick={handleBasketClick} />
+                                    )}
+                                    <Banner />
+
+                                    {/* --- NEW SECTION: Old Orders (Collapsible) --- */}
+                                    {resolvedBaskets.length > 0 && (
+                                        <div className="mt-6 border-t border-gray-200 pt-4">
+                                            <button
+                                                className="w-full flex justify-between items-center px-4 py-2 bg-gray-100 rounded-md text-gray-700 font-semibold text-left"
+                                                onClick={() => setShowOldOrders(!showOldOrders)}
+                                            >
+                                                <span>Old Orders ({resolvedBaskets.length})</span>
+                                                {showOldOrders ? (
+                                                    <ChevronUpIcon className="h-5 w-5 text-gray-500" />
+                                                ) : (
+                                                    <ChevronDownIcon className="h-5 w-5 text-gray-500" />
+                                                )}
+                                            </button>
+                                            {showOldOrders && (
+                                                <div className="mt-4">
+                                                    {/* Re-using Baskets component for resolved baskets */}
+                                                    <Baskets baskets={resolvedBaskets} onBasketClick={handleBasketClick} />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    {/* --- END NEW SECTION --- */}
+                                </>
                             )}
-                            <Banner />
                         </>
                     )}
                 </div>
