@@ -272,7 +272,7 @@ export default function PoolPage({ params }: PoolPageProps) {
         try {
             const { data, error: supabaseError } = await supabase
                 .from('basket')
-                .update({ is_ready: newIsReadyState })
+                .update({ is_ready: newIsReadyState,updated_at: new Date().toISOString() })
                 .eq('id', basketIdToUpdate)
                 .select('id, status, chatroom_id') // Select status and chatroom_id to check for immediate redirect
                 .single();
