@@ -227,7 +227,7 @@ export default function DashboardPage() {
                                                 className="w-full flex justify-between items-center px-4 py-2 bg-gray-100 rounded-md text-gray-700 font-semibold text-left"
                                                 onClick={() => setShowOldOrders(!showOldOrders)}
                                             >
-                                                <span>Old Orders ({resolvedBaskets.length})</span>
+                                                <span>Archive ({resolvedBaskets.length})</span>
                                                 {showOldOrders ? (
                                                     <ChevronUpIcon className="h-5 w-5 text-gray-500" />
                                                 ) : (
