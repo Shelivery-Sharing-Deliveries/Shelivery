@@ -8,14 +8,17 @@ import {
   useCallback,
   useEffect,
 } from "react";
-import { NotificationBanner } from "@/components/chatroom/NotificationBanner"; // Adjust path as needed
+import { NotificationBanner } from "@/components/ui/NotificationBanner";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useAuth } from "@/hooks/useAuth"; // adjust path
 
 interface NotificationConfig {
+  id?: string;
   type: "info" | "warning" | "success" | "timer";
   title: string;
   message: string;
   dismissible?: boolean;
-  duration?: number; // optional auto-dismiss duration in ms
+  duration?: number;
   action?: {
     label: string;
     onClick: () => void;
@@ -31,41 +34,117 @@ export function useNotify() {
 }
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
-  const [notification, setNotification] = useState<NotificationConfig | null>(null);
+  const [queue, setQueue] = useState<NotificationConfig[]>([]);
+  const supabase = createClientComponentClient();
+  const { user, loading: authLoading } = useAuth();
 
   const notify = useCallback((config: NotificationConfig) => {
-    setNotification(config);
+    setQueue((prev) => [...prev, config]);
   }, []);
 
   const dismiss = useCallback(() => {
-    setNotification(null);
+    setQueue((prev) => prev.slice(1));
   }, []);
 
+  const current = queue[0];
+
+  // Mark as read after showing
   useEffect(() => {
-    if (!notification) return;
+    if (current?.id) {
+      supabase
+        .from("notifications")
+        .update({ read: true })
+        .eq("id", current.id)
+        .then();
+    }
+  }, [current?.id, supabase]);
 
-    // If dismissible is false, don't auto-dismiss
-    if (notification.dismissible === false) return;
+  // Auto-dismiss after duration
+  useEffect(() => {
+    if (!current) return;
+    if (current.dismissible === false) return;
 
-    // Use custom duration or default to 3000 ms
-    const duration = notification.duration ?? 3000;
+    const duration = current.duration ?? 3000;
 
     const timer = setTimeout(() => {
-      setNotification(null);
+      dismiss();
     }, duration);
 
     return () => clearTimeout(timer);
-  }, [notification]);
+  }, [current, dismiss]);
+
+  // Fetch unread notifications on load
+  useEffect(() => {
+    if (authLoading || !user?.id) return;
+
+    const fetchNotifications = async () => {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("read", false)
+        .order("created_at", { ascending: false });
+
+      if (data) {
+        const mapped = data.map((notif) => ({
+          id: notif.id,
+          type: notif.type || "info",
+          title: notif.title,
+          message: notif.message,
+          dismissible: true,
+          duration: 5000,
+        }));
+
+        setQueue((prev) => [...prev, ...mapped]);
+      }
+    };
+
+    fetchNotifications();
+  }, [user?.id, authLoading, supabase]);
+
+  // Real-time subscription for new notifications
+  useEffect(() => {
+    if (authLoading || !user?.id) return;
+
+    const channel = supabase
+      .channel(`notifications:user:${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const notif = payload.new;
+
+          notify({
+            id: notif.id,
+            type: notif.type || "info",
+            title: notif.title,
+            message: notif.message,
+            dismissible: true,
+            duration: 5000,
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, authLoading, notify, supabase]);
 
   return (
     <NotificationContext.Provider value={notify}>
       {children}
-      {notification && (
+      {current && (
         <div className="fixed top-4 inset-x-0 z-50 flex justify-center">
           <div className="w-full max-w-md">
             <NotificationBanner
-              {...notification}
-              onDismiss={notification.dismissible !== false ? dismiss : undefined}
+              {...current}
+              onDismiss={current.dismissible !== false ? dismiss : undefined}
             />
           </div>
         </div>
