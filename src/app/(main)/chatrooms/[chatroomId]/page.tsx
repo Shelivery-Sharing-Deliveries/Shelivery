@@ -347,7 +347,14 @@ export default function ChatroomPage() {
         console.log("loadChatroomData: Fetching messages...");
         const { data: messagesData, error: messagesError } = await supabase
           .from("message")
-          .select("*")
+          .select(`
+            *,
+            user:user_id (
+              id,
+              email,
+              image
+            )
+          `)
           .eq("chatroom_id", chatroomId)
           .order("sent_at", { ascending: true });
 

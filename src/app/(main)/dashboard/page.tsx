@@ -213,7 +213,14 @@ export default function DashboardPage() {
                                 <>
                                     {activeBaskets.length === 0 ? (
                                         <div className="text-center py-8 text-gray-500">
-                                            <p>You have no active baskets.</p>
+                                            <img
+                                                src="/graphics/empty-basket.svg"  // Replace with your actual image path
+                                                alt="No active baskets"
+                                                className="mx-auto w-40 h-40"  // Adjust sizing as needed
+                                            />
+                                            
+                                            <p className="mt-4 text-lg font-semibold">No active baskets</p>
+                                            <p>Create a basket and have shared shopping experience!</p>
                                         </div>
                                     ) : (
                                         <Baskets baskets={activeBaskets} onBasketClick={handleBasketClick} />

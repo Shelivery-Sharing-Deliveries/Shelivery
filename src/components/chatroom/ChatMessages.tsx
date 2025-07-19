@@ -170,12 +170,8 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
                       }`}
                     >
                       <Avatar
-                        src={message.user?.profile?.avatar_url}
-                        name={
-                          message.user?.profile?.display_name ||
-                          message.user?.email ||
-                          "Unknown"
-                        }
+                        src={message.user?.image}
+                        name={message.user?.email?.split('@')[0] || "Unknown"}
                         size="sm"
                       />
                     </div>
@@ -192,7 +188,7 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
                           }`}
                         >
                           <span className="font-medium text-gray-900 text-sm">
-                            {message.user?.profile?.display_name ||
+                            {message.user?.profile?.image ||
                               message.user?.email?.split("@")[0] ||
                               "Unknown"}
                           </span>
