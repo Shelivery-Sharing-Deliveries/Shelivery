@@ -7,7 +7,7 @@ interface BannerProps {
   className?: string;
 }
 
-type Banner = Tables<"banners">;
+type Banner = Tables<"banner">;
 
 export default function Banner({ className = "" }: BannerProps) {
   const [banners, setBanners] = useState<Banner[]>([]);
@@ -41,20 +41,22 @@ export default function Banner({ className = "" }: BannerProps) {
       {banners.length === 0 ? (
         <p className="text-center text-gray-500">No new banners</p>
       ) : (
-        banners.map((banner) => (
-          <div
-            key={banner.id}
-            className="w-full h-[172px] rounded-[20px] relative overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: "#f3f3f3" }}
-          >
-            <Image
-              src={banner.image}
-              alt={`Banner ${banner.id}`}
-              fill
-              className="object-cover"
-            />
-          </div>
-        ))
+        banners
+          .filter((banner) => banner.image) // Filter out banners without images
+          .map((banner) => (
+            <div
+              key={banner.id}
+              className="w-full h-[172px] rounded-[20px] relative overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: "#f3f3f3" }}
+            >
+              <Image
+                src={banner.image!} // Safe to use ! since we filtered out null values
+                alt={`Banner ${banner.id}`}
+                fill
+                className="object-cover"
+              />
+            </div>
+          ))
       )}
     </div>
   );
