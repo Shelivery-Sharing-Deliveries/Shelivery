@@ -320,7 +320,7 @@ export default function PoolPage({ params }: PoolPageProps) {
 
         const editUrl = `/shops/${poolData.shop_id}/basket?basketId=${params.basketId}`;
         console.log("NAVIGATE: Navigating to edit URL:", editUrl);
-        router.push(editUrl);
+        router.push(editUrl as any);
     };
 
     // --- handleDelete for removing a basket entry ---
