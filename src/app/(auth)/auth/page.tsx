@@ -1,6 +1,6 @@
 "use client";
 import { supabase } from "@/lib/supabase";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   LoginForm,
@@ -21,7 +21,7 @@ type AuthStep =
   | "register"
   | "awaitingEmailConfirmation";
 
-export default function AuthPage() {
+function AuthPageContent() {
   const [step, setStep] = useState<AuthStep>("login");
   const [email, setEmail] = useState("");
   const [inviteCode, setInviteCode] = useState("");
@@ -305,5 +305,20 @@ export default function AuthPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-[#FFDB0D] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-[#A4A7AE]">Loading...</p>
+        </div>
+      </div>
+    }>
+      <AuthPageContent />
+    </Suspense>
   );
 }
