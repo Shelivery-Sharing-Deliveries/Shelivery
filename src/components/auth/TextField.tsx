@@ -10,6 +10,7 @@ interface TextFieldProps {
   type?: "text" | "email" | "password";
   required?: boolean;
   className?: string;
+  autoComplete?: string;
 }
 
 const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
