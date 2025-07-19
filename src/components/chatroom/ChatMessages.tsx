@@ -99,7 +99,7 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
     if (!messages || messages.length === 0) return grouped;
 
     messages.forEach((message) => {
-      const date = new Date(message.sent_at);
+      const date = new Date(message.sent_at || new Date());
       let dayKey: string;
 
       if (isToday(date)) {
@@ -188,12 +188,12 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
                           }`}
                         >
                           <span className="font-medium text-gray-900 text-sm">
-                            {message.user?.profile?.image ||
+                            {message.user?.first_name || 
                               message.user?.email?.split("@")[0] ||
                               "Unknown"}
                           </span>
                           <span className="text-xs text-gray-500">
-                            {formatMessageTime(message.sent_at)}
+                            {formatMessageTime(message.sent_at || new Date().toISOString())}
                           </span>
                         </div>
                       )}
@@ -240,7 +240,7 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
                             isOwnMessage ? "text-right" : ""
                           }`}
                         >
-                          {formatMessageTime(message.sent_at)}
+                          {formatMessageTime(message.sent_at || new Date().toISOString())}
                         </div>
                       )}
                     </div>
