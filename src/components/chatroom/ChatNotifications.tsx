@@ -24,6 +24,7 @@ export function ChatNotifications({
   isAdmin,
 }: ChatNotificationsProps) {
   const getTimeLeft = () => {
+    if (!chatroom.created_at) return 0;
     const createdAt = new Date(chatroom.created_at);
     const now = new Date();
     const hoursPassed =
