@@ -57,7 +57,7 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
     // Effect to redirect if not authenticated or if user ID doesn't match
     useEffect(() => {
         if (!authLoading && !user) {
-            router.push("/login"); // Redirect to login if not authenticated
+            router.push('/auth'); // Redirect to auth if not authenticated
         } else if (!authLoading && user && currentUrlUserId && user.id !== currentUrlUserId) {
             // If authenticated user ID doesn't match URL ID, redirect to their own profile-set
             router.push(`/profile-set/${user.id}`);

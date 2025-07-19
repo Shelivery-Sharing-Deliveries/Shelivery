@@ -97,7 +97,9 @@ export default function ProfileEditPage() {
                     firstName: data.first_name || "",
                     lastName: data.last_name || "",
                     favoriteStore: data.favorite_store || "",
-                    dormitory: (data.dormitory as { name: string } | null)?.name || "", // Correctly access nested name
+                    dormitory: Array.isArray(data.dormitory) 
+                        ? data.dormitory[0]?.name || "" 
+                        : (data.dormitory as { name: string } | null)?.name || "",
                     email: data.email || user.email || "", // Prefer DB email, fallback to auth email
                 });
 
