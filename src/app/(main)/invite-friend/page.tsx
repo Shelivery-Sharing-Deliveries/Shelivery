@@ -54,7 +54,7 @@ export default function InviteFriendPage() {
         ) : (
           <>
             <div className="flex flex-col items-center gap-4 w-full">
-              <InviteCard inviteCode={inviteCode || ""} />
+              <InviteCard />
             </div>
 
             <div className="w-full">
