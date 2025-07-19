@@ -1,6 +1,5 @@
 // invites.ts
 import { supabase } from "./supabase";
-import { nanoid } from "nanoid"; // nanoid is no longer strictly needed for generation, but kept for potential other uses
 import { Database } from '@/lib/database.types'
 
 type InvitationRow = Database['public']['Tables']['invitation']['Row'];
