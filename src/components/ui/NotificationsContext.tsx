@@ -146,7 +146,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           <div className="w-full max-w-md">
             <NotificationBanner
               {...current}
-              onDismiss={current.dismissible !== false ? dismiss : undefined}
+              {...(current.dismissible !== false && { onDismiss: dismiss })}
             />
           </div>
         </div>
