@@ -56,14 +56,15 @@ export default function ChatroomsPage() {
           .eq("id", user.id)
           .single();
 
-        if (userError || !userData?.dormitory?.name) {
+        if (userError || !userData?.dormitory?.[0]?.name) {
           // If there's an error or dormitory name is not found
           console.error("Error fetching user's dormitory:", userError);
           throw new Error(
             "Could not retrieve user's dormitory information. Please ensure your profile is complete."
           );
         }
-        const dormitoryName = (userData.dormitory as { name: string }).name;
+        const dormitoryName = (userData.dormitory?.[0] as { name: string })
+          .name;
 
         // 2. Find all baskets associated with the current user
         const { data: userBaskets, error: basketsError } = await supabase
@@ -76,12 +77,12 @@ export default function ChatroomsPage() {
         }
 
         // Extract unique chatroom_ids and shop_ids
-        const uniqueChatroomIds = [
-          ...new Set(userBaskets.map((b) => b.chatroom_id).filter(Boolean)),
-        ] as string[];
-        const uniqueShopIds = [
-          ...new Set(userBaskets.map((b) => b.shop_id).filter(Boolean)),
-        ] as string[];
+        const uniqueChatroomIds = Array.from(
+          new Set(userBaskets.map((b) => b.chatroom_id).filter(Boolean))
+        ) as string[];
+        const uniqueShopIds = Array.from(
+          new Set(userBaskets.map((b) => b.shop_id).filter(Boolean))
+        ) as string[];
 
         if (uniqueChatroomIds.length === 0) {
           setChatrooms([]);
