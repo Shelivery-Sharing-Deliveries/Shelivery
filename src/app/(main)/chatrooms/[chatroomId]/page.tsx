@@ -1,26 +1,34 @@
 "use client";
-
+import { useNotify } from "@/components/ui/NotificationsContext";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { useChatroomActions } from "@/hooks/useChatroomActions";
 import { SimpleChatHeader } from "@/components/chatroom/SimpleChatHeader";
 import { ChatMessages } from "@/components/chatroom/ChatMessages";
-import { MessageInput } from "@/components/chatroom/MessageInput";
-import { SimpleOrderStatusCard } from "@/components/chatroom/SimpleOrderStatusCard";
-import { ChatMembersList } from "@/components/chatroom/ChatMembersList";
-import { NotificationBanner } from "@/components/chatroom/NotificationBanner";
+import { ChatInput } from "@/components/chatroom/ChatInput";
+import { OrderDetailsView } from "@/components/chatroom/OrderDetailsView";
+import {
+  NotificationBanner,
+  OrderDeliveredBanner,
+  TimeRunningOutBanner,
+  OrderPlacedBanner,
+  NewMemberBanner,
+  AdminAssignedBanner,
+} from "@/components/chatroom/NotificationBanner";
 import { TimeExtensionModal } from "@/components/chatroom/TimeExtensionModal";
-import { Button } from "@/components/ui/Button";
+import LoadingBall from "@/components/ui/LoadingBall";
 
 interface Chatroom {
   id: string;
   pool_id: string;
   state: "waiting" | "active" | "ordered" | "resolved";
-  admin_id: string | null;
+  admin_id: string;
   last_amount: number;
   created_at: string;
   updated_at: string;
+  expire_at: string;
   pool: {
     id: string;
     shop_id: number;
@@ -75,6 +83,7 @@ interface MessageType {
   chatroom_id: string;
   user_id: string;
   content: string;
+  type: "text" | "image" | "audio";
   sent_at: string;
   read_at: string | null;
   user: User;
@@ -97,6 +106,67 @@ export default function ChatroomPage() {
   const [loading, setLoading] = useState(true);
   const [showTimeExtension, setShowTimeExtension] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<"chat" | "orderDetails">(
+    "chat"
+  );
+  const [orderPlaced, setOrderPlaced] = useState(false);
+  const [orderDelivered, setOrderDelivered] = useState(false);
+  const [timeRunningOut, setTimeRunningOut] = useState(false);
+  const [newMemberJoined, setNewMemberJoined] = useState(false);
+  const [adminAssigned, setAdminAssigned] = useState(false);
+
+  // Define refreshChatroom function before using it in the hook
+  const refreshChatroom = async () => {
+    console.log("Realtime: Refreshing full chatroom data...");
+    const { data, error } = await supabase
+      .from("chatroom")
+      .select(
+        `
+            *,
+            pool:pool(
+              id,
+              shop_id,
+              dormitory_id,
+              current_amount,
+              min_amount,
+              created_at,
+              shop:shop(id, name, min_amount, created_at),
+              dormitory:dormitory(id, name)
+            )
+          `
+      )
+      .eq("id", chatroomId)
+      .single();
+
+    if (error) {
+      console.error("Realtime: Error refreshing chatroom data:", error);
+    } else {
+      setChatroom(data);
+      setIsAdmin(data.admin_id === user?.id);
+
+      console.log("Realtime: Chatroom data refreshed.");
+    }
+  };
+
+  // Initialize chatroom actions hook
+  const {
+    uploadFileToStorage,
+    sendMessage,
+    markAsOrdered,
+    markAsDelivered,
+    leaveGroup,
+    makeAdmin,
+    removeMember,
+  } = useChatroomActions({
+    chatroomId,
+    currentUser,
+    isAdmin,
+    chatroom,
+    refreshChatroom,
+    setNotification,
+    setMembers,
+  });
+  const notify = useNotify()
 
   // Get current user profile from database
   useEffect(() => {
@@ -277,7 +347,14 @@ export default function ChatroomPage() {
         console.log("loadChatroomData: Fetching messages...");
         const { data: messagesData, error: messagesError } = await supabase
           .from("message")
-          .select("*")
+          .select(`
+            *,
+            user:user_id (
+              id,
+              email,
+              image
+            )
+          `)
           .eq("chatroom_id", chatroomId)
           .order("sent_at", { ascending: true });
 
@@ -325,8 +402,12 @@ export default function ChatroomPage() {
                 email: "Unknown",
                 dormitory_id: null,
                 profile: {},
-                created_at: "",
-                updated_at: "",
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                first_name: null,
+                last_name: null,
+                favorite_store: null,
+                image: null,
               },
             })
           );
@@ -358,7 +439,7 @@ export default function ChatroomPage() {
 
   // Real-time subscriptions
   useEffect(() => {
-    if (!chatroomId || authLoading) {
+    if (!chatroomId || authLoading || !currentUser) {
       console.log(
         "Realtime: chatroomId not available for subscriptions or auth loading."
       );
@@ -382,6 +463,33 @@ export default function ChatroomPage() {
         },
         async (payload) => {
           console.log("Realtime: New message received:", payload.new);
+          
+          // Don't show notification for own messages
+          if (payload.new.user_id === currentUser?.id) {
+            // Get user data for the new message
+            const { data: userData, error: userDataError } = await supabase
+              .from("user")
+              .select("*")
+              .eq("id", payload.new.user_id)
+              .single();
+
+            if (!userDataError && userData) {
+              const newMessage: MessageType = {
+                id: payload.new.id,
+                chatroom_id: payload.new.chatroom_id,
+                user_id: payload.new.user_id,
+                content: payload.new.content,
+                type: payload.new.type || "text",
+                sent_at: payload.new.sent_at,
+                read_at: payload.new.read_at,
+                user: userData,
+              };
+              setMessages((prev) => [...prev, newMessage]);
+              console.log("Realtime: Messages updated with new message.");
+            }
+            return;
+          }
+
           // Get user data for the new message
           const { data: userData, error: userDataError } = await supabase
             .from("user")
@@ -403,6 +511,7 @@ export default function ChatroomPage() {
               chatroom_id: payload.new.chatroom_id,
               user_id: payload.new.user_id,
               content: payload.new.content,
+              type: payload.new.type || "text",
               sent_at: payload.new.sent_at,
               read_at: payload.new.read_at,
               user: userData,
@@ -414,7 +523,6 @@ export default function ChatroomPage() {
       )
       .subscribe();
 
-    // Subscribe to chatroom updates
     const chatroomSubscription = supabase
       .channel(`chatroom:${chatroomId}`)
       .on(
@@ -425,10 +533,52 @@ export default function ChatroomPage() {
           table: "chatroom",
           filter: `id=eq.${chatroomId}`,
         },
-        (payload) => {
-          console.log("Realtime: Chatroom update received:", payload.new);
-          setChatroom((prev) => (prev ? { ...prev, ...payload.new } : null));
-          console.log("Realtime: Chatroom state updated.");
+        async (payload) => {
+          console.log("Realtime: Chatroom update received:", payload);
+          refreshChatroom();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to chat membership changes (new members joining)
+    const membershipSubscription = supabase
+      .channel(`membership:${chatroomId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "chat_membership",
+          filter: `chatroom_id=eq.${chatroomId}`,
+        },
+        async (payload) => {
+          console.log("Realtime: New member joined:", payload.new);
+          
+          // Don't show notification for current user joining
+          if (payload.new.user_id === currentUser?.id) {
+            return;
+          }
+
+          // Get user data for the new member
+          const { data: userData } = await supabase
+            .from("user")
+            .select("first_name, email")
+            .eq("id", payload.new.user_id)
+            .single();
+
+          if (userData) {
+            const userName = userData.first_name || userData.email.split('@')[0] || 'Someone';
+            notify({
+              type: "info",
+              title: "New Member Joined",
+              message: `${userName} joined the chatroom.`,
+              duration: 4000,
+              dismissible: true,
+            });
+          }
+
+          // Refresh members list
+          refreshChatroom();
         }
       )
       .subscribe();
@@ -437,187 +587,18 @@ export default function ChatroomPage() {
       console.log("Realtime: Unsubscribing from real-time channels.");
       messagesSubscription.unsubscribe();
       chatroomSubscription.unsubscribe();
+      membershipSubscription.unsubscribe();
     };
-  }, [chatroomId, authLoading]); // Dependency ensures it re-runs if chatroomId changes or auth state changes.
-
-  const sendMessage = async (content: string) => {
-    if (!currentUser || !content.trim()) {
-      console.log("sendMessage: Cannot send message, user or content missing.");
-      return;
-    }
-    console.log("sendMessage: Attempting to send message...");
-    try {
-      const { error } = await supabase.from("message").insert({
-        chatroom_id: chatroomId,
-        user_id: currentUser.id,
-        content: content.trim(),
-      });
-      if (error) {
-        console.error("sendMessage: Error inserting message:", error);
-      } else {
-        console.log(
-          "sendMessage: Message inserted successfully (realtime will update state)."
-        );
-      }
-    } catch (error) {
-      console.error("sendMessage: Caught error during message send:", error);
-    }
-  };
-
-  const markAsOrdered = async () => {
-    if (!isAdmin) {
-      console.warn("markAsOrdered: User is not admin, cannot mark as ordered.");
-      return;
-    }
-    console.log("markAsOrdered: Attempting to mark as ordered...");
-    try {
-      const { error } = await supabase
-        .from("chatroom")
-        .update({ state: "ordered" })
-        .eq("id", chatroomId);
-
-      if (error) {
-        console.error(
-          "markAsOrdered: Error updating chatroom state to ordered:",
-          error
-        );
-      } else {
-        setNotification("Order has been marked as placed!");
-        setTimeout(() => setNotification(null), 3000);
-        console.log("markAsOrdered: Chatroom state updated to 'ordered'.");
-      }
-    } catch (error) {
-      console.error(
-        "markAsOrdered: Caught error during mark as ordered:",
-        error
-      );
-    }
-  };
-
-  const markAsDelivered = async () => {
-    if (!isAdmin) {
-      console.warn(
-        "markAsDelivered: User is not admin, cannot mark as delivered."
-      );
-      return;
-    }
-    console.log("markAsDelivered: Attempting to mark as delivered...");
-    try {
-      const { error } = await supabase
-        .from("chatroom")
-        .update({ state: "resolved" })
-        .eq("id", chatroomId);
-
-      if (error) {
-        console.error(
-          "markAsDelivered: Error updating chatroom state to resolved:",
-          error
-        );
-      } else {
-        setNotification("Order has been marked as delivered!");
-        setTimeout(() => setNotification(null), 3000);
-        console.log("markAsDelivered: Chatroom state updated to 'resolved'.");
-      }
-    } catch (error) {
-      console.error(
-        "markAsDelivered: Caught error during mark as delivered:",
-        error
-      );
-    }
-  };
-
-  const leaveGroup = async () => {
-    if (!currentUser) {
-      console.warn("leaveGroup: No current user to leave group.");
-      return;
-    }
-    console.log("leaveGroup: Attempting to leave group...");
-    try {
-      const { error } = await supabase
-        .from("chat_membership")
-        .update({ left_at: new Date().toISOString() })
-        .eq("chatroom_id", chatroomId)
-        .eq("user_id", currentUser.id);
-
-      if (error) {
-        console.error(
-          "leaveGroup: Error updating chat membership to left:",
-          error
-        );
-      } else {
-        router.push("/dashboard");
-        console.log(
-          "leaveGroup: Successfully left group, redirecting to dashboard."
-        );
-      }
-    } catch (error) {
-      console.error("leaveGroup: Caught error during leave group:", error);
-    }
-  };
-
-  const makeAdmin = async (userId: string) => {
-    if (!isAdmin) {
-      console.warn(
-        "makeAdmin: Current user is not admin, cannot make another user admin."
-      );
-      return;
-    }
-    console.log("makeAdmin: Attempting to make user", userId, "admin.");
-    try {
-      const { error } = await supabase
-        .from("chatroom")
-        .update({ admin_id: userId })
-        .eq("id", chatroomId);
-
-      if (error) {
-        console.error("makeAdmin: Error updating chatroom admin_id:", error);
-      } else {
-        setNotification("Admin role transferred successfully!");
-        setTimeout(() => setNotification(null), 3000);
-        console.log("makeAdmin: Admin role transferred.");
-      }
-    } catch (error) {
-      console.error("makeAdmin: Caught error during make admin:", error);
-    }
-  };
-
-  const removeMember = async (userId: string) => {
-    if (!isAdmin || userId === currentUser?.id) {
-      console.warn(
-        "removeMember: Cannot remove member. Either not admin or trying to remove self."
-      );
-      return;
-    }
-    console.log("removeMember: Attempting to remove member:", userId);
-    try {
-      const { error } = await supabase
-        .from("chat_membership")
-        .update({ left_at: new Date().toISOString() })
-        .eq("chatroom_id", chatroomId)
-        .eq("user_id", userId);
-
-      if (error) {
-        console.error(
-          "removeMember: Error removing member from chat_memberships:",
-          error
-        );
-      } else {
-        setMembers((prev) => prev.filter((member) => member.id !== userId));
-        setNotification("Member removed from group");
-        setTimeout(() => setNotification(null), 3000);
-        console.log("removeMember: Member removed successfully.");
-      }
-    } catch (error) {
-      console.error("removeMember: Caught error during remove member:", error);
-    }
-  };
+  }, [chatroomId, authLoading, refreshChatroom, notify, currentUser]); // Added all dependencies
 
   // This is the point where the UI decides what to render based on the 'loading' state
   if (authLoading || loading) {
     console.log("Render: Displaying Loading state...");
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading chatroom...</div>
+        <div className="text-lg">
+          <LoadingBall size="large" color="shelivery-primary-yellow" />
+        </div>
       </div>
     );
   }
@@ -635,28 +616,115 @@ export default function ChatroomPage() {
   }
 
   console.log("Render: Displaying Chatroom content.");
+
+  // Show Order Details View
+  if (currentView === "orderDetails") {
+    return (
+      <>
+        <OrderDetailsView
+          chatroomName={`${chatroom.pool.shop.name} Basket Chatroom`}
+          onBack={() => setCurrentView("chat")}
+          state={chatroom.state}
+          poolTotal={chatroom.last_amount}
+          orderCount={members.length}
+          timeLeft={chatroom.expire_at}
+          isAdmin={isAdmin}
+          onMarkOrdered={markAsOrdered}
+          onMarkDelivered={markAsDelivered}
+          members={members}
+          currentUser={currentUser}
+          adminId={chatroom.admin_id || ""}
+          onMakeAdmin={makeAdmin}
+          onRemoveMember={removeMember}
+          onLeaveGroup={leaveGroup}
+          orderPlaced={orderPlaced}
+          orderDelivered={orderDelivered}
+          timeRunningOut={timeRunningOut}
+          newMemberJoined={newMemberJoined}
+          adminAssigned={adminAssigned}
+          onDismissOrderPlaced={() => setOrderPlaced(false)}
+          onDismissOrderDelivered={() => setOrderDelivered(false)}
+          onDismissTimeRunningOut={() => setTimeRunningOut(false)}
+          onDismissNewMember={() => setNewMemberJoined(false)}
+          onDismissAdminAssigned={() => setAdminAssigned(false)}
+          onExtendTime={() => {
+            /* your extend logic */
+          }}
+        />
+
+        {/* Time Extension Modal */}
+        {showTimeExtension && (
+          <TimeExtensionModal
+            isOpen={showTimeExtension}
+            timeLeft={{ hours: 2, minutes: 30 }}
+            onClose={() => setShowTimeExtension(false)}
+            onExtend={() => {
+              setShowTimeExtension(false);
+              setNotification("Time extended successfully!");
+              setTimeout(() => setNotification(null), 3000);
+            }}
+          />
+        )}
+      </>
+    );
+  }
+
+  // Show Chat View (default)
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="fixed inset-0 flex flex-col bg-white">
       {/* Header */}
-      <SimpleChatHeader
-        chatroomName={`${chatroom.pool.shop.name} Basket Chatroom`}
-        memberCount={members.length}
-        timeLeft="24h Left" // This is a static value, consider making it dynamic if needed
-        onBack={() => router.push("/dashboard")}
-      />
+      <div className="flex-shrink-0">
+        <SimpleChatHeader
+          chatroomName={`${chatroom.pool.shop.name} Basket Chatroom`}
+          memberCount={members.length}
+          timeLeft={chatroom.expire_at}
+          onBack={() => router.push("/dashboard")}
+          onMenuClick={() => setCurrentView("orderDetails")}
+          showMenuButton={true}
+        />
+      </div>
 
       {/* Notification Banner */}
       {notification && (
-        <NotificationBanner
-          title="Success"
-          message={notification}
-          type="success"
-          onDismiss={() => setNotification(null)}
+        <div className="flex-shrink-0">
+          <NotificationBanner
+            title="Success"
+            message={notification}
+            type="success"
+            onDismiss={() => setNotification(null)}
+          />
+        </div>
+      )}
+      {orderPlaced && (
+        <OrderPlacedBanner onDismiss={() => setOrderPlaced(false)} />
+      )}
+      {orderDelivered && (
+        <OrderDeliveredBanner onDismiss={() => setOrderDelivered(false)} />
+      )}
+      {timeRunningOut && (
+        <TimeRunningOutBanner
+          timeLeft="10 minutes"
+          onExtend={() => {
+            /* your extend logic */
+          }}
+          onDismiss={() => setTimeRunningOut(false)}
+        />
+      )}
+      {newMemberJoined && (
+        <NewMemberBanner
+          memberName="Alice"
+          onDismiss={() => setNewMemberJoined(false)}
+        />
+      )}
+      {adminAssigned && (
+        <AdminAssignedBanner
+          adminName="Bob"
+          onDismiss={() => setAdminAssigned(false)}
         />
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Chat Messages */}
         <div className="flex-1 overflow-y-auto">
           <ChatMessages
@@ -666,44 +734,12 @@ export default function ChatroomPage() {
         </div>
 
         {/* Message Input */}
-        <div className="border-t border-gray-200">
-          <MessageInput onSendMessage={sendMessage} />
-        </div>
-      </div>
-
-      {/* Order Status and Members */}
-      <div className="border-t border-gray-200 p-4 space-y-6">
-        {/* Order Status Card */}
-        <SimpleOrderStatusCard
-          state={chatroom.state}
-          poolTotal={chatroom.last_amount}
-          orderCount={members.length}
-          timeLeft="22h 20m" // This is a static value, consider making it dynamic if needed
-          isAdmin={isAdmin}
-          onMarkOrdered={markAsOrdered}
-          onMarkDelivered={markAsDelivered}
-        />
-
-        {/* Members List */}
-        <ChatMembersList
-          members={members}
-          currentUser={currentUser}
-          adminId={chatroom.admin_id || ""}
-          isCurrentUserAdmin={isAdmin}
-          onMakeAdmin={makeAdmin}
-          onRemoveMember={removeMember}
-        />
-
-        {/* Action Buttons */}
-        <div className="flex flex-col gap-2">
-          <Button
-            variant="error"
-            size="md"
-            onClick={leaveGroup}
-            className="w-full"
-          >
-            {chatroom.state === "resolved" ? "Leave Group" : "Leave Order"}
-          </Button>
+        <div className="flex-shrink-0">
+          <ChatInput
+            onSendMessage={sendMessage}
+            onUploadFile={uploadFileToStorage}
+            disabled={chatroom.state === "resolved"}
+          />
         </div>
       </div>
 

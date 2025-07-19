@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Tables } from "@/lib/supabase";
 import { Avatar } from "@/components/ui/Avatar";
+import { supabase } from "@/lib/supabase"; // Make sure this import is correct for your project
 
 interface ChatMessagesProps {
   messages: Array<
@@ -15,25 +16,50 @@ interface ChatMessagesProps {
 
 export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [signedUrls, setSignedUrls] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Helper function to check if date is today
+  // Generate signed URLs for all media messages
+  useEffect(() => {
+    const fetchSignedUrls = async () => {
+      const newUrls: { [key: string]: string } = {};
+      const mediaMessages = messages.filter(
+        (msg) => (msg.type === "image" || msg.type === "audio") && msg.content
+      );
+      await Promise.all(
+        mediaMessages.map(async (msg) => {
+          if (!signedUrls[msg.id]) {
+            const { data, error } = await supabase.storage
+              .from("chat-uploads")
+              .createSignedUrl(msg.content, 60 * 60);
+            if (data?.signedUrl) {
+              newUrls[msg.id] = data.signedUrl;
+            }
+          }
+        })
+      );
+      if (Object.keys(newUrls).length > 0) {
+        setSignedUrls((prev) => ({ ...prev, ...newUrls }));
+      }
+    };
+    fetchSignedUrls();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
+
   const isToday = (date: Date) => {
     const today = new Date();
     return date.toDateString() === today.toDateString();
   };
 
-  // Helper function to check if date is yesterday
   const isYesterday = (date: Date) => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     return date.toDateString() === yesterday.toDateString();
   };
 
-  // Helper function to format date
   const formatDate = (date: Date, pattern: string) => {
     if (pattern === "h:mm a") {
       return date.toLocaleTimeString([], {
@@ -59,7 +85,6 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
 
   const formatMessageTime = (timestamp: string) => {
     const date = new Date(timestamp);
-
     if (isToday(date)) {
       return formatDate(date, "h:mm a");
     } else if (isYesterday(date)) {
@@ -71,12 +96,9 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
 
   const groupMessagesByDay = () => {
     const grouped: { [key: string]: typeof messages } = {};
+    if (!messages || messages.length === 0) return grouped;
 
-    if (!messages || messages.length === 0) {
-      return grouped;
-    }
-
-    messages?.forEach((message) => {
+    messages.forEach((message) => {
       const date = new Date(message.sent_at);
       let dayKey: string;
 
@@ -122,14 +144,12 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
       <div className="px-4 py-6 space-y-6">
         {Object.entries(groupedMessages).map(([day, dayMessages]) => (
           <div key={day}>
-            {/* Day separator */}
             <div className="flex items-center justify-center mb-6">
               <div className="bg-gray-200 text-gray-600 px-3 py-1 rounded-full text-sm font-medium">
                 {day}
               </div>
             </div>
 
-            {/* Messages for this day */}
             <div className="space-y-4">
               {dayMessages?.map((message, index) => {
                 const isOwnMessage = message.user_id === currentUserId;
@@ -140,33 +160,35 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
                 return (
                   <div
                     key={message.id}
-                    className={`flex gap-3 ${isOwnMessage ? "flex-row-reverse" : ""}`}
+                    className={`flex gap-3 ${
+                      isOwnMessage ? "flex-row-reverse" : ""
+                    }`}
                   >
-                    {/* Avatar */}
                     <div
-                      className={`flex-shrink-0 ${showAvatar ? "" : "invisible"}`}
+                      className={`flex-shrink-0 ${
+                        showAvatar ? "" : "invisible"
+                      }`}
                     >
                       <Avatar
-                        src={message.user?.profile?.avatar_url}
-                        name={
-                          message.user?.profile?.display_name ||
-                          message.user?.email ||
-                          "Unknown"
-                        }
+                        src={message.user?.image}
+                        name={message.user?.email?.split('@')[0] || "Unknown"}
                         size="sm"
                       />
                     </div>
 
-                    {/* Message content */}
                     <div
-                      className={`flex-1 max-w-md ${isOwnMessage ? "text-right" : ""}`}
+                      className={`flex-1 max-w-md ${
+                        isOwnMessage ? "text-right" : ""
+                      }`}
                     >
                       {showAvatar && (
                         <div
-                          className={`flex items-center gap-2 mb-1 ${isOwnMessage ? "justify-end" : ""}`}
+                          className={`flex items-center gap-2 mb-1 ${
+                            isOwnMessage ? "justify-end" : ""
+                          }`}
                         >
                           <span className="font-medium text-gray-900 text-sm">
-                            {message.user?.profile?.display_name ||
+                            {message.user?.profile?.image ||
                               message.user?.email?.split("@")[0] ||
                               "Unknown"}
                           </span>
@@ -183,14 +205,40 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
                             : "bg-white text-gray-900 rounded-bl-lg border border-gray-200"
                         }`}
                       >
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                          {message.content}
-                        </p>
+                       {(message.type === "image" || message.type === "audio") ? (
+  signedUrls[message.id] ? (
+    message.type === "image" ? (
+      <img
+        src={signedUrls[message.id]}
+        alt="Sent image"
+        className="max-w-full h-auto rounded-xl"
+      />
+    ) : (
+      <audio
+        controls
+        src={signedUrls[message.id]}
+        className="w-full mt-2"
+      >
+        Your browser does not support the audio element.
+      </audio>
+    )
+  ) : (
+    <div className="w-full max-w-xs aspect-square bg-gray-200 animate-pulse rounded-xl"></div>
+  )
+) : (
+  <p className="text-sm leading-relaxed whitespace-pre-wrap">
+    {message.content}
+  </p>
+)}
+
+
                       </div>
 
                       {!showAvatar && (
                         <div
-                          className={`text-xs text-gray-500 mt-1 ${isOwnMessage ? "text-right" : ""}`}
+                          className={`text-xs text-gray-500 mt-1 ${
+                            isOwnMessage ? "text-right" : ""
+                          }`}
                         >
                           {formatMessageTime(message.sent_at)}
                         </div>

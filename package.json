@@ -16,6 +16,7 @@
     "generate-types": "supabase gen types typescript --local > src/types/database.types.ts"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^3.3.4",
     "@radix-ui/react-alert-dialog": "^1.0.5",
     "@radix-ui/react-avatar": "^1.0.4",

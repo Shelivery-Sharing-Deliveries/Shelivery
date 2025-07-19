@@ -1,38 +1,38 @@
-// lib/AuthGuard.tsx
-"use client"; // This component needs to run on the client side to use React hooks
+// hooks/AuthGuard.ts
+"use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth'; // Assuming useAuth is in this path
-import { supabase } from '@/lib/supabase'; // Import supabase client
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/lib/supabase';
 
 interface AuthGuardProps {
     children: React.ReactNode;
 }
 
 export default function AuthGuard({ children }: AuthGuardProps) {
-    const { user, loading: authLoading } = useAuth(); // Get user and auth loading state from your hook
+    const { user, loading: authLoading } = useAuth();
     const router = useRouter();
-    const [isCheckingDormitory, setIsCheckingDormitory] = useState(true); // State for dormitory check
+    const [isCheckingDormitory, setIsCheckingDormitory] = useState(true);
+    const checkedUserIdRef = useRef<string | null>(null);
 
     useEffect(() => {
         const checkAuthAndDormitory = async () => {
-            // Step 1: Wait for authentication state to settle
             if (authLoading) {
-                setIsCheckingDormitory(true); // Keep loading if auth is still determining user
+                setIsCheckingDormitory(true);
                 return;
             }
 
-            // Step 2: If no user, redirect to login
             if (!user) {
-                console.log("No user found. Redirecting to /auth.");
                 router.push('/auth');
-                return; // Stop further execution
+                setIsCheckingDormitory(false);
+                checkedUserIdRef.current = null;
+                return;
             }
 
-            // Step 3: User is authenticated, now check dormitory_id
-            if (user && user.id) {
-                setIsCheckingDormitory(true); // Start loading for dormitory ID check
+            if (user.id !== checkedUserIdRef.current) {
+                setIsCheckingDormitory(true);
+
                 try {
                     const { data: userData, error: userError } = await supabase
                         .from("user")
@@ -41,34 +41,27 @@ export default function AuthGuard({ children }: AuthGuardProps) {
                         .single();
 
                     if (userError) {
-                        console.error("Error fetching dormitory_id in AuthGuard:", userError);
-                        // If an error occurs, assume they need to set it up.
+                        console.error("AuthGuard: Error fetching dormitory_id from 'user' table:", userError.message);
                         router.push(`/profile-set/${user.id}`);
-                        return;
-                    }
-
-                    const dormitoryId = userData?.dormitory_id;
-
-                    if (dormitoryId === null || dormitoryId === undefined) {
-                        console.log("Dormitory ID is null/undefined. Redirecting to profile-set.");
+                    } else if (userData?.dormitory_id === null || userData?.dormitory_id === undefined) {
                         router.push(`/profile-set/${user.id}`);
                     } else {
-                        console.log("User authenticated and dormitory ID exists. Allowing access.");
-                        // Do nothing, allow children to render
+                        checkedUserIdRef.current = user.id;
                     }
                 } catch (error) {
-                    console.error("Unexpected error during dormitory_id check in AuthGuard:", error);
-                    router.push(`/profile-set/${user.id}`); // Fallback in case of unexpected errors
+                    console.error("AuthGuard: Unexpected error during dormitory_id check in AuthGuard:", error);
+                    router.push(`/profile-set/${user.id}`);
                 } finally {
-                    setIsCheckingDormitory(false); // Done checking dormitory
+                    setIsCheckingDormitory(false);
                 }
+            } else {
+                setIsCheckingDormitory(false);
             }
         };
 
         checkAuthAndDormitory();
-    }, [user, authLoading, router]); // Re-run when user or authLoading changes
+    }, [user, authLoading, router]);
 
-    // Display a loading spinner while authentication and dormitory ID are being checked
     if (authLoading || isCheckingDormitory) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-white">
@@ -80,8 +73,5 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         );
     }
 
-    // If we reach here, it means the user is authenticated and has a dormitory_id.
-    // Or, if not authenticated, the redirect already happened.
-    // So, we can safely render the children.
     return <>{children}</>;
 }

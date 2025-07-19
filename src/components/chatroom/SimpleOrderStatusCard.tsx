@@ -1,6 +1,8 @@
 "use client";
 
 import { Clock, Users, DollarSign, CheckCircle, Package } from "lucide-react";
+import { TimeLeft } from "@/components/chatroom/TimeLeft";
+
 
 interface SimpleOrderStatusCardProps {
   state: "waiting" | "active" | "ordered" | "resolved";
@@ -97,7 +99,9 @@ export function SimpleOrderStatusCard({
           <div className="flex items-center justify-center gap-1 text-gray-600 mb-1">
             <Clock className="w-4 h-4" />
           </div>
-          <div className="font-bold text-lg text-gray-900">{timeLeft}</div>
+          <div className="font-bold text-lg text-gray-900">
+            <TimeLeft expireAt={timeLeft} />
+            </div>
           <div className="text-xs text-gray-600">Left</div>
         </div>
       </div>

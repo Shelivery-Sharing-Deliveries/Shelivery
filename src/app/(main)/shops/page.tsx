@@ -96,7 +96,7 @@ export default function ShopsPage() {
             <p className="text-shelivery-text-secondary">Loading shops...</p>
           </div>
         </div>
-        <Navigation />
+        
       </div>
     );
   }
@@ -108,7 +108,7 @@ export default function ShopsPage() {
   if (error) {
     return (
       <div className="min-h-screen bg-shelivery-background-gray">
-        <Navigation />
+        
         <div className="flex items-center justify-center pt-20 p-4">
           <div className="text-center max-w-md">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -138,8 +138,8 @@ export default function ShopsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-shelivery-background-gray">
-      <div className="pt-20 pb-6 px-4 max-w-2xl mx-auto">
+    <div className="min-h-screen bg-[#245B7B] relative flex justify-center">
+      <div className="w-[calc(100vw-25px)] md:w-[375px] bg-white rounded-t-[30px] min-h-screen px-3 py-[18px] pb-[90px] md:mx-[10px]">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-shelivery-text-primary mb-2">
@@ -314,10 +314,12 @@ export default function ShopsPage() {
                 </div>
               </div>
             ))}
-            <Navigation />
           </div>
         )}
       </div>
+      <div className="fixed bottom-0 left-0 right-0">
+                <Navigation />
+            </div>
     </div>
   );
 }

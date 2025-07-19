@@ -1,6 +1,7 @@
+// hooks/useAuth.ts
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
@@ -8,6 +9,7 @@ interface AuthState {
     user: User | null;
     session: Session | null;
     loading: boolean;
+    error: string | null;
 }
 
 export function useAuth() {
@@ -15,60 +17,109 @@ export function useAuth() {
         user: null,
         session: null,
         loading: true,
+        error: null,
     });
 
     useEffect(() => {
-        // Get initial session
+        let isMounted = true;
+
         const getInitialSession = async () => {
-            const { data: { session }, error } = await supabase.auth.getSession();
-            if (error) {
-                console.error("Error getting session:", error);
-            }
-            setState({
-                user: session?.user || null,
-                session,
-                loading: false,
-            });
-        };
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
 
-        getInitialSession();
+                if (!isMounted) {
+                    return; // Component unmounted, don't update state
+                }
 
-        // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event, session) => {
+                if (error) {
+                    console.error("useAuth: getInitialSession - Error getting session:", error);
+                    setState(prevState => ({
+                        ...prevState,
+                        user: null,
+                        session: null,
+                        loading: false,
+                        error: error.message,
+                    }));
+                    return;
+                }
+
                 setState({
                     user: session?.user || null,
                     session,
                     loading: false,
+                    error: null,
                 });
 
-                // Handle user profile creation on sign in (covers both signup and signin)
+            } catch (err: any) {
+                if (!isMounted) return;
+                console.error("useAuth: getInitialSession - Unexpected error:", err);
+                setState(prevState => ({
+                    ...prevState,
+                    loading: false,
+                    error: err.message || "An unexpected error occurred during session fetch.",
+                }));
+            }
+        };
+
+        getInitialSession();
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            (event, session) => {
+                if (!isMounted) {
+                    return; // Component unmounted, don't update state
+                }
+
+                setState({
+                    user: session?.user || null,
+                    session,
+                    loading: false,
+                    error: null,
+                });
+
                 if (event === "SIGNED_IN" && session?.user) {
-                    await handleUserProfileCreation(session.user);
+                    handleUserProfileCreation(session.user);
                 }
             }
         );
 
-        return () => subscription.unsubscribe();
+        const handleVisibilityChange = async () => {
+            if (document.visibilityState === 'visible' && !state.loading) {
+                try {
+                    const { error } = await supabase.auth.refreshSession();
+                    if (error) {
+                        console.error("useAuth: Error refreshing session on tab visibility change:", error);
+                        setState(prevState => ({ ...prevState, error: error.message }));
+                    }
+                } catch (refreshError: any) {
+                    console.error("useAuth: Unexpected error during session refresh on tab visibility change:", refreshError);
+                    setState(prevState => ({ ...prevState, error: refreshError.message || "Session refresh failed." }));
+                }
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            isMounted = false;
+            subscription.unsubscribe();
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, []);
 
-    const handleUserProfileCreation = async (user: User) => {
+    const handleUserProfileCreation = useCallback(async (user: User) => {
         try {
-            // The user profile creation is handled by the database trigger
-            // on auth.users insert, but we can track the event here
             await supabase.rpc("track_event", {
                 event_type_param: "user_signin",
                 metadata_param: { user_id: user.id },
             });
         } catch (error) {
-            console.error("Error tracking signin event:", error);
+            console.error("useAuth: Error tracking signin event:", error);
         }
-    };
+    }, []);
 
-    const signUp = async (email: string, password: string, invitationCode?: string) => {
+    const signUp = useCallback(async (email: string, password: string, invitationCode?: string) => {
+        setState(prevState => ({ ...prevState, loading: true, error: null }));
         try {
-            // Invitation code validation is now handled in AuthPage.handleInviteCodeSubmit.
-            // We just pass the invitation_code as metadata to Supabase here.
             const { data, error } = await supabase.auth.signUp({
                 email,
                 password,
@@ -80,13 +131,17 @@ export function useAuth() {
             });
 
             if (error) throw error;
+            setState(prevState => ({ ...prevState, loading: false, error: null }));
             return { data, error: null };
         } catch (error: any) {
+            console.error("useAuth: Error during signUp:", error.message);
+            setState(prevState => ({ ...prevState, loading: false, error: error.message }));
             return { data: null, error: error.message };
         }
-    };
+    }, []);
 
-    const signIn = async (email: string, password: string) => {
+    const signIn = useCallback(async (email: string, password: string) => {
+        setState(prevState => ({ ...prevState, loading: true, error: null }));
         try {
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
@@ -95,29 +150,28 @@ export function useAuth() {
 
             if (error) throw error;
 
-            // Track sign in event
             if (data.user) {
-                await supabase.rpc("track_event", {
-                    event_type_param: "user_signin",
-                    metadata_param: { user_id: data.user.id },
-                });
+                await handleUserProfileCreation(data.user);
             }
 
+            setState(prevState => ({ ...prevState, loading: false, error: null }));
             return { data, error: null };
         } catch (error: any) {
+            console.error("useAuth: Error during signIn:", error.message);
+            setState(prevState => ({ ...prevState, loading: false, error: error.message }));
             return { data: null, error: error.message };
         }
-    };
+    }, [handleUserProfileCreation]);
 
-    const signInWithOAuth = async (provider: 'google' | 'github' | 'discord', invitationCode?: string) => {
+    const signInWithOAuth = useCallback(async (provider: 'google' | 'github' | 'discord', invitationCode?: string) => {
+        setState(prevState => ({ ...prevState, loading: true, error: null }));
         try {
-            // If invitation code provided, validate it first
-            // This validation is still needed here as OAuth flow might not go through handleInviteCodeSubmit
             if (invitationCode) {
-                const { data: isValid } = await supabase.rpc("validate_invitation", {
+                const { data: isValid, error: validateError } = await supabase.rpc("validate_invitation", {
                     invitation_code_param: invitationCode,
                 });
 
+                if (validateError) throw validateError;
                 if (!isValid) {
                     throw new Error("Invalid invitation code");
                 }
@@ -134,68 +188,85 @@ export function useAuth() {
             if (error) throw error;
             return { error: null };
         } catch (error: any) {
+            console.error("useAuth: Error during signInWithOAuth:", error.message);
+            setState(prevState => ({ ...prevState, loading: false, error: error.message }));
             return { error: error.message };
         }
-    };
+    }, []);
 
-    const signOut = async () => {
+    const signOut = useCallback(async () => {
+        setState(prevState => ({ ...prevState, loading: true, error: null }));
         try {
             const { error } = await supabase.auth.signOut();
             if (error) throw error;
+            setState({ user: null, session: null, loading: false, error: null });
             return { error: null };
         } catch (error: any) {
+            console.error("useAuth: Error during signOut:", error.message);
+            setState(prevState => ({ ...prevState, loading: false, error: error.message }));
             return { error: error.message };
         }
-    };
+    }, []);
 
-    const resetPassword = async (email: string) => {
+    const resetPassword = useCallback(async (email: string) => {
+        setState(prevState => ({ ...prevState, loading: true, error: null }));
         try {
             const { error } = await supabase.auth.resetPasswordForEmail(email, {
                 redirectTo: `${window.location.origin}/auth/reset-password`,
             });
             if (error) throw error;
+            setState(prevState => ({ ...prevState, loading: false, error: null }));
             return { error: null };
         } catch (error: any) {
-            return { error: error.message };
+            console.error("useAuth: Error during resetPassword:", error.message);
+            setState(prevState => ({ ...prevState, loading: false, error: error.message }));
+            return { data: null, error: error.message };
         }
-    };
+    }, []);
 
-    const updatePassword = async (password: string) => {
+    const updatePassword = useCallback(async (password: string) => {
+        setState(prevState => ({ ...prevState, loading: true, error: null }));
         try {
             const { error } = await supabase.auth.updateUser({ password });
             if (error) throw error;
+            setState(prevState => ({ ...prevState, loading: false, error: null }));
             return { error: null };
         } catch (error: any) {
-            return { error: error.message };
+            console.error("useAuth: Error during updatePassword:", error.message);
+            setState(prevState => ({ ...prevState, loading: false, error: error.message }));
+            return { data: null, error: error.message };
         }
-    };
+    }, []);
 
-    // NEW: Function to check if user exists by calling the RPC
-    const checkUserExists = async (email: string): Promise<boolean> => {
+    const checkUserExists = useCallback(async (email: string): Promise<boolean> => {
+        setState(prevState => ({ ...prevState, loading: true, error: null }));
         try {
             const { data, error } = await supabase.rpc('check_user_exists', { p_email: email });
             if (error) {
-                console.error("Error checking if user exists:", error);
-                return false; // Or re-throw if you want to handle it higher up
+                console.error("useAuth: Error checking if user exists via RPC:", error);
+                setState(prevState => ({ ...prevState, loading: false, error: error.message }));
+                return false;
             }
-            return data as boolean; // The RPC returns a boolean
-        } catch (error) {
-            console.error("Unexpected error in checkUserExists:", error);
+            setState(prevState => ({ ...prevState, loading: false, error: null }));
+            return data as boolean;
+        } catch (error: any) {
+            console.error("useAuth: Unexpected error in checkUserExists:", error);
+            setState(prevState => ({ ...prevState, loading: false, error: error.message }));
             return false;
         }
-    };
+    }, []);
 
-    // CORRECTED: Ensure all returned functions are in a single return statement
     return {
         user: state.user,
         session: state.session,
         loading: state.loading,
+        error: state.error,
         signUp,
         signIn,
         signInWithOAuth,
         signOut,
         resetPassword,
         updatePassword,
-        checkUserExists, // Expose the new function
+        checkUserExists,
     };
 }
