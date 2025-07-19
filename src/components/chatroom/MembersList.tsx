@@ -80,8 +80,8 @@ export function MembersList({
                 <div className="flex items-center gap-3">
                   <div className="relative">
                     <Avatar
-                      src={member.profile?.avatar_url}
-                      name={member.profile?.display_name || member.email}
+                      src={member?.image}
+                      name={member?.email?.split('@')[0] || "Unknown"}
                       size="sm"
                     />
                     {isAdmin && member.basket && (
@@ -93,11 +93,11 @@ export function MembersList({
 
                   <div>
                     <div className="font-medium text-gray-900 text-sm">
-                      {member.profile?.display_name ||
+                      {member?.first_name ||
                         member.email.split("@")[0]}
                     </div>
                     <div className="text-xs text-gray-600">
-                      {member.profile?.display_name ? member.email : ""}
+                      {member?.first_name ? member.email : ""}
                     </div>
                     {member.basket && (
                       <div className="text-xs text-gray-600 mt-1">
