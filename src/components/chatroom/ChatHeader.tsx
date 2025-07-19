@@ -27,6 +27,7 @@ export function ChatHeader({
   const router = useRouter();
 
   const getTimeLeft = () => {
+    if (!chatroom.created_at) return 0;
     const createdAt = new Date(chatroom.created_at);
     const now = new Date();
     const hoursPassed =
