@@ -7,6 +7,7 @@ import Header from "@/components/invite-friend/Header";
 import InviteCard from "@/components/invite-friend/InviteCard";
 import InviteForm from "@/components/invite-friend/InviteForm";
 import { generateInvite } from "@/lib/invites";
+import { PageLayout } from "@/components/ui";
 
 export default function InviteFriendPage() {
   const { user, loading: authLoading } = useAuth();
@@ -44,9 +45,13 @@ export default function InviteFriendPage() {
     alert("Invite link copied! Send it to your friend.");
   };
 
+  const headerContent = (
+    <Header />
+  );
+
+
   return (
-    <div className="min-h-screen bg-white w-full max-w-[375px] mx-auto flex flex-col">
-      <Header />
+      <PageLayout header={headerContent}> 
 
       <div className="flex-1 px-4 py-6 flex flex-col items-center gap-6">
         {loading ? (
@@ -67,6 +72,6 @@ export default function InviteFriendPage() {
           </>
         )}
       </div>
-    </div>
+    </PageLayout>
   );
 }

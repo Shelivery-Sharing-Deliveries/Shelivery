@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
-import { Navigation } from "@/components/ui/Navigation";
+import { PageLayout } from "@/components/ui/PageLayout";
 import Image from "next/image"; // Import Image component
 
 // Refined Chatroom interface to include shop and dormitory details
@@ -200,154 +200,147 @@ export default function ChatroomsPage() {
   // --- Error State ---
   if (error) {
     return (
-      <div className="min-h-screen bg-[#245B7B] relative flex justify-center">
-        <div className="w-[calc(100vw-25px)] md:w-[375px] bg-white rounded-t-[30px] min-h-screen px-3 py-[18px] pb-[90px] md:mx-[10px]">
-          <div className="text-center max-w-md">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg
-                className="w-8 h-8 text-red-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <h2 className="text-xl font-semibold text-shelivery-text-primary mb-2">
-              Failed to Load Chatrooms
-            </h2>
-            <p className="text-shelivery-text-secondary mb-6">{error}</p>
-            <Button onClick={() => window.location.reload()}>Try Again</Button>
+      <PageLayout>
+        <div className="text-center max-w-md mx-auto pt-20">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg
+              className="w-8 h-8 text-red-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
           </div>
+          <h2 className="text-xl font-semibold text-shelivery-text-primary mb-2">
+            Failed to Load Chatrooms
+          </h2>
+          <p className="text-shelivery-text-secondary mb-6">{error}</p>
+          <Button onClick={() => window.location.reload()}>Try Again</Button>
         </div>
-        <Navigation />
-      </div>
+      </PageLayout>
     );
   }
 
+  const headerContent = (
+    <div className="text-center">
+      <h1 className="text-3xl font-bold text-shelivery-text-primary mb-2">
+        Your Chatrooms
+      </h1>
+      <p className="text-shelivery-text-secondary">
+        Access your active conversations
+      </p>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-[#245B7B] relative flex justify-center">
-      <div className="w-[calc(100vw-25px)] md:w-[375px] bg-white rounded-t-[30px] min-h-screen px-3 py-[18px] pb-[90px] md:mx-[10px]">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-shelivery-text-primary mb-2">
-            Your Chatrooms
-          </h1>
+    <PageLayout header={headerContent}>
+      {/* Chatrooms List */}
+      {chatrooms.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg
+              className="w-8 h-8 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+              />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-shelivery-text-primary mb-2">
+            No Active Chatrooms
+          </h3>
           <p className="text-shelivery-text-secondary">
-            Access your active conversations
+            You don't have any active chatrooms at the moment.
           </p>
         </div>
-
-        {/* Chatrooms List */}
-        {chatrooms.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg
-                className="w-8 h-8 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-shelivery-text-primary mb-2">
-              No Active Chatrooms
-            </h3>
-            <p className="text-shelivery-text-secondary">
-              You don't have any active chatrooms at the moment.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {chatrooms.map((chatroom) => (
-              <div
-                key={chatroom.id}
-                className="bg-white rounded-shelivery-lg p-4 border border-gray-200 hover:border-shelivery-primary-blue transition-colors cursor-pointer"
-                onClick={() => handleChatroomSelect(chatroom.id)}
-              >
-                <div className="flex items-start gap-4">
-                  {/* Shop Logo */}
-                  <div className="w-16 h-16 bg-gray-100 rounded-shelivery-md flex items-center justify-center flex-shrink-0 overflow-hidden">
-                    {chatroom.shop_logo_url ? (
-                      <Image
-                        src={chatroom.shop_logo_url}
-                        alt={chatroom.shop_name}
-                        width={64} // Set appropriate width
-                        height={64} // Set appropriate height
-                        className="w-full h-full object-cover"
+      ) : (
+        <div className="space-y-4">
+          {chatrooms.map((chatroom) => (
+            <div
+              key={chatroom.id}
+              className="bg-white rounded-shelivery-lg p-4 border border-gray-200 hover:border-shelivery-primary-blue transition-colors cursor-pointer"
+              onClick={() => handleChatroomSelect(chatroom.id)}
+            >
+              <div className="flex items-start gap-4">
+                {/* Shop Logo */}
+                <div className="w-16 h-16 bg-gray-100 rounded-shelivery-md flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  {chatroom.shop_logo_url ? (
+                    <Image
+                      src={chatroom.shop_logo_url}
+                      alt={chatroom.shop_name}
+                      width={64} // Set appropriate width
+                      height={64} // Set appropriate height
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <svg
+                      className="w-8 h-8 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                       />
-                    ) : (
-                      <svg
-                        className="w-8 h-8 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                      </svg>
-                    )}
-                  </div>
+                    </svg>
+                  )}
+                </div>
 
-                  {/* Chatroom Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h3 className="text-lg font-semibold text-shelivery-text-primary">
-                          {chatroom.dormitory_name} {chatroom.shop_name} Group
-                        </h3>
-                      </div>
-                      <svg
-                        className="w-5 h-5 text-shelivery-text-tertiary"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
+                {/* Chatroom Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <h3 className="text-lg font-semibold text-shelivery-text-primary">
+                        {chatroom.dormitory_name} {chatroom.shop_name} Group
+                      </h3>
                     </div>
-
-                    {chatroom.last_message_at && (
-                      <p className="text-sm text-shelivery-text-secondary mt-1">
-                        Last activity:{" "}
-                        {new Date(chatroom.last_message_at).toLocaleString()}
-                      </p>
-                    )}
-                    {!chatroom.last_message_at && (
-                      <p className="text-sm text-shelivery-text-secondary mt-1 italic">
-                        No messages yet
-                      </p>
-                    )}
+                    <svg
+                      className="w-5 h-5 text-shelivery-text-tertiary"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
                   </div>
+
+                  {chatroom.last_message_at && (
+                    <p className="text-sm text-shelivery-text-secondary mt-1">
+                      Last activity:{" "}
+                      {new Date(chatroom.last_message_at).toLocaleString()}
+                    </p>
+                  )}
+                  {!chatroom.last_message_at && (
+                    <p className="text-sm text-shelivery-text-secondary mt-1 italic">
+                      No messages yet
+                    </p>
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-      <div className="fixed bottom-0 left-0 right-0">
-        <Navigation />
-      </div>
-    </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </PageLayout>
   );
 }

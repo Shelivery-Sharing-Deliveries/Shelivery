@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
 import { Navigation } from "@/components/ui/Navigation";
+import { PageLayout } from "@/components/ui";
 
 interface Shop {
   id: string;
@@ -137,11 +138,8 @@ export default function ShopsPage() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-[#245B7B] relative flex justify-center">
-      <div className="w-[calc(100vw-25px)] md:w-[375px] bg-white rounded-t-[30px] min-h-screen px-3 py-[18px] pb-[90px] md:mx-[10px]">
-        {/* Header */}
-        <div className="text-center mb-8">
+  const headerContent = (
+    <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-shelivery-text-primary mb-2">
             Choose a Shop
           </h1>
@@ -149,27 +147,14 @@ export default function ShopsPage() {
             Select a delivery service to start your basket
           </p>
         </div>
+  );
 
-        {/* REMOVED: Category Filter */}
-        {/* <div className="mb-6">
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-4 py-2 rounded-shelivery-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                  selectedCategory === category
-                  ? "bg-shelivery-primary-yellow text-shelivery-text-primary"
-                    : "bg-white text-shelivery-text-secondary hover:bg-shelivery-primary-yellow/20"
-                }`}
-              >
-                {category === "all"
-                  ? "All Shops"
-                  : category.charAt(0).toUpperCase() + category.slice(1)}
-                  </button>
-            ))}
-          </div>
-          </div> */}
+  return (
+    
+        
+    <PageLayout header={headerContent}>
+
+        
 
         {/* Shops Grid */}
         {filteredShops.length === 0 ? (
@@ -316,10 +301,8 @@ export default function ShopsPage() {
             ))}
           </div>
         )}
-      </div>
-      <div className="fixed bottom-0 left-0 right-0">
-                <Navigation />
-            </div>
-    </div>
+      
+
+     </PageLayout>
   );
 }

@@ -1,7 +1,7 @@
 // app/dashboard/page.tsx
 "use client";
 
-import { Navigation, Button } from "@/components/ui";
+import { Button, PageLayout } from "@/components/ui";
 import ProfileCard from "@/components/dashboard/ProfileCard";
 import AddBasket from "@/components/dashboard/AddBasket";
 import Baskets from "@/components/dashboard/Baskets";
@@ -169,98 +169,87 @@ export default function DashboardPage() {
         // though your current setup implies all have chatrooms), no navigation would occur.
     };
 
-    return (
-        <div className="min-h-screen bg-[#245B7B] relative flex justify-center">
-            {/* Main Content Container - Responsive width */}
-            <div className="w-[calc(100vw-25px)] md:w-[375px] bg-white rounded-t-[30px] min-h-screen px-3 py-[18px] pb-[90px] md:mx-[10px]">
-                {/* Header */}
-                <div className="flex justify-between mb-[19px]">
-                    <h1 className="text-[16px] font-bold leading-8 text-black">
-                        Dashboard
-                    </h1>
-                    <Button onClick={handleInviteFriend} className="bg-[#245B7B] text-white px-4 py-2 rounded-lg text-[12px] font-semibold">
-                        Invite Friends
-                    </Button>
-                </div>
+    
 
-                {/* Dashboard Components */}
-                <div className="px-0">
-                    {authLoading || !user ? (
+    return (
+        <PageLayout >
+            {authLoading || !user ? (
+                <div className="flex items-center justify-center py-8">
+                    <div className="w-8 h-8 border-4 border-[#FFDB0D] border-t-transparent rounded-full animate-spin mr-2" />
+                    <p className="text-gray-600">Loading user data...</p>
+                </div>
+            ) : (
+                <>  
+                    <div className="flex justify-between items-center">
+                        <h1 className="text-[16px] font-bold leading-8 text-black">
+                            Dashboard
+                        </h1>
+                        <Button onClick={handleInviteFriend} className="bg-[#245B7B] text-white px-4 py-2 rounded-lg text-[12px] font-semibold">
+                            Invite Friends
+                        </Button>
+                    </div>
+                    <ProfileCard
+                        userName={userProfile ? userProfile.userName : "Loading..."}
+                        userAvatar={userProfile ? userProfile.userAvatar : "/avatars/default-avatar.png"}
+                    />
+                    <AddBasket onClick={handleAddBasket} />
+                    {loadingBaskets ? (
                         <div className="flex items-center justify-center py-8">
                             <div className="w-8 h-8 border-4 border-[#FFDB0D] border-t-transparent rounded-full animate-spin mr-2" />
-                            <p className="text-gray-600">Loading user data...</p>
+                            <p className="text-gray-600">Loading baskets...</p>
+                        </div>
+                    ) : error ? (
+                        <div className="text-center py-8 text-red-600">
+                            <p>{error}</p>
+                            <Button onClick={() => window.location.reload()} className="mt-4">
+                                Retry
+                            </Button>
                         </div>
                     ) : (
                         <>
-                            <ProfileCard
-                                userName={userProfile ? userProfile.userName : "Loading..."}
-                                userAvatar={userProfile ? userProfile.userAvatar : "/avatars/default-avatar.png"}
-                            />
-                            <AddBasket onClick={handleAddBasket} />
-                            {loadingBaskets ? (
-                                <div className="flex items-center justify-center py-8">
-                                    <div className="w-8 h-8 border-4 border-[#FFDB0D] border-t-transparent rounded-full animate-spin mr-2" />
-                                    <p className="text-gray-600">Loading baskets...</p>
-                                </div>
-                            ) : error ? (
-                                <div className="text-center py-8 text-red-600">
-                                    <p>{error}</p>
-                                    <Button onClick={() => window.location.reload()} className="mt-4">
-                                        Retry
-                                    </Button>
+                            {activeBaskets.length === 0 ? (
+                                <div className="text-center py-8 text-gray-500">
+                                    <img
+                                        src="/graphics/empty-basket.svg"  // Replace with your actual image path
+                                        alt="No active baskets"
+                                        className="mx-auto w-40 h-40"  // Adjust sizing as needed
+                                    />
+                                    
+                                    <p className="mt-4 text-lg font-semibold">No active baskets</p>
+                                    <p>Create a basket and have shared shopping experience!</p>
                                 </div>
                             ) : (
-                                <>
-                                    {activeBaskets.length === 0 ? (
-                                        <div className="text-center py-8 text-gray-500">
-                                            <img
-                                                src="/graphics/empty-basket.svg"  // Replace with your actual image path
-                                                alt="No active baskets"
-                                                className="mx-auto w-40 h-40"  // Adjust sizing as needed
-                                            />
-                                            
-                                            <p className="mt-4 text-lg font-semibold">No active baskets</p>
-                                            <p>Create a basket and have shared shopping experience!</p>
-                                        </div>
-                                    ) : (
-                                        <Baskets baskets={activeBaskets} onBasketClick={handleBasketClick} />
-                                    )}
-                                    <Banner />
-
-                                    {/* --- NEW SECTION: Old Orders (Collapsible) --- */}
-                                    {resolvedBaskets.length > 0 && (
-                                        <div className="mt-6 border-t border-gray-200 pt-4">
-                                            <button
-                                                className="w-full flex justify-between items-center px-4 py-2 bg-gray-100 rounded-md text-gray-700 font-semibold text-left"
-                                                onClick={() => setShowOldOrders(!showOldOrders)}
-                                            >
-                                                <span>Archive ({resolvedBaskets.length})</span>
-                                                {showOldOrders ? (
-                                                    <ChevronUpIcon className="h-5 w-5 text-gray-500" />
-                                                ) : (
-                                                    <ChevronDownIcon className="h-5 w-5 text-gray-500" />
-                                                )}
-                                            </button>
-                                            {showOldOrders && (
-                                                <div className="mt-4">
-                                                    {/* Re-using Baskets component for resolved baskets */}
-                                                    <Baskets baskets={resolvedBaskets} onBasketClick={handleBasketClick} />
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                    {/* --- END NEW SECTION --- */}
-                                </>
+                                <Baskets baskets={activeBaskets} onBasketClick={handleBasketClick} />
                             )}
+                            <Banner />
+
+                            {/* --- NEW SECTION: Old Orders (Collapsible) --- */}
+                            {resolvedBaskets.length > 0 && (
+                                <div className="mt-6 border-t border-gray-200 pt-4">
+                                    <button
+                                        className="w-full flex justify-between items-center px-4 py-2 bg-gray-100 rounded-md text-gray-700 font-semibold text-left"
+                                        onClick={() => setShowOldOrders(!showOldOrders)}
+                                    >
+                                        <span>Archive ({resolvedBaskets.length})</span>
+                                        {showOldOrders ? (
+                                            <ChevronUpIcon className="h-5 w-5 text-gray-500" />
+                                        ) : (
+                                            <ChevronDownIcon className="h-5 w-5 text-gray-500" />
+                                        )}
+                                    </button>
+                                    {showOldOrders && (
+                                        <div className="mt-4">
+                                            {/* Re-using Baskets component for resolved baskets */}
+                                            <Baskets baskets={resolvedBaskets} onBasketClick={handleBasketClick} />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            {/* --- END NEW SECTION --- */}
                         </>
                     )}
-                </div>
-            </div>
-
-            {/* Navigation - Fixed to bottom */}
-            <div className="fixed bottom-0 left-0 right-0">
-                <Navigation />
-            </div>
-        </div>
+                </>
+            )}
+        </PageLayout>
     );
 }

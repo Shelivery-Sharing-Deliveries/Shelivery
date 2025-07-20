@@ -5,7 +5,7 @@ import { useRouter, useParams, useSearchParams } from "next/navigation"; // Impo
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
-import { Navigation } from "@/components/ui/Navigation";
+import { PageLayout } from "@/components/ui/PageLayout";
 
 interface Shop {
     id: string;
@@ -285,19 +285,39 @@ export default function BasketCreationPage() {
 
     const currentAmount = calculateTotalAmount();
 
-    return (
-        <div className="min-h-screen bg-[#245B7B] relative flex justify-center">
-            
+    const headerContent = (
+        <div>
+            <button
+                onClick={() => router.push("/shops")}
+                className="flex items-center gap-2 text-shelivery-text-secondary hover:text-shelivery-text-primary mb-4"
+            >
+                <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 19l-7-7 7-7"
+                    />
+                </svg>
+                Back to Shops
+            </button>
 
-            <div className="w-[calc(100vw-25px)] md:w-[375px] bg-white rounded-t-[30px] min-h-screen px-3 py-[18px] pb-[90px] md:mx-[10px]">
-                {/* Header */}
-                <div className="mb-6">
-                    <button
-                        onClick={() => router.push("/shops")}
-                        className="flex items-center gap-2 text-shelivery-text-secondary hover:text-shelivery-text-primary mb-4"
-                    >
+            <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-gray-100 rounded-shelivery-md flex items-center justify-center flex-shrink-0">
+                    {shop.logo_url ? (
+                        <img
+                            src={shop.logo_url}
+                            alt={shop.name}
+                            className="w-full h-full object-cover rounded-shelivery-md"
+                        />
+                    ) : (
                         <svg
-                            className="w-5 h-5"
+                            className="w-8 h-8 text-gray-400"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -306,121 +326,95 @@ export default function BasketCreationPage() {
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={2}
-                                d="M15 19l-7-7 7-7"
+                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                             />
                         </svg>
-                        Back to Shops
-                    </button>
-
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="w-16 h-16 bg-gray-100 rounded-shelivery-md flex items-center justify-center flex-shrink-0">
-                            {shop.logo_url ? (
-                                <img
-                                    src={shop.logo_url}
-                                    alt={shop.name}
-                                    className="w-full h-full object-cover rounded-shelivery-md"
-                                />
-                            ) : (
-                                <svg
-                                    className="w-8 h-8 text-gray-400"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                                    />
-                                </svg>
-                            )}
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-bold text-shelivery-text-primary">
-                                {shop.name}
-                            </h1>
-                            <div className="flex gap-4 text-sm text-shelivery-text-tertiary mt-1">
-                                <span>Min: CHF {shop.min_amount.toFixed(2)}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Basket Details Form */}
-                <div className="bg-white rounded-shelivery-lg p-4 mb-6 border border-gray-200">
-                    <h2 className="text-lg font-semibold text-shelivery-text-primary mb-4">
-                        {isEditMode ? "Edit Basket Details" : "Enter Basket Details"}
-                    </h2>
-
-                    <div className="space-y-4">
-                        <div>
-                            <label htmlFor="basketLink" className="block text-sm font-medium text-shelivery-text-secondary mb-1">Basket Link (URL)</label>
-                            <input
-                                type="url"
-                                id="basketLink"
-                                placeholder="e.g., https://shop.com/my-order"
-                                value={basketLink}
-                                onChange={(e) => setBasketLink(e.target.value)}
-                                className="shelivery-input w-full"
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label htmlFor="basketAmount" className="block text-sm font-medium text-shelivery-text-secondary mb-1">Total Amount (CHF)</label>
-                            <input
-                                type="number"
-                                id="basketAmount"
-                                placeholder="e.g., 25.50"
-                                value={basketAmount}
-                                onChange={(e) => setBasketAmount(e.target.value)}
-                                step="0.01"
-                                min="0"
-                                className="shelivery-input w-full"
-                                required
-                            />
-                        </div>
-                    </div>
-
-                    {error && (
-                        <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-shelivery-sm text-sm mt-4">
-                            {error}
-                        </div>
                     )}
                 </div>
+                <div>
+                    <h1 className="text-2xl font-bold text-shelivery-text-primary">
+                        {shop.name}
+                    </h1>
+                    <div className="flex gap-4 text-sm text-shelivery-text-tertiary mt-1">
+                        <span>Min: CHF {shop.min_amount.toFixed(2)}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 
-                {/* Order Summary (Simplified) */}
-                <div className="bg-white rounded-shelivery-lg p-4 border border-gray-200 mb-6">
-                    <h3 className="text-lg font-semibold text-shelivery-text-primary mb-4">
-                        Order Summary
-                    </h3>
+    return (
+        <PageLayout header={headerContent}>
+            {/* Basket Details Form */}
+            <div className="bg-white rounded-shelivery-lg p-4 mb-6 border border-gray-200">
+                <h2 className="text-lg font-semibold text-shelivery-text-primary mb-4">
+                    {isEditMode ? "Edit Basket Details" : "Enter Basket Details"}
+                </h2>
 
-                    <div className="space-y-2 text-sm">
-                        <div className="flex justify-between font-semibold">
-                            <span className="text-shelivery-text-primary">Total</span>
-                            <span className="text-shelivery-text-primary">
-                                CHF {currentAmount.toFixed(2)}
-                            </span>
-                        </div>
+                <div className="space-y-4">
+                    <div>
+                        <label htmlFor="basketLink" className="block text-sm font-medium text-shelivery-text-secondary mb-1">Basket Link (URL)</label>
+                        <input
+                            type="url"
+                            id="basketLink"
+                            placeholder="e.g., https://shop.com/my-order"
+                            value={basketLink}
+                            onChange={(e) => setBasketLink(e.target.value)}
+                            className="shelivery-input w-full"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="basketAmount" className="block text-sm font-medium text-shelivery-text-secondary mb-1">Total Amount (CHF)</label>
+                        <input
+                            type="number"
+                            id="basketAmount"
+                            placeholder="e.g., 25.50"
+                            value={basketAmount}
+                            onChange={(e) => setBasketAmount(e.target.value)}
+                            step="0.01"
+                            min="0"
+                            className="shelivery-input w-full"
+                            required
+                        />
                     </div>
                 </div>
 
-                {/* Create/Update Basket Button */}
-                <Button
-                    onClick={handleSubmitBasket}
-                    disabled={!canSubmitBasket() || submitting}
-                    loading={submitting}
-                    className="w-full"
-                    size="lg"
-                >
-                    {submitting
-                        ? (isEditMode ? "Saving Changes..." : "Creating Basket...")
-                        : (isEditMode ? "Save Changes" : "Join Pool & Create Basket")}
-                </Button>
+                {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-shelivery-sm text-sm mt-4">
+                        {error}
+                    </div>
+                )}
             </div>
-            <div className="fixed bottom-0 left-0 right-0">
-                <Navigation />
+
+            {/* Order Summary (Simplified) */}
+            <div className="bg-white rounded-shelivery-lg p-4 border border-gray-200 mb-6">
+                <h3 className="text-lg font-semibold text-shelivery-text-primary mb-4">
+                    Order Summary
+                </h3>
+
+                <div className="space-y-2 text-sm">
+                    <div className="flex justify-between font-semibold">
+                        <span className="text-shelivery-text-primary">Total</span>
+                        <span className="text-shelivery-text-primary">
+                            CHF {currentAmount.toFixed(2)}
+                        </span>
+                    </div>
+                </div>
             </div>
-        </div>
+
+            {/* Create/Update Basket Button */}
+            <Button
+                onClick={handleSubmitBasket}
+                disabled={!canSubmitBasket() || submitting}
+                loading={submitting}
+                className="w-full"
+                size="lg"
+            >
+                {submitting
+                    ? (isEditMode ? "Saving Changes..." : "Creating Basket...")
+                    : (isEditMode ? "Save Changes" : "Join Pool & Create Basket")}
+            </Button>
+        </PageLayout>
     );
 }
