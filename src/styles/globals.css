@@ -1,3 +1,6 @@
+/* app/globals.css */
+
+/* Keep your existing @import for Inter and Poppins */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap');
 
@@ -66,7 +69,7 @@
     --primary-foreground: 240 5.9% 10%;
 
     --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary-foreground: 240 0% 98%;
 
     --muted: 240 3.7% 15.9%;
     --muted-foreground: 240 5% 64.9%;
@@ -89,11 +92,12 @@
 }
 
 @layer base {
+  /* YOUR EXISTING BASE STYLES */
   * {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-poppins;
+    @apply bg-background text-foreground font-poppins; /* Keep these, but specific rules below will override */
   }
   
   html {
@@ -107,9 +111,31 @@
   .font-inter {
     font-family: 'Inter', sans-serif;
   }
+
+  /* NEW: Global resets from your original HTML's embedded CSS */
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  a{
+    text-decoration: none;
+  }
+
+  /* NEW: Body styles from your original HTML's embedded CSS */
+  /* This ensures the exact background and central alignment for the page */
+  body {
+    background-color: #1E566F; /* Exact color from original */
+    color: white;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 3rem; /* Original padding */
+  }
 }
 
-/* Shelivery Component Styles */
+/* YOUR EXISTING @layer components AND @layer utilities */
 @layer components {
   /* Navigation Bar */
   .shelivery-navbar {
@@ -255,7 +281,7 @@
   }
 }
 
-/* Mobile-first responsive design */
+/* YOUR EXISTING @layer utilities */
 @layer utilities {
   .mobile-container {
     @apply max-w-sm mx-auto px-4;
@@ -303,6 +329,7 @@
   }
 }
 
+/* YOUR EXISTING REAL-TIME ANIMATIONS AND MEDIA QUERIES */
 /* Real-time animations */
 @keyframes pulse-update {
   0%, 100% {
@@ -419,11 +446,11 @@
   }
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+/* NEW: Float animation added as a custom CSS class (since tailwind.config.js is untouched) */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+.float-animation { /* Using a different class name to avoid conflict with Tailwind's 'animate-' prefix */
+  animation: float 4s ease-in-out infinite;
 }

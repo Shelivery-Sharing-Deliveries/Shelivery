@@ -67,10 +67,10 @@ export default function ProfileEditPage() {
                 data: { user },
             } = await supabase.auth.getUser();
 
-            // If no user is found, redirect to auth page (AuthGuard should ideally handle this first)
+            // If no user is found, redirect to the first page
             if (!user) {
-                console.log("No user found, redirecting to auth page from ProfileEditPage.");
-                router.push("/auth");
+                console.log("No user found, redirecting to the first page from ProfileEditPage.");
+                router.push("/"); // CHANGED: Redirect to the first page
                 return;
             }
 
@@ -97,8 +97,8 @@ export default function ProfileEditPage() {
                     firstName: data.first_name || "",
                     lastName: data.last_name || "",
                     favoriteStore: data.favorite_store || "",
-                    dormitory: Array.isArray(data.dormitory) 
-                        ? data.dormitory[0]?.name || "" 
+                    dormitory: Array.isArray(data.dormitory)
+                        ? data.dormitory[0]?.name || ""
                         : (data.dormitory as { name: string } | null)?.name || "",
                     email: data.email || user.email || "", // Prefer DB email, fallback to auth email
                 });
@@ -207,8 +207,8 @@ export default function ProfileEditPage() {
             setProfileImage(null);
             setUserId(null);
 
-            // Redirect to authentication page after successful logout
-            router.push("/auth");
+            // Redirect to the first page after successful logout
+            router.push("/"); // CHANGED: Redirect to the first page
         }
     };
 
