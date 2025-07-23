@@ -46,9 +46,9 @@ export const metadata: Metadata = {
   },
   manifest: "/manifest.json",
   icons: {
-    icon: "/icons/icon-192x192.png",
-    shortcut: "/icons/icon-192x192.png",
-    apple: "/icons/icon-192x192.png",
+    icon: "/icons/shelivery-logo2.png",
+    shortcut: "/icons/shelivery-logo2.png",
+    apple: "/icons/shelivery-logo2.png",
   },
   appleWebApp: {
     capable: true,
