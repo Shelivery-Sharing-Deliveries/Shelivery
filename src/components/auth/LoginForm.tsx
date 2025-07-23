@@ -7,14 +7,14 @@ import AuthButton from "./AuthButton";
 
 interface LoginFormProps {
   onEmailSubmit: (email: string) => void;
-  onGoogleSignIn: () => void;
+  // REMOVED: onGoogleSignIn prop is no longer needed
   loading?: boolean;
   error?: string | undefined;
 }
 
 export default function LoginForm({
   onEmailSubmit,
-  onGoogleSignIn,
+  // REMOVED: onGoogleSignIn from destructuring
   loading = false,
   error,
 }: LoginFormProps) {
@@ -30,10 +30,10 @@ export default function LoginForm({
   return (
     <AuthLayout className="gap-8">
       <div className="w-full flex flex-col gap-8">
-        {/* Welcome Back Title */}
+        {/* Welcome Title */}
         <div className="text-center">
           <h1 className="text-[#000000] font-inter text-[18px] font-bold leading-[21.78px]">
-            Welcome Back
+            Welcome to Shelivery
           </h1>
         </div>
 
@@ -59,7 +59,8 @@ export default function LoginForm({
             Continue
           </AuthButton>
 
-          {/* OR Divider */}
+          {/* REMOVED: OR Divider */}
+          {/*
           <div className="flex items-center gap-4">
             <div className="flex-1 h-px bg-gray-200"></div>
             <span className="text-[#000000] font-inter text-[14px] font-medium leading-[16.94px]">
@@ -67,15 +68,16 @@ export default function LoginForm({
             </span>
             <div className="flex-1 h-px bg-gray-200"></div>
           </div>
+          */}
 
-          {/* Google Sign In Button */}
+          {/* REMOVED: Google Sign In Button */}
+          {/*
           <AuthButton
             variant="google"
             onClick={onGoogleSignIn}
             className="border border-[#E9EAEB]"
           >
             <div className="flex items-center gap-3">
-              {/* Google Logo */}
               <img
                 src="/icons/google-icon.svg"
                 alt="Google"
@@ -86,6 +88,7 @@ export default function LoginForm({
               </span>
             </div>
           </AuthButton>
+          */}
         </form>
       </div>
     </AuthLayout>

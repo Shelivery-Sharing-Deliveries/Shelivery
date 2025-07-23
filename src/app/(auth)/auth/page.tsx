@@ -2,6 +2,7 @@
 import { supabase } from "@/lib/supabase";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image"; // Make sure Image is imported for the back arrow
 import {
   LoginForm,
   PasswordForm,
@@ -35,7 +36,6 @@ function AuthPageContent() {
     loading: authLoading, // This is the loading state from useAuth, indicating initial session check
     signIn,
     signUp,
-    signInWithOAuth,
     checkUserExists,
   } = useAuth();
   const router = useRouter();
@@ -125,24 +125,6 @@ function AuthPageContent() {
     setError(null);
   };
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { error: oauthError } = await signInWithOAuth("google");
-      if (oauthError) {
-        setError(oauthError);
-      }
-    } catch (err: any) {
-      setError(
-        err.message || "An unexpected error occurred with Google sign-in"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleInviteCodeSubmit = async (code: string) => {
     setLoading(true);
     setError(null);
@@ -193,7 +175,7 @@ function AuthPageContent() {
     const { error } = await supabase.auth.signInWithOtp({
       email: email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        // emailRedirectTo: `${window.location.origin}/auth/callback`, // REMOVED: Callback page reference
       },
     });
 
@@ -244,19 +226,28 @@ function AuthPageContent() {
     );
   }
 
-  // REMOVED THE OFFENDING BLOCK:
-  // if (user) {
-  //   router.replace("/dashboard");
-  //   return null;
-  // }
-
   // If user is null (not authenticated) and not loading, render the appropriate auth form.
   return (
-    <div className="min-h-screen bg-white">
+    // Make the main div relative to position the back button
+    <div className="min-h-screen bg-white relative">
+      {/* NEW: Go Back Button */}
+      {/* Positioned at the top-left, uses back-arrow.svg icon */}
+      <button
+        onClick={() => router.push('/')} // Navigate to the main page
+        className="absolute top-4 left-4 p-2 rounded-full hover:bg-gray-100 transition-colors z-10" // Added z-10 to ensure it's on top
+        aria-label="Go back to main page"
+      >
+        <Image
+          src="/icons/back-arrow.svg" // Assuming this icon path is correct
+          alt="Go Back"
+          width={24}
+          height={24}
+        />
+      </button>
+
       {step === "login" && (
         <LoginForm
           onEmailSubmit={handleEmailSubmit}
-          onGoogleSignIn={handleGoogleSignIn}
           loading={loading}
           error={error || undefined}
         />
