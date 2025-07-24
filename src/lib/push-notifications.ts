@@ -1,4 +1,4 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/lib/supabase';
 
 // VAPID key conversion utility
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
@@ -35,7 +35,6 @@ export interface PushSubscriptionData {
 }
 
 export class PushNotificationManager {
-  private supabase = createClientComponentClient();
   private vapidPublicKey: string;
 
   constructor() {
@@ -91,33 +90,53 @@ export class PushNotificationManager {
   // Subscribe to push notifications
   async subscribe(): Promise<PushSubscriptionData | null> {
     try {
+      console.log('Starting subscription process...');
+      
       // Check permission first
       const permission = await this.requestPermission();
+      console.log('Permission status:', permission);
       if (permission !== 'granted') {
         throw new Error('Push notification permission denied');
       }
 
       // Get service worker registration
+      console.log('Getting service worker registration...');
       const registration = await this.getServiceWorkerRegistration();
+      console.log('Service worker registration:', registration);
 
       // Check if already subscribed
+      console.log('Checking existing subscription...');
       let subscription = await registration.pushManager.getSubscription();
+      console.log('Existing subscription:', subscription);
 
       if (!subscription) {
-        // Create new subscription
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(this.vapidPublicKey),
-        });
+        console.log('Creating new subscription with VAPID key...');
+        console.log('VAPID key:', this.vapidPublicKey);
+        
+        try {
+          const applicationServerKey = urlBase64ToUint8Array(this.vapidPublicKey);
+          console.log('Converted VAPID key:', applicationServerKey);
+          
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: applicationServerKey,
+          });
+          console.log('New subscription created:', subscription);
+        } catch (subscribeError) {
+          console.error('Failed to create subscription:', subscribeError);
+          throw new Error(`Subscription creation failed: ${subscribeError instanceof Error ? subscribeError.message : String(subscribeError)}`);
+        }
       }
 
       if (!subscription) {
-        throw new Error('Failed to create push subscription');
+        throw new Error('Failed to create push subscription - subscription is null');
       }
 
+      console.log('Processing subscription keys...');
       // Convert subscription to our format using the helper function
       const p256dhKey = subscription.getKey('p256dh');
       const authKey = subscription.getKey('auth');
+      console.log('Keys extracted:', { p256dh: !!p256dhKey, auth: !!authKey });
 
       if (!p256dhKey || !authKey) {
         throw new Error('Missing subscription keys');
@@ -131,23 +150,34 @@ export class PushNotificationManager {
         },
       };
 
-      // Debug logging
-      console.log('Subscription data:', subscriptionData);
+      console.log('Subscription data created:', {
+        endpoint: subscriptionData.endpoint.substring(0, 50) + '...',
+        p256dhLength: subscriptionData.keys.p256dh.length,
+        authLength: subscriptionData.keys.auth.length
+      });
 
       // Save subscription to database
+      console.log('Saving subscription to database...');
       await this.saveSubscription(subscriptionData);
+      console.log('Subscription saved successfully');
 
       return subscriptionData;
     } catch (error) {
       console.error('Error subscribing to push notifications:', error);
-      return null;
+      throw error; // Re-throw the error instead of returning null
     }
   }
 
   // Save subscription to database
   private async saveSubscription(subscription: PushSubscriptionData): Promise<void> {
     try {
-      const { data: { user }, error: authError } = await this.supabase.auth.getUser();
+      // Validate subscription data before saving
+      if (!subscription.endpoint || !subscription.keys.p256dh || !subscription.keys.auth) {
+        throw new Error(`Invalid subscription data: endpoint=${!!subscription.endpoint}, p256dh=${!!subscription.keys.p256dh}, auth=${!!subscription.keys.auth}`);
+      }
+
+      // Use the same pattern as your profile page
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (authError) {
         console.error('Auth error:', authError);
@@ -170,7 +200,12 @@ export class PushNotificationManager {
 
       console.log('Subscription record:', subscriptionRecord);
 
-      const { error } = await this.supabase
+      // Double-check the record before saving
+      if (!subscriptionRecord.endpoint || !subscriptionRecord.p256dh || !subscriptionRecord.auth) {
+        throw new Error('Subscription record contains empty values - not saving to database');
+      }
+
+      const { error } = await supabase
         .from('push_subscriptions')
         .upsert(subscriptionRecord, {
           onConflict: 'user_id,endpoint'
@@ -216,13 +251,19 @@ export class PushNotificationManager {
   // Remove subscription from database
   private async removeSubscription(endpoint: string): Promise<void> {
     try {
-      const { data: { user } } = await this.supabase.auth.getUser();
+      // Use the same pattern as your profile page
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError) {
+        console.error('Auth error:', authError);
+        throw authError;
+      }
       
       if (!user) {
         throw new Error('User not authenticated');
       }
 
-      const { error } = await this.supabase
+      const { error } = await supabase
         .from('push_subscriptions')
         .delete()
         .eq('user_id', user.id)

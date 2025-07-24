@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import webpush from 'web-push'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -30,20 +31,32 @@ serve(async (req) => {
   }
 
   try {
+    // Configure VAPID details
+    const vapidPublicKey = Deno.env.get('NEXT_PUBLIC_VAPID_PUBLIC_KEY') || Deno.env.get('VAPID_PUBLIC_KEY');
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
+    const vapidEmail = Deno.env.get('VAPID_EMAIL');
+
+    console.log('VAPID configuration:', {
+      public: !!vapidPublicKey,
+      private: !!vapidPrivateKey,
+      email: !!vapidEmail
+    });
+
+    if (!vapidPublicKey || !vapidPrivateKey || !vapidEmail) {
+      throw new Error('VAPID keys not configured properly');
+    }
+
+    webpush.setVapidDetails(
+      `mailto:${vapidEmail}`,
+      vapidPublicKey,
+      vapidPrivateKey
+    );
+
     // Create Supabase client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
-
-    // Get VAPID keys from environment
-    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
-    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
-    const vapidEmail = Deno.env.get('VAPID_EMAIL') || 'mailto:support@shelivery.app'
-
-    if (!vapidPublicKey || !vapidPrivateKey) {
-      throw new Error('VAPID keys not configured')
-    }
 
     // Parse the notification payload from the request
     const notification: NotificationPayload = await req.json()
@@ -91,18 +104,26 @@ serve(async (req) => {
       vibrate: [200, 100, 200],
     }
 
+    console.log('Sending push notifications to', subscriptions.length, 'subscriptions')
+    console.log('Push payload:', pushPayload)
+
     // Send push notifications to all user's subscriptions
     const results = await Promise.allSettled(
-      subscriptions.map(async (subscription: PushSubscription) => {
+      subscriptions.map(async (subscription) => {
         try {
-          // Convert VAPID key
-          const vapidKeyUint8Array = new Uint8Array(
-            atob(vapidPublicKey.replace(/-/g, '+').replace(/_/g, '/'))
-              .split('')
-              .map(char => char.charCodeAt(0))
-          )
+          console.log('Processing subscription:', subscription.id)
+          console.log('Subscription data:', {
+            endpoint: subscription.endpoint ? subscription.endpoint.substring(0, 50) + '...' : 'EMPTY',
+            p256dh: subscription.p256dh ? 'present' : 'missing',
+            auth: subscription.auth ? 'present' : 'missing'
+          })
+          
+          // Validate subscription data
+          if (!subscription.endpoint || !subscription.p256dh || !subscription.auth) {
+            throw new Error(`Invalid subscription data: endpoint=${!!subscription.endpoint}, p256dh=${!!subscription.p256dh}, auth=${!!subscription.auth}`)
+          }
 
-          // Create the push subscription object
+          // Create the push subscription object for web push
           const pushSubscription = {
             endpoint: subscription.endpoint,
             keys: {
@@ -111,42 +132,40 @@ serve(async (req) => {
             },
           }
 
-          // Use Web Push API (we'll need to implement this with fetch)
-          const response = await sendWebPushNotification(
+          // Send the actual push notification using web-push library
+          await webpush.sendNotification(
             pushSubscription,
-            JSON.stringify(pushPayload),
-            vapidPublicKey,
-            vapidPrivateKey,
-            vapidEmail
-          )
+            JSON.stringify(pushPayload)
+          );
 
-          if (!response.ok) {
-            throw new Error(`Push notification failed: ${response.status}`)
-          }
-
+          console.log('Push notification sent successfully to subscription:', subscription.id)
           return { success: true, subscription_id: subscription.id }
-        } catch (error) {
+        } catch (error: any) {
           console.error(`Failed to send push to subscription ${subscription.id}:`, error)
           
           // Remove invalid subscriptions
-          if (error instanceof Error && (
-            error.message.includes('410') ||
-            error.message.includes('invalid') ||
-            error.message.includes('expired')
+          if (error && (
+            error.statusCode === 410 ||
+            error.message?.includes('invalid') ||
+            error.message?.includes('expired') ||
+            error.message?.includes('Invalid subscription data')
           )) {
+            console.log('Removing invalid subscription:', subscription.id)
             await supabaseClient
               .from('push_subscriptions')
               .delete()
               .eq('id', subscription.id)
           }
 
-          return { success: false, subscription_id: subscription.id, error: error.message }
+          return { success: false, subscription_id: subscription.id, error: error.message || String(error) }
         }
       })
     )
 
-    const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length
+    const successful = results.filter((r: any) => r.status === 'fulfilled' && r.value.success).length
     const failed = results.length - successful
+
+    console.log(`Push notification results: ${successful} successful, ${failed} failed`)
 
     return new Response(
       JSON.stringify({
@@ -158,10 +177,10 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
-  } catch (error) {
-    console.error('Error sending push notification:', error)
+  } catch (error: any) {
+    console.error('Error in push notification function:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || String(error) }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -169,37 +188,3 @@ serve(async (req) => {
     )
   }
 })
-
-// Helper function to send web push notification using proper VAPID signing
-async function sendWebPushNotification(
-  subscription: any,
-  payload: string,
-  vapidPublicKey: string,
-  vapidPrivateKey: string,
-  vapidEmail: string
-): Promise<Response> {
-  // Import crypto for VAPID signing
-  const crypto = globalThis.crypto;
-  
-  // For now, use a simplified approach that works with most push services
-  // In production, you'd want to implement full VAPID signing
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/octet-stream',
-    'TTL': '86400', // 24 hours
-  }
-
-  // Add VAPID headers for supported endpoints
-  if (subscription.endpoint.includes('fcm.googleapis.com')) {
-    // For FCM, we can use a simpler approach
-    headers['Authorization'] = `key=${vapidPrivateKey}`;
-  } else {
-    // For other endpoints, add basic VAPID info
-    headers['Crypto-Key'] = `p256ecdsa=${vapidPublicKey}`;
-  }
-
-  return fetch(subscription.endpoint, {
-    method: 'POST',
-    headers,
-    body: payload,
-  })
-}
