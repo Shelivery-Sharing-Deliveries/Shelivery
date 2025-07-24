@@ -10,6 +10,7 @@
   "start_url": "/",
   "categories": ["shopping", "lifestyle", "social"],
   "lang": "en",
+  "gcm_sender_id": "103953800507",
   "icons": [
     {
       "src": "/icons/shelivery-logo2.png",
