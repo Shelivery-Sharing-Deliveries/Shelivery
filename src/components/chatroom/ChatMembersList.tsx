@@ -108,7 +108,9 @@ export function ChatMembersList({
                 {/* Order link - only visible to admin */}
                 {isCurrentUserAdmin && member.basket?.link && (
                   <a
-                    href={member.basket.link}
+                    href={member.basket.link.startsWith('http://') || member.basket.link.startsWith('https://') 
+                      ? member.basket.link 
+                      : `https://${member.basket.link}`} // Assuming most links should be HTTPS
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs text-blue-600 hover:text-blue-800 underline block mt-1"
