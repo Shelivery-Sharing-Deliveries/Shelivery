@@ -148,80 +148,101 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
 
   return (
     <div className="px-4 py-3 bg-white border-t border-gray-200 max-h-32 overflow-y-auto">
-      {selectedImagePreview && (
-  <div className="mb-2 flex items-center gap-2">
-    <img
-      src={selectedImagePreview}
-      alt="Preview"
-      className="h-12 w-auto rounded-md border border-gray-300 object-cover flex-shrink-0"
-    />
-    <div className="flex flex-col gap-1 flex-shrink-0">
-      <button
-        type="button"
-        onClick={sendSelectedImage}
-        className="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition"
-      >
-        Send Image
-      </button>
-      <button
-        type="button"
-        onClick={cancelSelectedImage}
-        className="px-2 py-1 bg-gray-300 text-gray-700 text-xs rounded hover:bg-gray-400 transition"
-      >
-        Cancel
-      </button>
-    </div>
-  </div>
-)}
-
-      <form onSubmit={handleSubmit} className="flex items-end gap-3">
-        {/* Attachment Button */}
+  {selectedImagePreview && (
+    <div className="mb-2 flex items-center gap-2">
+      <img
+        src={selectedImagePreview}
+        alt="Preview"
+        className="h-12 w-auto rounded-md border border-gray-300 object-cover flex-shrink-0"
+      />
+      <div className="flex flex-col gap-1 flex-shrink-0">
         <button
           type="button"
-          onClick={() => imageInputRef.current?.click()}
-          className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-          title="Add attachment"
+          onClick={sendSelectedImage}
+          className="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition"
         >
-          <Plus className="h-full w-full" />
+          Send Image
         </button>
+        <button
+          type="button"
+          onClick={cancelSelectedImage}
+          className="px-2 py-1 bg-gray-300 text-gray-700 text-xs rounded hover:bg-gray-400 transition"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  )}
 
-        <input
-          type="file"
-          accept="image/*"
-          hidden
-          ref={imageInputRef}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleImageSelection(file);
-          }}
-        />
+  <form onSubmit={handleSubmit} className="flex items-end gap-3">
+    {/* Attachment Button */}
+    <button
+      type="button"
+      onClick={() => imageInputRef.current?.click()}
+      className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+      title="Add attachment"
+    >
+      <Plus className="h-full w-full" />
+    </button>
 
-        {/* Message Input */}
-        <div className="flex-1 relative">
-        <textarea
-  value={message}
-  onChange={(e) => setMessage(e.target.value)}
-  onKeyDown={(e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e as any); // cast to any to satisfy TS for now
-    }
-  }}
-  placeholder="Message..."
-  className="w-full resize-none rounded-2xl border border-gray-300 bg-white px-4 py-3 pr-20 text-sm placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-  rows={1}
-  style={{
-    minHeight: "44px",
-    maxHeight: "80px",
-    overflowY: message.split("\n").length > 2 ? "auto" : "hidden",
-  }}
-/>
+    <input
+      type="file"
+      accept="image/*"
+      hidden
+      ref={imageInputRef}
+      onChange={(e) => {
+        const file = e.target.files?.[0];
+        if (file) handleImageSelection(file);
+      }}
+    />
 
+    {/* Message Input OR Voice Bubble */}
+    <div className="flex-1 relative">
+      {recordedAudioUrl ? (
+        <div className="flex items-center justify-between w-full border border-gray-300 bg-white px-4 py-3 rounded-2xl">
+          <VoiceMessageBubble src={recordedAudioUrl} className="flex-1" />
+          <div className="flex items-center gap-1 ml-2">
+            <button
+              type="button"
+              onClick={sendRecordedAudio}
+              className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-full transition-colors"
+              title="Send voice message"
+            >
+              <Send className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={discardRecording}
+              className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+              title="Discard"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e as any);
+              }
+            }}
+            placeholder="Message..."
+            className="w-full resize-none rounded-2xl border border-gray-300 bg-white px-4 py-3 pr-20 text-sm placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            rows={1}
+            style={{
+              minHeight: "44px",
+              maxHeight: "80px",
+              overflowY: message.split("\n").length > 2 ? "auto" : "hidden",
+            }}
+          />
 
-          {/* Input Actions */}
+          {/* Input Actions (mic / send) */}
           <div className="absolute right-2 bottom-2 flex items-center gap-1">
-            
-
             {message.trim() ? (
               <button
                 type="submit"
@@ -230,33 +251,11 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
               >
                 <Send className="h-full w-full" />
               </button>
-            ) : recordedAudioUrl ? (
-              <div className="flex items-center gap-1">
-                
-                <VoiceMessageBubble
-                                            src={recordedAudioUrl}
-                                            className="w-full"
-                                          />
-                <button
-                  type="button"
-                  onClick={sendRecordedAudio}
-                  className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-full transition-colors"
-                  title="Send voice message"
-                >
-                  <Send className="h-full w-full" />
-                </button>
-                <button
-                  type="button"
-                  onClick={discardRecording}
-                  className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-                  title="Discard"
-                >
-                  ×
-                </button>
-              </div>
             ) : isRecording ? (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-red-500 font-mono">{formatTime(recordingTime)}</span>
+                <span className="text-xs text-red-500 font-mono">
+                  {formatTime(recordingTime)}
+                </span>
                 <button
                   type="button"
                   onMouseUp={stopRecording}
@@ -280,8 +279,11 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
               </button>
             )}
           </div>
-        </div>
-      </form>
+        </>
+      )}
     </div>
+  </form>
+</div>
+
   );
 }

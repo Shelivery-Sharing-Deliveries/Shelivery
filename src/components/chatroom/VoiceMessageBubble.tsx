@@ -36,13 +36,31 @@ export default function VoiceWaveformBubble({ src, className }: VoiceWaveformBub
   }, []);
 
   // Load new audio src when changed
-  useEffect(() => {
-    const wavesurfer = wavesurferRef.current;
-    if (!wavesurfer) return;
+useEffect(() => {
+  const wavesurfer = wavesurferRef.current;
+  if (!wavesurfer) return;
 
-    setIsPlaying(false);  // reset play state
-    wavesurfer.load(src);
-  }, [src]);
+  let isCancelled = false;
+
+  const loadAudio = async () => {
+    try {
+      setIsPlaying(false);
+      await wavesurfer.load(src);
+    } catch (err: any) {
+      if (err.name === "AbortError") {
+        console.warn("WaveSurfer load aborted.");
+      } else {
+        console.error("WaveSurfer load error:", err);
+      }
+    }
+  };
+
+  loadAudio();
+
+  return () => {
+    isCancelled = true;
+  };
+}, [src]);
 
   const togglePlayback = () => {
     const wavesurfer = wavesurferRef.current;
