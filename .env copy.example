@@ -1,6 +1,7 @@
 # Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=https://zsqagqzztvzogyktgjph.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzcWFncXp6dHZ6b2d5a3RnanBoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3MDMzNTUsImV4cCI6MjA2MjI3OTM1NX0.HJLf90io8jlSqyox_-nlswE5cs-ya-cadLJOrhVV8V4
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=BDhSKeB2aQq6VJwqVsLY5G92CD1PeX5263Mw2-yQKviDXRuK4mEVRzUcyL30PFU_lsRNWjoU3PvUOgR7LlV1jN0
 
 # Application Configuration
 NEXT_PUBLIC_APP_URL=http://localhost:3000
@@ -13,3 +14,4 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
 # Development Environment
 NODE_ENV=development
+

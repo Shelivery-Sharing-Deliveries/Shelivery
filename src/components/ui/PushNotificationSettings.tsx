@@ -1,8 +1,11 @@
 "use client";
-
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useState, useCallback } from 'react'; // Added useCallback
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { Button } from '@/components/ui/Button';
+
+
+
 
 export function PushNotificationSettings() {
   const {
@@ -17,6 +20,11 @@ export function PushNotificationSettings() {
     testNotification,
     clearError,
   } = usePushNotifications();
+  const router = useRouter();
+
+  const handleGoToDebugPush = useCallback(() => {
+  router.push('/debug-push');
+  }, [router]);
 
   const [isTesting, setIsTesting] = useState(false);
 
@@ -131,6 +139,19 @@ export function PushNotificationSettings() {
             </Button>
           </div>
         )}
+      </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="font-medium text-gray-700">Debug Push Notifications</p>
+          <p className="text-sm text-gray-500">Go to the debug page for push notifications</p>
+        </div>
+        <Button
+          onClick={handleGoToDebugPush}
+          variant="secondary"
+          size="sm"
+        >
+          Debug Page
+        </Button>
       </div>
 
       <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
