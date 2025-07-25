@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { Send, Plus, Smile, Mic } from "lucide-react";
+import VoiceMessageBubble from "@/components/chatroom/VoiceMessageBubble"; // adjust the path
 
 interface ChatInputProps {
   onSendMessage: (content: string | { type: "audio" | "image"; url: string }) => void;
@@ -231,7 +232,11 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
               </button>
             ) : recordedAudioUrl ? (
               <div className="flex items-center gap-1">
-                <audio src={recordedAudioUrl} controls className="h-8" />
+                
+                <VoiceMessageBubble
+                                            src={recordedAudioUrl}
+                                            className="w-full"
+                                          />
                 <button
                   type="button"
                   onClick={sendRecordedAudio}

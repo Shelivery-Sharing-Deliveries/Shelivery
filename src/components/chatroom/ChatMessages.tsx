@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Tables } from "@/lib/supabase";
 import { Avatar } from "@/components/ui/Avatar";
 import { supabase } from "@/lib/supabase"; // Make sure this import is correct for your project
+import VoiceMessageBubble from "@/components/chatroom/VoiceMessageBubble"; // adjust the path
 
 interface ChatMessagesProps {
   messages: Array<
@@ -177,10 +178,10 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
                     </div>
 
                     <div
-                      className={`flex-1 max-w-md ${
-                        isOwnMessage ? "text-right" : ""
-                      }`}
-                    >
+                    className={`${
+                      message.type === "text" ? "inline-block" : "flex-1 max-w-md"
+                    } ${isOwnMessage ? "text-right" : ""}`}
+                  >
                       {showAvatar && (
                         <div
                           className={`flex items-center gap-2 mb-1 ${
@@ -199,39 +200,30 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
                       )}
 
                       <div
-                        className={`px-4 py-2 rounded-2xl ${
-                          isOwnMessage
-                            ? "bg-blue-500 text-white rounded-br-lg"
-                            : "bg-white text-gray-900 rounded-bl-lg border border-gray-200"
-                        }`}
+                        className={`rounded-2xl p-2 max-w-xs w-full
+                          ${
+                            isOwnMessage
+                              ? "bg-[#245b7b] text-white rounded-br-lg ml-auto text-right"
+                              : "bg-white text-gray-900 rounded-bl-lg border border-gray-200 mr-auto text-left"
+                          }
+                        `}
                       >
-                       {(message.type === "image" || message.type === "audio") ? (
-  signedUrls[message.id] ? (
-    message.type === "image" ? (
-      <img
-        src={signedUrls[message.id]}
-        alt="Sent image"
-        className="max-w-full h-auto rounded-xl"
-      />
-    ) : (
-      <audio
-        controls
-        src={signedUrls[message.id]}
-        className="w-full mt-2"
-      >
-        Your browser does not support the audio element.
-      </audio>
-    )
-  ) : (
-    <div className="w-full max-w-xs aspect-square bg-gray-200 animate-pulse rounded-xl"></div>
-  )
-) : (
-  <p className="text-sm leading-relaxed whitespace-pre-wrap">
-    {message.content}
-  </p>
-)}
-
-
+                        {message.type === "image" && signedUrls[message.id] ? (
+                          <img
+                            src={signedUrls[message.id]}
+                            alt="Sent image"
+                            className="rounded-xl w-full h-auto"
+                          />
+                        ) : message.type === "audio" && signedUrls[message.id] ? (
+                          <VoiceMessageBubble
+                            src={signedUrls[message.id]!}
+                            className="w-full"
+                          />
+                        ) : (
+                          <span className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                            {message.content}
+                          </span>
+                        )}
                       </div>
 
                       {!showAvatar && (
