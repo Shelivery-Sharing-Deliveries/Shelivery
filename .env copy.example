@@ -15,3 +15,4 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 # Development Environment
 NODE_ENV=development
 
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=BDhSKeB2aQq6VJwqVsLY5G92CD1PeX5263Mw2-yQKviDXRuK4mEVRzUcyL30PFU_lsRNWjoU3PvUOgR7LlV1jN0
