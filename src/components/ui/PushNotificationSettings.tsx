@@ -117,6 +117,8 @@ export function PushNotificationSettings() {
           )}
         </div>
 
+
+        {/*
         {isSubscribed && (
           <div className="flex items-center justify-between">
             <div>
@@ -132,8 +134,10 @@ export function PushNotificationSettings() {
               {isTesting ? 'Sending...' : 'Test'}
             </Button>
           </div>
-        )}
-      </div>
+
+
+        )} */}
+      </div> 
 
       <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
         <p className="text-blue-700 text-sm">

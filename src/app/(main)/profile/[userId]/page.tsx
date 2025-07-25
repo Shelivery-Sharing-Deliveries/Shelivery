@@ -378,7 +378,7 @@ export default function ProfileEditPage() {
                         </button>
                         
                         <div>
-                        <h1>Settings</h1>
+                        <h1>Notification Settings</h1>
                         <PushNotificationSettings />
                         </div>
                     </div>
