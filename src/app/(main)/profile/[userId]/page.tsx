@@ -1,4 +1,5 @@
 "use client";
+import { PushNotificationSettings } from '@/components/ui/PushNotificationSettings';
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -375,6 +376,11 @@ export default function ProfileEditPage() {
                                 Logout
                             </span>
                         </button>
+                        
+                        <div>
+                        <h1>Notification Settings</h1>
+                        <PushNotificationSettings />
+                        </div>
                     </div>
                 </div>
             </div>

@@ -101,7 +101,7 @@ dist
 .tern-port
 
 # PWA files
-public/sw.js*
+public/sw.js
 public/workbox-*.js*
 public/worker-*.js*
 public/fallback-*.js*
@@ -187,4 +187,5 @@ key1.pub
 
 
 
-.vs/
+localhost-key.pem
+localhost.pem

@@ -1,5 +1,6 @@
 {
   "name": "Shelivery - Group Shopping for Dormitories",
+  "version": "1.0.0",
   "short_name": "Shelivery",
   "description": "Share delivery costs and coordinate group orders with your dormmates",
   "theme_color": "#245b7b",
@@ -10,6 +11,7 @@
   "start_url": "/",
   "categories": ["shopping", "lifestyle", "social"],
   "lang": "en",
+  "gcm_sender_id": "103953800507",
   "icons": [
     {
       "src": "/icons/shelivery-logo2.png",

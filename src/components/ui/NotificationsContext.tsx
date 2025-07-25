@@ -11,6 +11,7 @@ import {
 import { NotificationBanner } from "@/components/ui/NotificationBanner";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useAuth } from "@/hooks/useAuth"; // adjust path
+import { pushNotificationManager } from "@/lib/push-notifications";
 
 interface NotificationConfig {
   id?: string;
@@ -101,6 +102,37 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     fetchNotifications();
   }, [user?.id, authLoading, supabase]);
+
+  // Initialize push notifications when user is authenticated
+  useEffect(() => {
+    if (authLoading || !user?.id) return;
+
+    const initializePushNotifications = async () => {
+      try {
+        // Check if push notifications are supported
+        if (!pushNotificationManager.isSupported()) {
+          console.log('Push notifications not supported on this device');
+          return;
+        }
+
+        // Check current permission status
+        const permission = pushNotificationManager.getPermissionStatus();
+        
+        // If permission is granted, ensure user is subscribed
+        if (permission === 'granted') {
+          const status = await pushNotificationManager.getSubscriptionStatus();
+          if (!status.isSubscribed) {
+            // Auto-subscribe if permission is granted but not subscribed
+            await pushNotificationManager.subscribe();
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing push notifications:', error);
+      }
+    };
+
+    initializePushNotifications();
+  }, [user?.id, authLoading]);
 
   // Real-time subscription for new notifications
   useEffect(() => {
