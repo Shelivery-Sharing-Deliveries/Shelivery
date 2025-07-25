@@ -186,4 +186,5 @@ key1.pub
 
 
 
-.vs/
+localhost-key.pem
+localhost.pem
