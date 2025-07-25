@@ -1,77 +1,22 @@
+// next.config.js
 const withPWA = require('next-pwa')({
+  // The 'dest' option defines where the generated files would go,
+  // but since we're disabling generation, it effectively doesn't apply to sw.js.
+  // However, it might still be used for other PWA assets like manifest.json,
+  // so keeping it is generally fine.
   dest: 'public',
-  register: true,
-  skipWaiting: true,
-  runtimeCaching: [
-    {
-      urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-      handler: 'CacheFirst',
-      options: {
-        cacheName: 'google-fonts',
-        expiration: {
-          maxEntries: 4,
-          maxAgeSeconds: 365 * 24 * 60 * 60 // 365 days
-        }
-      }
-    },
-    {
-      urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-      handler: 'CacheFirst',
-      options: {
-        cacheName: 'google-fonts-static',
-        expiration: {
-          maxEntries: 4,
-          maxAgeSeconds: 365 * 24 * 60 * 60 // 365 days
-        }
-      }
-    },
-    {
-      urlPattern: /\.(?:jpg|jpeg|gif|png|svg|ico|webp)$/i,
-      handler: 'StaleWhileRevalidate',
-      options: {
-        cacheName: 'static-image-assets',
-        expiration: {
-          maxEntries: 64,
-          maxAgeSeconds: 24 * 60 * 60 // 24 hours
-        }
-      }
-    },
-    {
-      urlPattern: /\.(?:js)$/i,
-      handler: 'StaleWhileRevalidate',
-      options: {
-        cacheName: 'static-js-assets',
-        expiration: {
-          maxEntries: 32,
-          maxAgeSeconds: 24 * 60 * 60 // 24 hours
-        }
-      }
-    },
-    {
-      urlPattern: /\.(?:css|less)$/i,
-      handler: 'StaleWhileRevalidate',
-      options: {
-        cacheName: 'static-style-assets',
-        expiration: {
-          maxEntries: 32,
-          maxAgeSeconds: 24 * 60 * 60 // 24 hours
-        }
-      }
-    },
-    {
-      urlPattern: /^\/api\/.*$/i,
-      handler: 'NetworkFirst',
-      method: 'GET',
-      options: {
-        cacheName: 'apis',
-        expiration: {
-          maxEntries: 16,
-          maxAgeSeconds: 24 * 60 * 60 // 24 hours
-        },
-        networkTimeoutSeconds: 10 // fall back to cache if api does not response within 10 seconds
-      }
-    }
-  ]
+
+  // This is the CRUCIAL line. Setting disable to true tells next-pwa
+  // to completely skip generating, registering, or managing the service worker.
+  disable: true,
+
+  // All these options are related to next-pwa's *internal* service worker generation.
+  // Since we've set disable: true, they become redundant for sw.js and can be removed
+  // to avoid confusion or potential (though unlikely) side effects.
+  // register: true, // No longer needed as you'll register your custom sw.js manually
+  // skipWaiting: true, // No longer needed
+  // buildExcludes: [/sw\.js\.map$/], // No longer needed as next-pwa won't generate sw.js or its map
+  // runtimeCaching: [], // No longer needed as next-pwa won't generate sw.js based on these rules
 });
 
 /** @type {import('next').NextConfig} */
@@ -105,6 +50,8 @@ const nextConfig = {
         headers: [
           {
             key: 'Cache-Control',
+            // It's good practice to set Cache-Control for your custom sw.js
+            // to ensure browsers always get the latest version on reload.
             value: 'public, max-age=0, must-revalidate',
           },
         ],
