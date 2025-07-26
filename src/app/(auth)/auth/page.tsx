@@ -11,7 +11,7 @@ import {
 } from "@/components/auth";
 import SetPasswordForm from "@/components/auth/SetPasswordForm";
 import EmailConfirmationForm from "@/components/auth/EmailConfirmationForm";
-import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm"; // NEW: Import ForgotPasswordForm
+import  ForgotPasswordForm  from "@/components/auth/ForgotPasswordForm"; // NEW: Import ForgotPasswordForm
 import { useAuth } from "@/hooks/useAuth";
 
 type AuthStep =
@@ -69,6 +69,10 @@ function AuthPageContent() {
         setResendCountdown(resendCountdown - 1);
       }, 1000);
       return () => clearTimeout(timer);
+    }
+    else {
+      setResendCountdown(0);
+      return
     }
   }, [resendCountdown]);
 
