@@ -1,3 +1,4 @@
+// components/auth/PasswordForm.tsx
 "use client";
 
 import { useState } from "react";
@@ -9,6 +10,7 @@ interface PasswordFormProps {
   email: string;
   onPasswordSubmit: (password: string) => void;
   onBackToEmail: () => void;
+  onForgotPasswordClick: () => void; // ADDED: onForgotPasswordClick prop
   loading?: boolean;
   error?: string | undefined;
 }
@@ -17,6 +19,7 @@ export default function PasswordForm({
   email,
   onPasswordSubmit,
   onBackToEmail,
+  onForgotPasswordClick, // ADDED: onForgotPasswordClick from destructuring
   loading = false,
   error,
 }: PasswordFormProps) {
@@ -79,10 +82,7 @@ export default function PasswordForm({
           <div className="text-center">
             <button
               type="button"
-              onClick={() => {
-                // TODO: Implement forgot password flow
-                alert("Forgot password feature coming soon!");
-              }}
+              onClick={onForgotPasswordClick} // NOW CALLS THE onForgotPasswordClick PROP
               className="text-[#A4A7AE] font-inter text-[14px] font-normal leading-[16.94px]"
             >
               Forgot your password?

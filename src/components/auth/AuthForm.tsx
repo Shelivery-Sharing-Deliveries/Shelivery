@@ -1,3 +1,4 @@
+// components/auth/AuthForm.tsx
 "use client";
 
 import { useState } from "react";
@@ -10,6 +11,7 @@ interface AuthFormProps {
   onModeChange: (mode: "signin" | "signup") => void;
   onSuccess?: () => void;
   className?: string;
+  onForgotPasswordClick?: () => void; // NEW PROP: Callback for forgot password
 }
 
 export function AuthForm({
@@ -17,6 +19,7 @@ export function AuthForm({
   onModeChange,
   onSuccess,
   className,
+  onForgotPasswordClick, // Destructure the new prop
 }: AuthFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -335,10 +338,7 @@ export function AuthForm({
         <div className="text-center">
           <button
             type="button"
-            onClick={() => {
-              // TODO: Implement forgot password flow
-              alert("Forgot password feature coming soon!");
-            }}
+            onClick={onForgotPasswordClick} // Use the new prop here
             className="text-shelivery-text-tertiary hover:text-shelivery-text-secondary text-sm"
           >
             Forgot your password?

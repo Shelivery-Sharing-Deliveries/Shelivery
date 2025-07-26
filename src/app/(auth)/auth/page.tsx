@@ -5,12 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image"; // Make sure Image is imported for the back arrow
 import {
   LoginForm,
-  PasswordForm,
+  PasswordForm, // This is the component that will receive onForgotPasswordClick
   InviteCodeForm,
   OTPVerificationForm,
 } from "@/components/auth";
 import SetPasswordForm from "@/components/auth/SetPasswordForm";
 import EmailConfirmationForm from "@/components/auth/EmailConfirmationForm";
+import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm"; // NEW: Import ForgotPasswordForm
 import { useAuth } from "@/hooks/useAuth";
 
 type AuthStep =
@@ -20,7 +21,8 @@ type AuthStep =
   | "setPassword"
   | "otp"
   | "register"
-  | "awaitingEmailConfirmation";
+  | "awaitingEmailConfirmation"
+  | "forgotPassword"; // NEW: Added forgotPassword step
 
 function AuthPageContent() {
   const [step, setStep] = useState<AuthStep>("login");
@@ -28,25 +30,25 @@ function AuthPageContent() {
   const [inviteCode, setInviteCode] = useState("");
   const [loading, setLoading] = useState(false); // For form submission loading
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null); // NEW: For success messages
   const [resendCountdown, setResendCountdown] = useState(0);
   const [password, setPassword] = useState("");
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState(""); // NEW: State for email in forgot password flow
 
   const {
     user,
     loading: authLoading, // This is the loading state from useAuth, indicating initial session check
     signIn,
     signUp,
+    // signInWithOAuth, // Removed as it's not used in this component's logic
     checkUserExists,
   } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // THIS IS THE CORRECT PLACE FOR REDIRECTION LOGIC IN AUTH PAGE:
   // Redirect if user is already logged in and tries to access /auth.
-  // This useEffect runs after render, preventing the "setState in render" warning.
   useEffect(() => {
     if (!authLoading && user) {
-      // User is authenticated, redirect them away from the auth page
       router.replace("/dashboard"); // Use replace to prevent adding /auth to browser history
     }
   }, [user, authLoading, router]); // Re-run when user or authLoading state changes
@@ -67,12 +69,13 @@ function AuthPageContent() {
         setResendCountdown(resendCountdown - 1);
       }, 1000);
       return () => clearTimeout(timer);
-    } else return () => setResendCountdown(0);
+    }
   }, [resendCountdown]);
 
   const handleEmailSubmit = async (submittedEmail: string) => {
     setLoading(true);
     setError(null);
+    setMessage(null); // Clear messages on new submit
     setEmail(submittedEmail);
 
     try {
@@ -95,6 +98,7 @@ function AuthPageContent() {
   const handlePasswordSubmit = async (password: string) => {
     setLoading(true);
     setError(null);
+    setMessage(null); // Clear messages on new submit
 
     try {
       const { error: signInError } = await signIn(email, password);
@@ -123,11 +127,13 @@ function AuthPageContent() {
   const handleBackToEmail = () => {
     setStep("login");
     setError(null);
+    setMessage(null); // Clear messages
   };
 
   const handleInviteCodeSubmit = async (code: string) => {
     setLoading(true);
     setError(null);
+    setMessage(null); // Clear messages on new submit
     setInviteCode(code);
 
     try {
@@ -147,6 +153,7 @@ function AuthPageContent() {
   const handleSetPasswordSubmit = async (submittedPassword: string) => {
     setLoading(true);
     setError(null);
+    setMessage(null); // Clear messages on new submit
 
     try {
       setPassword(submittedPassword);
@@ -175,7 +182,7 @@ function AuthPageContent() {
     const { error } = await supabase.auth.signInWithOtp({
       email: email,
       options: {
-        // emailRedirectTo: `${window.location.origin}/auth/callback`, // REMOVED: Callback page reference
+        // emailRedirectTo: `${window.location.origin}/auth/callback`, // Keep this if you use OTP for sign-in/up
       },
     });
 
@@ -189,6 +196,7 @@ function AuthPageContent() {
   const handleOTPSubmit = async (code: string) => {
     setLoading(true);
     setError(null);
+    setMessage(null); // Clear messages on new submit
 
     try {
       const { data, error } = await supabase.auth.verifyOtp({
@@ -201,7 +209,7 @@ function AuthPageContent() {
         setError(error.message);
         return;
       }
-      // OTP successful. The useEffect above will handle redirection.
+      // OTP successful. The useEffect at the top will handle redirection.
     } catch (err: any) {
       setError(err.message || "Invalid verification code");
     } finally {
@@ -214,6 +222,51 @@ function AuthPageContent() {
     // Implement resend logic here
   };
 
+  // NEW: Forgot Password Handlers
+  const handleForgotPasswordClick = () => {
+    console.log("Forgot password button clicked! Current email:", email); // DEBUG LOG
+    setForgotPasswordEmail(email); // Pre-fill email if available from login form
+    setStep("forgotPassword");
+    setError(null); // Clear any previous errors
+    setMessage(null); // Clear any previous messages
+    console.log("Step set to:", "forgotPassword"); // DEBUG LOG
+  };
+
+  const handleForgotPasswordRequest = async (submittedEmail: string) => {
+    setLoading(true);
+    setError(null);
+    setMessage(null); // Clear messages on new submit
+    console.log("Sending password reset link for:", submittedEmail); // DEBUG LOG
+
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(submittedEmail, {
+        redirectTo: `${window.location.origin}/auth/update-password`, // URL for user to set new password
+      });
+
+      if (resetError) {
+        setError(resetError.message);
+        console.error("Password reset error:", resetError); // DEBUG LOG
+      } else {
+        setMessage("Password reset link sent! Check your email inbox (and spam folder).");
+        console.log("Password reset link sent successfully."); // DEBUG LOG
+      }
+    } catch (err: any) {
+      setError(err.message || "An unexpected error occurred during password reset.");
+      console.error("Unexpected error during password reset:", err); // DEBUG LOG
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBackToLoginFromForgot = () => {
+    console.log("Back to login from forgot password."); // DEBUG LOG
+    setStep("login");
+    setError(null);
+    setMessage(null); // Clear messages
+    setForgotPasswordEmail(""); // Clear email for next attempt
+  };
+
+
   // Show a loading spinner only while the *initial* Supabase session is being determined.
   if (authLoading) {
     return (
@@ -225,6 +278,9 @@ function AuthPageContent() {
       </div>
     );
   }
+
+  // DEBUG LOG: Log the current step before rendering forms
+  console.log("AuthPageContent current rendering step:", step);
 
   // If user is null (not authenticated) and not loading, render the appropriate auth form.
   return (
@@ -258,6 +314,7 @@ function AuthPageContent() {
           email={email}
           onPasswordSubmit={handlePasswordSubmit}
           onBackToEmail={handleBackToEmail}
+          onForgotPasswordClick={handleForgotPasswordClick} // NEW: Pass the handler
           loading={loading}
           error={error || undefined}
         />
@@ -293,6 +350,16 @@ function AuthPageContent() {
           loading={loading}
           error={error || undefined}
           resendCountdown={resendCountdown}
+        />
+      )}
+      {step === "forgotPassword" && ( // NEW: Render ForgotPasswordForm
+        <ForgotPasswordForm
+          initialEmail={forgotPasswordEmail}
+          onSubmit={handleForgotPasswordRequest}
+          onBackToLogin={handleBackToLoginFromForgot}
+          loading={loading}
+          error={error}
+          message={message} // Pass message prop
         />
       )}
     </div>
