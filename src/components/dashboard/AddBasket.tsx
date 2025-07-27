@@ -8,12 +8,12 @@ export default function AddBasket({ onClick }: AddBasketProps) {
   return (
     <div className="w-full h-[67px] mb-[18px]">
       <div
-        className="w-full h-full bg-[#FFDB0D] border border-[#245B7B] rounded-[18px] flex items-center justify-center px-4 cursor-pointer hover:opacity-90 transition-opacity"
+        className="w-full h-full bg-[#FFDB0D]  rounded-[18px] flex px-4 cursor-pointer hover:opacity-90 transition-opacity "
         onClick={onClick}
       >
         <div className="flex items-center gap-3">
           {/* Plus Icon */}
-          <div className="w-12 h-12 flex items-center justify-center">
+          <div className="w-12 h-12 flex ">
             <Image
               src="/icons/plus-circle-icon.svg"
               alt="Add"

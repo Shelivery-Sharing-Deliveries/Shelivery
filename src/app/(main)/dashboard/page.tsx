@@ -11,6 +11,8 @@ import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/solid'; // Import icons for collapsible section
+import Skeleton from 'react-loading-skeleton';
+import 'react-loading-skeleton/dist/skeleton.css';
 
 // Define the interface for the Shop data as it exists in the 'shop' table
 interface ShopData {
@@ -188,16 +190,31 @@ export default function DashboardPage() {
                             Invite Friends
                         </Button>
                     </div>
-                    <ProfileCard
-                        userName={userProfile ? userProfile.userName : "Loading..."}
-                        userAvatar={userProfile ? userProfile.userAvatar : "/avatars/default-avatar.png"}
-                    />
+                    {userProfile ? (
+                        <ProfileCard
+                            userName={userProfile.userName}
+                            userAvatar={userProfile.userAvatar}
+                        />
+                        
+                    ) : (<div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}> {/* Inline Flexbox */}
+                        <Skeleton circle width={54} height={54} style={{ marginBottom: '0px' }} /> {/* Override default margin */}
+                        <div> {/* Container for stacked text skeletons */}
+                        <Skeleton height={15} width={200} count={1} />
+                        <Skeleton height={12} width={150} count={1} style={{ marginTop: '5px' }}/>
+                        </div>
+                    </div>)}
+                    
                     <AddBasket onClick={handleAddBasket} />
                     {loadingBaskets ? (
+                        
                         <div className="flex items-center justify-center py-8">
-                            <div className="w-8 h-8 border-4 border-[#FFDB0D] border-t-transparent rounded-full animate-spin mr-2" />
-                            <p className="text-gray-600">Loading baskets...</p>
+                            <div>
+                            <Skeleton height={20} width={300} />
+                            <Skeleton height={15} width={300} count={5} /></div>
                         </div>
+
+                            
+                            
                     ) : error ? (
                         <div className="text-center py-8 text-red-600">
                             <p>{error}</p>

@@ -2,7 +2,7 @@
 
 import { PageLayout } from '@/components/ui/PageLayout'; // <--- IMPORTANT: Adjust this path to your actual PageLayout component location
 import { PushNotificationSettings } from '@/components/ui/PushNotificationSettings';
-
+import { usePushNotifications } from '@/hooks/usePushNotifications'; // <-- ADD THIS IMPORT
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -18,7 +18,7 @@ interface ProfileFormData {
 
 export default function ProfileEditPage() {
     const router = useRouter();
-
+    const { unsubscribe } = usePushNotifications();
     const [formData, setFormData] = useState<ProfileFormData>({
         firstName: "",
         lastName: "",
@@ -199,6 +199,13 @@ export default function ProfileEditPage() {
 
     // --- LOGOUT FUNCTION ---
     const handleLogout = async () => {
+
+        const unsubscribeSuccess = await unsubscribe(); 
+        if (unsubscribeSuccess) {
+            console.log("Successfully unsubscribed from push notifications on logout.");
+        } else {
+            console.warn("Failed to unsubscribe from push notifications on logout, but proceeding with logout.");
+        }
         const { error } = await supabase.auth.signOut();
         if (error) {
             console.error("Error logging out:", error);

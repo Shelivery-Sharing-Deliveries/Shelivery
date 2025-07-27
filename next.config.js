@@ -17,7 +17,7 @@ const nextConfig = {
     typedRoutes: true,
   },
   images: {
-    domains: ['localhost'],
+    domains: ['localhost', 'zsqagqzztvzogyktgjph.supabase.co'],
     formats: ['image/webp', 'image/avif'],
   },
   async headers() {
