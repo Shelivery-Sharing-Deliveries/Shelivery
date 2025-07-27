@@ -9,13 +9,25 @@ interface VoiceWaveformBubbleProps {
 
 export default function VoiceWaveformBubble({ src, className }: VoiceWaveformBubbleProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // Initialize WaveSurfer once on mount
   useEffect(() => {
     if (!containerRef.current) return;
 
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) {
+      console.warn("Web Audio API is not supported in this browser.");
+      return;
+    }
+
+    // Create and configure <audio> element
+    const audioEl = new Audio();
+    audioEl.controls = false;
+    audioRef.current = audioEl;
+
+    // Create WaveSurfer instance
     const wavesurfer = WaveSurfer.create({
       container: containerRef.current,
       waveColor: "#d1d5db",
@@ -24,6 +36,8 @@ export default function VoiceWaveformBubble({ src, className }: VoiceWaveformBub
       barWidth: 2,
       cursorWidth: 0,
       normalize: true,
+      backend: "MediaElement",
+      media: audioEl, // Pass the audio element directly
     });
 
     wavesurfer.on("finish", () => setIsPlaying(false));
@@ -32,35 +46,27 @@ export default function VoiceWaveformBubble({ src, className }: VoiceWaveformBub
     return () => {
       wavesurfer.destroy();
       wavesurferRef.current = null;
+      audioRef.current = null;
     };
   }, []);
 
-  // Load new audio src when changed
-useEffect(() => {
-  const wavesurfer = wavesurferRef.current;
-  if (!wavesurfer) return;
+  // Load new audio source
+  useEffect(() => {
+    const audio = audioRef.current;
+    const wavesurfer = wavesurferRef.current;
+    if (!audio || !wavesurfer) return;
 
-  let isCancelled = false;
+    setIsPlaying(false);
+    wavesurfer.stop(); // Stop current playback before reloading
 
-  const loadAudio = async () => {
     try {
-      setIsPlaying(false);
-      await wavesurfer.load(src);
-    } catch (err: any) {
-      if (err.name === "AbortError") {
-        console.warn("WaveSurfer load aborted.");
-      } else {
-        console.error("WaveSurfer load error:", err);
-      }
+      audio.src = src;
+      // Reloading <audio> source automatically works with MediaElement backend
+      audio.load();
+    } catch (err) {
+      console.error("Audio load error:", err);
     }
-  };
-
-  loadAudio();
-
-  return () => {
-    isCancelled = true;
-  };
-}, [src]);
+  }, [src]);
 
   const togglePlayback = () => {
     const wavesurfer = wavesurferRef.current;
@@ -71,6 +77,7 @@ useEffect(() => {
     } else {
       wavesurfer.play();
     }
+
     setIsPlaying(!isPlaying);
   };
 
