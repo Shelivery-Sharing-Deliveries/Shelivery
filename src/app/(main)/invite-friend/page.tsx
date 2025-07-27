@@ -7,7 +7,7 @@ import Header from "@/components/invite-friend/Header";
 import InviteCard from "@/components/invite-friend/InviteCard";
 import InviteForm from "@/components/invite-friend/InviteForm";
 import { generateInvite } from "@/lib/invites";
-import { PageLayout } from "@/components/ui";
+import { PageLayout } from "@/components/ui/PageLayout"; // Corrected import path for PageLayout
 
 export default function InviteFriendPage() {
   const { user, loading: authLoading } = useAuth();
@@ -20,6 +20,7 @@ export default function InviteFriendPage() {
 
     if (!user) {
       //router.push("/auth"); // ✅ redirect to your actual auth flow
+      console.log("No user found, redirecting to auth flow."); // Replaced alert
       return;
     }
 
@@ -35,27 +36,35 @@ export default function InviteFriendPage() {
   const handleCopyCode = () => {
     if (!inviteCode) return;
     navigator.clipboard.writeText(inviteCode);
-    alert("Invite code copied!");
+    console.log("Invite code copied!"); // Replaced alert
+    // In a real app, you might show a toast notification here
   };
 
   const handleInviteFriend = () => {
     if (!inviteCode) return;
     const fullUrl = `${window.location.origin}/auth?invite=${inviteCode}`;
     navigator.clipboard.writeText(fullUrl);
-    alert("Invite link copied! Send it to your friend.");
+    console.log("Invite link copied! Send it to your friend."); // Replaced alert
+    // In a real app, you might show a toast notification here
   };
 
+  // Extract the Header component to be passed as the 'header' prop
   const headerContent = (
     <Header />
   );
 
-
   return (
-      <PageLayout header={headerContent}> 
-
-      <div className="flex-1 px-4 py-6 flex flex-col items-center gap-6">
+    // Wrap the entire page content with PageLayout
+    // The headerContent will be rendered in the fixed header area.
+    // showNavigation is true by default, but you can set it to false if this page doesn't need it.
+    <PageLayout header={headerContent}> 
+      {/*
+        The main content area. PageLayout already provides horizontal padding (px-4)
+        and manages overall layout, so removed redundant padding and flex-1 from here.
+      */}
+      <div className="flex flex-col items-center gap-6 py-6 w-full"> {/* Added w-full for full width within PageLayout's content area */}
         {loading ? (
-          <p>Loading your invite code...</p>
+          <p className="text-gray-600">Loading your invite code...</p>
         ) : (
           <>
             <div className="flex flex-col items-center gap-4 w-full">
