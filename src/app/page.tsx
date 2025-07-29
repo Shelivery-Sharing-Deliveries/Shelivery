@@ -81,7 +81,7 @@ export default function HomePage() {
             </a>
 
             <a
-              href="#features"
+              href="/about"
               className="rounded-lg px-4 py-2 text-sm font-semibold shadow-sm hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
               style={{
                 backgroundColor: 'transparent',
