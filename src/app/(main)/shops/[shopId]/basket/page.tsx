@@ -19,6 +19,7 @@ export default function BasketCreationPage() {
     const [shop, setShop] = useState<Shop | null>(null);
 
     const [basketLink, setBasketLink] = useState("");
+    const [basketNote, setBasketNote] = useState("");
     const [basketAmount, setBasketAmount] = useState(""); // Storing as string for input
 
     const [loading, setLoading] = useState(true); // For initial shop data fetch
@@ -82,7 +83,7 @@ export default function BasketCreationPage() {
                     // Fetch the full basket details for pre-population
                     const { data: existingBasketData, error: fetchBasketError } = await supabase
                         .from("basket")
-                        .select("amount, link, pool_id, shop_id") // Select all needed fields, including shop_id for validation
+                        .select("amount, link, note, pool_id, shop_id") // Select all needed fields, including shop_id for validation
                         .eq("id", urlBasketId)
                         .eq("user_id", user.id) // IMPORTANT: Ensure the user owns this basket
                         .single();
@@ -94,6 +95,7 @@ export default function BasketCreationPage() {
                         setIsEditMode(false);
                         setExistingBasketId(null);
                         setBasketLink("");
+                        setBasketNote("");
                         setBasketAmount("");
                         setCurrentBasketPoolId(null);
                         router.replace(`/shops/${shopId}/basket`); // Clean the URL query params
@@ -107,6 +109,7 @@ export default function BasketCreationPage() {
                         setIsEditMode(false);
                         setExistingBasketId(null);
                         setBasketLink("");
+                        setBasketNote("");
                         setBasketAmount("");
                         setCurrentBasketPoolId(null);
                         router.replace(`/shops/${shopId}/basket`); // Clean the URL query params
@@ -114,7 +117,8 @@ export default function BasketCreationPage() {
                     }
 
                     // Pre-populate form fields
-                    setBasketLink(existingBasketData.link);
+                    setBasketLink(existingBasketData.link || "");
+                    setBasketNote(existingBasketData.note || "");
                     setBasketAmount(existingBasketData.amount.toString()); // Convert number to string for input
                     setCurrentBasketPoolId(existingBasketData.pool_id);
 
@@ -123,6 +127,7 @@ export default function BasketCreationPage() {
                     setIsEditMode(false);
                     setExistingBasketId(null);
                     setBasketLink("");
+                    setBasketNote("");
                     setBasketAmount("");
                     setCurrentBasketPoolId(null); // Reset pool ID for new basket mode
                 }
@@ -144,17 +149,67 @@ export default function BasketCreationPage() {
         return isNaN(amount) || amount <= 0 ? 0 : amount;
     };
 
+    const isValidUrl = (url: string) => {
+        if (!url.trim()) return true; // Empty URL is valid (optional field)
+        
+        const trimmedUrl = url.trim();
+        
+        // Try to parse as-is first
+        try {
+            const urlObj = new URL(trimmedUrl);
+            return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+        } catch {
+            // If it fails, try adding https:// prefix
+            try {
+                const urlWithProtocol = new URL(`https://${trimmedUrl}`);
+                return true; // If it can be parsed with https://, it's valid
+            } catch {
+                return false;
+            }
+        }
+    };
+
+    const normalizeUrl = (url: string) => {
+        if (!url.trim()) return "";
+        
+        const trimmedUrl = url.trim();
+        
+        // If it already has a protocol, return as-is
+        if (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) {
+            return trimmedUrl;
+        }
+        
+        // Otherwise, add https:// prefix
+        return `https://${trimmedUrl}`;
+    };
+
     const canSubmitBasket = () => {
         const totalAmount = calculateTotalAmount();
+        const hasLink = basketLink.trim() !== "";
+        const hasNote = basketNote.trim() !== "";
+        const isLinkValid = isValidUrl(basketLink);
+        
+        // At least link OR note must be filled (can be both), amount must be > 0, and link must be valid if provided
         return (
-            basketLink.trim() !== "" &&
-            totalAmount > 0
+            (hasLink || hasNote) &&
+            totalAmount > 0 &&
+            isLinkValid
         );
     };
 
     const handleSubmitBasket = async () => {
         if (!canSubmitBasket() || !user || !shop) {
-            setError("Please fill in required fields (Link, Amount).");
+            const hasLink = basketLink.trim() !== "";
+            const hasNote = basketNote.trim() !== "";
+            const isLinkValid = isValidUrl(basketLink);
+            
+            if (!hasLink && !hasNote) {
+                setError("Please provide at least a basket link or a note (or both).");
+            } else if (hasLink && !isLinkValid) {
+                setError("Please provide a valid URL (must start with http:// or https://).");
+            } else {
+                setError("Please fill in the amount field.");
+            }
             return;
         }
 
@@ -165,7 +220,8 @@ export default function BasketCreationPage() {
             const basketData = {
                 shop_id: shop.id,
                 amount: calculateTotalAmount(),
-                link: basketLink.trim(),
+                link: basketLink.trim() ? normalizeUrl(basketLink) : null,
+                note: basketNote.trim() || null,
                 user_id: user.id, // Ensure user_id is included for both create/update
             };
 
@@ -351,9 +407,19 @@ export default function BasketCreationPage() {
                     {isEditMode ? "Edit Basket Details" : "Enter Basket Details"}
                 </h2>
 
-                <div className="space-y-4">
+                <div className="space-y-6">
+                    {/* Instructions */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-shelivery-sm p-3">
+                        <p className="text-sm text-blue-800">
+                            <strong>Provide order details:</strong> You can use a basket link, write a note, or use both to describe your order.
+                        </p>
+                    </div>
+
+                    {/* Link Input */}
                     <div>
-                        <label htmlFor="basketLink" className="block text-sm font-medium text-shelivery-text-secondary mb-1">Basket Link (URL)</label>
+                        <label htmlFor="basketLink" className="block text-sm font-medium text-shelivery-text-secondary mb-1">
+                            Basket Link (URL)
+                        </label>
                         <input
                             type="url"
                             id="basketLink"
@@ -361,11 +427,38 @@ export default function BasketCreationPage() {
                             value={basketLink}
                             onChange={(e) => setBasketLink(e.target.value)}
                             className="shelivery-input w-full"
-                            required
                         />
                     </div>
+
+                    {/* AND/OR Divider */}
+                    <div className="flex items-center">
+                        <div className="flex-1 border-t border-gray-300"></div>
+                    </div>
+
+                    {/* Note Input */}
                     <div>
-                        <label htmlFor="basketAmount" className="block text-sm font-medium text-shelivery-text-secondary mb-1">Total Amount (CHF)</label>
+                        <label htmlFor="basketNote" className="block text-sm font-medium text-shelivery-text-secondary mb-1">
+                            Order Note
+                        </label>
+                        <p className="text-xs text-shelivery-text-tertiary mt-1 mb-2">
+                            Provide details about what you want to order from this shop
+                        </p>
+                        <textarea
+                            id="basketNote"
+                            placeholder="Put your shopping list or your notes here."
+                            value={basketNote}
+                            onChange={(e) => setBasketNote(e.target.value)}
+                            className="shelivery-input w-full min-h-[120px] resize-y"
+                            rows={5}
+                        />
+                       
+                    </div>
+
+                    {/* Amount Input */}
+                    <div>
+                        <label htmlFor="basketAmount" className="block text-sm font-medium text-shelivery-text-secondary mb-1">
+                            Total Amount (CHF) *
+                        </label>
                         <input
                             type="number"
                             id="basketAmount"

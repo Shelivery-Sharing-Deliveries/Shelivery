@@ -26,7 +26,8 @@ interface BasketData {
     pool_id: string | null; // Made nullable as it can be NULL when in chatroom
     chatroom_id: string | null; // Added chatroom_id
     amount: number;
-    link: string;
+    link: string | null;
+    note: string | null;
     is_ready: boolean;
     status: 'resolved' | 'in_pool' | 'in_chat'; // Added status
     shop: ShopData; // Nested shop data from join
@@ -44,7 +45,8 @@ interface DisplayPoolData {
     shop_id: string;
     userBasket: {
         total: number;
-        itemsUrl: string;
+        itemsUrl: string | null;
+        itemsNote: string | null;
         status: 'resolved' | 'in_pool' | 'in_chat'; // Added status
         chatroomId: string | null; // Added chatroom ID
     };
@@ -88,6 +90,7 @@ export default function PoolPage({ params }: PoolPageProps) {
           id,
           amount,
           link,
+          note,
           is_ready,
           status,             
           shop_id,
@@ -142,6 +145,7 @@ export default function PoolPage({ params }: PoolPageProps) {
                 userBasket: {
                     total: fetchedBasket.amount,
                     itemsUrl: fetchedBasket.link,
+                    itemsNote: fetchedBasket.note,
                     status: fetchedBasket.status,
                     chatroomId: fetchedBasket.chatroom_id,
                 },
@@ -549,11 +553,42 @@ export default function PoolPage({ params }: PoolPageProps) {
                             <span className="text-[#111827] font-poppins text-sm font-semibold">
                                 Items Detail
                             </span>
-                            <span className="text-[#4C8FD3] font-poppins text-xs leading-tight break-all">
-                                <a href={poolData.userBasket.itemsUrl} target="_blank" rel="noopener noreferrer" className="underline">
-                                    {poolData.userBasket.itemsUrl}
-                                </a>
-                            </span>
+                            <div className="space-y-2">
+                                {poolData.userBasket.itemsUrl && (
+                                    <div className="flex flex-col">
+                                        <span className="text-[#6B7280] font-poppins text-xs font-medium mb-1">
+                                            Basket Link:
+                                        </span>
+                                        <a 
+                                            href={poolData.userBasket.itemsUrl} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer" 
+                                            className="text-[#4C8FD3] font-poppins text-xs leading-tight break-all underline hover:text-[#3A70A6] transition-colors"
+                                        >
+                                            {poolData.userBasket.itemsUrl}
+                                        </a>
+                                    </div>
+                                )}
+                                
+                                {poolData.userBasket.itemsNote && (
+                                    <div className="flex flex-col">
+                                        <span className="text-[#6B7280] font-poppins text-xs font-medium mb-1">
+                                            Order Note:
+                                        </span>
+                                        <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg p-3">
+                                            <p className="text-[#374151] font-poppins text-xs leading-relaxed whitespace-pre-wrap">
+                                                {poolData.userBasket.itemsNote}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {!poolData.userBasket.itemsUrl && !poolData.userBasket.itemsNote && (
+                                    <span className="text-[#9CA3AF] font-poppins text-xs italic">
+                                        No order details provided
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
