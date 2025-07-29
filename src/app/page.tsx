@@ -1,10 +1,29 @@
 // app/page.tsx
+'use client'; // This directive is necessary for client-side interactivity in Next.js App Router
+
+import React, { useState } from 'react';
+// Import the PWAInstallGuidePopup component
+import PWAInstallGuidePopup from '@/components/homepage/PWAInstallGuidePopup'; // Adjust the path if your structure is different
+
 export default function HomePage() {
+  // State to manage the visibility of the PWA install pop-up
+  const [showPwaPopup, setShowPwaPopup] = useState<boolean>(false);
+
+  // Function to open the PWA install pop-up
+  const openPwaPopup = () => {
+    setShowPwaPopup(true);
+  };
+
+  // Function to close the PWA install pop-up
+  const closePwaPopup = () => {
+    setShowPwaPopup(false);
+  };
+
   return (
     <main
       className="flex min-h-screen flex-col items-center justify-center p-24"
       style={{
-        backgroundColor: '#1E566F', // Specific background color from original landing page
+        backgroundColor: '#245b7b', // Specific background color from original landing page
         color: 'white',              // General font color for the page
         fontFamily: 'Poppins, sans-serif' // Apply Poppins font to the whole page
       }}
@@ -31,32 +50,54 @@ export default function HomePage() {
         <p className="mt-4 text-sm text-white">
           Share delivery costs and coordinate group orders with your dormmates
         </p>
-        <div className="mt-10 flex items-center justify-center gap-x-6">
-          {/* STEP 3: Button Style (Get Started) */}
-          <a
-            href="/auth"
-            className="rounded-lg px-5 py-2.5 text-sm font-semibold shadow-sm hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-shelivery-primary-yellow"
-            style={{
-              backgroundColor: '#FFD700', // Shelivery Primary Yellow
-              color: '#1E566F'            // Text color matching the page's background
-            }}
-          >
-            Get Started
-          </a>
-          {/* STEP 3: Button Style (Learn more) */}
-          <a
-            href="#features"
-            className="text-sm font-semibold leading-6 rounded-lg border-2 px-5 py-2.5 hover:opacity-80"
+        <div className="mt-10 flex flex-col items-center gap-y-4">
+          {/* Top row with two buttons */}
+          <div className="flex gap-x-6">
+            {/* Get Started Button */}
+            <a
+              href="/auth"
+              className="rounded-lg px-4 py-2 text-sm font-semibold shadow-sm hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-shelivery-primary-yellow"
+              style={{
+                backgroundColor: '#FFD700',
+                color: '#1E566F'
+              }}
+            >
+              Get Started
+            </a>
+
+            {/* Learn More Button */}
+            <a
+              href="#features"
+              className="rounded-lg px-4 py-2 text-sm font-semibold shadow-sm hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              style={{
+                backgroundColor: 'transparent',
+                borderColor: '#FFD700',
+                color: '#FFD700',
+                borderWidth: '2px'
+              }}
+            >
+              Learn more
+            </a>
+          </div>
+
+          {/* Bottom centered button */}
+          <button
+            onClick={openPwaPopup}
+            className="rounded-lg px-8 py-2.5 text-sm font-semibold shadow-sm hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
             style={{
               backgroundColor: 'transparent',
-              borderColor: '#FFD700', // Shelivery Primary Yellow
-              color: '#FFD700'        // Shelivery Primary Yellow
+              borderColor: '#FFD700',
+              color: '#FFD700',
+              borderWidth: '2px'
             }}
           >
-            Learn more <span aria-hidden="true">→</span>
-          </a>
+            How to install the app
+          </button>
         </div>
       </div>
+
+      {/* Render the PWAInstallGuidePopup component */}
+      <PWAInstallGuidePopup isOpen={showPwaPopup} onClose={closePwaPopup} />
     </main>
-  )
+  );
 }
