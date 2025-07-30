@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react"; // Import useEffect
 import { Send, Plus, Smile, Mic } from "lucide-react";
-import VoiceMessageBubble from "@/components/chatroom/VoiceMessageBubble"; // adjust the path
+import VoiceMessageBubble from "@/components/chatroom/VoiceMessageBubble"; // adjust the path - UNCOMMENTED
 
 interface ChatInputProps {
   onSendMessage: (content: string | { type: "audio" | "image"; url: string }) => void;
@@ -24,6 +24,36 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const streamRef = useRef<MediaStream | null>(null); // New ref for the MediaStream
+
+  // Cleanup function to stop recording and release microphone
+  const cleanupRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null; // Clear the stream ref
+    }
+  };
+
+  // Effect for cleaning up resources when the component unmounts
+  useEffect(() => {
+    return () => {
+      cleanupRecording(); // Ensure microphone is released on unmount
+      if (selectedImagePreview) {
+        URL.revokeObjectURL(selectedImagePreview); // Clean up image preview URL
+      }
+      if (recordedAudioUrl) {
+        URL.revokeObjectURL(recordedAudioUrl); // Clean up audio URL
+      }
+    };
+  }, [selectedImagePreview, recordedAudioUrl]); // Add dependencies for cleanup
 
   // Image Handling
   const handleImageSelection = (file: File) => {
@@ -35,7 +65,9 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
   const sendSelectedImage = async () => {
     if (!selectedImageFile) return;
     await handleFileUpload(selectedImageFile, "image");
-    URL.revokeObjectURL(selectedImagePreview!);
+    if (selectedImagePreview) {
+      URL.revokeObjectURL(selectedImagePreview);
+    }
     setSelectedImageFile(null);
     setSelectedImagePreview(null);
   };
@@ -51,7 +83,8 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
     setRecordedAudioUrl(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  
+      streamRef.current = stream; // Store the stream in the ref
+
       let mimeType = '';
       if (MediaRecorder.isTypeSupported('audio/webm')) {
         mimeType = 'audio/webm';
@@ -60,56 +93,75 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
       } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
         mimeType = 'audio/ogg';
       }
-  
+
       const mediaRecorder = mimeType
         ? new MediaRecorder(stream, { mimeType })
         : new MediaRecorder(stream);
-  
+
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
-  
+
       mediaRecorder.ondataavailable = (event) => {
         audioChunksRef.current.push(event.data);
       };
-  
+
       mediaRecorder.onstop = () => {
         const blob = new Blob(audioChunksRef.current, { type: mimeType || 'audio/webm' });
         const url = URL.createObjectURL(blob);
         setRecordedAudioUrl(url);
+        // Stream tracks are stopped in cleanupRecording, which is called by stopRecording
       };
-  
+
       mediaRecorder.start();
       setIsRecording(true);
       setRecordingTime(0);
-  
+
       timerRef.current = setInterval(() => {
         setRecordingTime((prev) => prev + 1);
       }, 1000);
     } catch (error) {
       console.error('Error accessing microphone', error);
-      alert('Microphone access failed. Ensure your browser has permission and supports audio recording.');
+      // Using a simple div for message instead of alert
+      const messageBox = document.createElement('div');
+      messageBox.textContent = 'Microphone access failed. Ensure your browser has permission and supports audio recording.';
+      messageBox.style.cssText = `
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;
+        padding: 15px; border-radius: 5px; z-index: 1000; text-align: center;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      `;
+      document.body.appendChild(messageBox);
+      setTimeout(() => document.body.removeChild(messageBox), 3000); // Remove after 3 seconds
     }
   };
 
   const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
-    setIsRecording(false);
-    if (timerRef.current) clearInterval(timerRef.current);
+    cleanupRecording(); // Call the unified cleanup function
   };
 
   const sendRecordedAudio = async () => {
     if (!recordedAudioUrl) return;
     const response = await fetch(recordedAudioUrl);
     const blob = await response.blob();
-    const file = new File([blob], "voice-message.webm", { type: "audio/webm" });
+    // Determine file extension based on mimeType
+    let fileExtension = 'webm';
+    if (mediaRecorderRef.current?.mimeType.includes('mp4')) {
+      fileExtension = 'mp4';
+    } else if (mediaRecorderRef.current?.mimeType.includes('ogg')) {
+      fileExtension = 'ogg';
+    }
+    const file = new File([blob], `voice-message.${fileExtension}`, { type: mediaRecorderRef.current?.mimeType || "audio/webm" });
     const url = await onUploadFile(file, "audio");
     if (url) {
       onSendMessage({ type: "audio", url });
+    } else {
+      console.error("Audio upload failed.");
     }
     discardRecording();
   };
 
   const discardRecording = () => {
+    if (recordedAudioUrl) URL.revokeObjectURL(recordedAudioUrl);
     setRecordedAudioUrl(null);
     setRecordingTime(0);
   };
@@ -138,7 +190,7 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
 
   if (disabled) {
     return (
-      <div className="px-3 py-2 bg-gray-100 border-t border-gray-200 text-center text-gray-500 text-sm safe-area-padding">
+      <div className="px-3 py-4 bg-gray-100 border-t border-gray-200 text-center text-gray-500 text-sm safe-area-padding-disabled">
         This chat has been resolved and is now read-only
       </div>
     );
@@ -172,12 +224,38 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
         </div>
       )}
 
+      {/* Conditional rendering for VoiceMessageBubble outside the form if needed, or ensure it's handled properly */}
+      {recordedAudioUrl && !isRecording && ( // Only show if recorded and not actively recording
+        <div className="mb-2 flex items-center justify-between w-full border border-gray-300 bg-white px-3 py-2 rounded-full">
+          {/* Now using VoiceMessageBubble component */}
+          <VoiceMessageBubble src={recordedAudioUrl} className="flex-1 min-w-0" />
+          <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={sendRecordedAudio}
+              className="w-10 h-10 flex items-center justify-center text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-full transition-colors touch-manipulation"
+              title="Send voice message"
+            >
+              <Send className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              onClick={discardRecording}
+              className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors text-lg touch-manipulation"
+              title="Discard"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="flex items-end gap-2">
         {/* Attachment Button */}
         <button
           type="button"
           onClick={() => imageInputRef.current?.click()}
-          className="flex-shrink-0 w-9 h-9 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors touch-manipulation"
+          className="flex-shrink-0 w-10 h-10 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors touch-manipulation"
           title="Add attachment"
         >
           <Plus className="w-5 h-5" />
@@ -194,29 +272,23 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
           }}
         />
 
-        {/* Message Input OR Voice Bubble */}
+        {/* Message Input OR Voice Recording Indicator */}
         <div className="flex-1 relative min-w-0">
-          {recordedAudioUrl ? (
-            <div className="flex items-center justify-between w-full border border-gray-300 bg-white px-3 py-2 rounded-full">
-              <VoiceMessageBubble src={recordedAudioUrl} className="flex-1 min-w-0" />
-              <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-                <button
-                  type="button"
-                  onClick={sendRecordedAudio}
-                  className="w-8 h-8 flex items-center justify-center text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-full transition-colors touch-manipulation"
-                  title="Send voice message"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={discardRecording}
-                  className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors text-lg touch-manipulation"
-                  title="Discard"
-                >
-                  ×
-                </button>
-              </div>
+          {isRecording ? (
+            <div className="flex items-center justify-between w-full border border-red-300 bg-red-50 px-4 py-2.5 rounded-full min-h-[40px]">
+              <span className="text-sm text-red-600 font-medium">Recording...</span>
+              <span className="text-sm text-red-500 font-mono tabular-nums">
+                {formatTime(recordingTime)}
+              </span>
+              {/* Added explicit stop button */}
+              <button
+                type="button"
+                onClick={stopRecording}
+                className="ml-2 px-3 py-1 bg-red-500 text-white text-xs rounded-full hover:bg-red-600 transition-colors"
+                title="Stop recording"
+              >
+                Stop
+              </button>
             </div>
           ) : (
             <div className="relative">
@@ -245,39 +317,23 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
                 {message.trim() ? (
                   <button
                     type="submit"
-                    className="w-8 h-8 flex items-center justify-center text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-full transition-colors touch-manipulation"
+                    className="w-10 h-10 flex items-center justify-center text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-full transition-colors touch-manipulation"
                     title="Send message"
                   >
-                    <Send className="w-4 h-4" />
+                    <Send className="w-5 h-5" />
                   </button>
-                ) : isRecording ? (
-                  <div className="flex items-center gap-2 pr-1">
-                    <span className="text-xs text-red-500 font-mono tabular-nums">
-                      {formatTime(recordingTime)}
-                    </span>
-                    <button
-                      type="button"
-                      onMouseUp={stopRecording}
-                      onMouseLeave={stopRecording}
-                      onTouchEnd={stopRecording}
-                      className="w-8 h-8 flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full transition-colors touch-manipulation"
-                      title="Release to stop recording"
-                    >
-                      <Mic className="w-4 h-4 animate-pulse" />
-                    </button>
-                  </div>
                 ) : (
                   <button
                     type="button"
                     onMouseDown={startRecording}
                     onMouseUp={stopRecording}
-                    onMouseLeave={stopRecording}
+                    onMouseLeave={stopRecording} // Stop recording if mouse leaves while holding
                     onTouchStart={startRecording}
                     onTouchEnd={stopRecording}
-                    className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors touch-manipulation"
+                    className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors touch-manipulation"
                     title="Hold to record voice message"
                   >
-                    <Mic className="w-4 h-4" />
+                    <Mic className="w-5 h-5" />
                   </button>
                 )}
               </div>
@@ -288,13 +344,16 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
 
       <style jsx>{`
         .safe-area-padding {
-          padding-bottom: max(8px, env(safe-area-inset-bottom));
+          padding-bottom: max(16px, env(safe-area-inset-bottom)); /* Increased min padding */
+        }
+        .safe-area-padding-disabled {
+          padding-bottom: max(16px, env(safe-area-inset-bottom)); /* Consistent padding for disabled state */
         }
         
         .ios-fix {
           -webkit-appearance: none;
           -webkit-border-radius: 0;
-          border-radius: 9999px;
+          border-radius: 9999px; /* Ensure rounded-full is applied consistently */
         }
         
         .touch-manipulation {
@@ -307,7 +366,7 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
         
         @media (max-width: 480px) {
           .ios-fix {
-            font-size: 16px !important;
+            font-size: 16px !important; /* Prevents unwanted zoom on iOS */
           }
         }
       `}</style>
