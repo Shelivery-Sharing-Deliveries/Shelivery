@@ -31,6 +31,7 @@ interface ChatMember extends User {
     user_id: string;
     shop_id: number;
     link: string | null;
+    note: string | null;
     amount: number;
     status: "resolved" | "in_pool" | "in_chat";
     is_ready: boolean;

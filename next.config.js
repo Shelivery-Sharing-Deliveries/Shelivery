@@ -1,9 +1,11 @@
-/** @type {import('next').NextConfig} */
+// next.config.js
 const withPWA = require('next-pwa')({
+
   dest: 'public',
   disable: true,
 });
 
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
@@ -15,7 +17,6 @@ const nextConfig = {
     typedRoutes: true,
   },
   images: {
-    // ADDED: Your Supabase storage domain
     domains: ['localhost', 'zsqagqzztvzogyktgjph.supabase.co'],
     formats: ['image/webp', 'image/avif'],
   },
@@ -35,6 +36,8 @@ const nextConfig = {
         headers: [
           {
             key: 'Cache-Control',
+            // It's good practice to set Cache-Control for your custom sw.js
+            // to ensure browsers always get the latest version on reload.
             value: 'public, max-age=0, must-revalidate',
           },
         ],

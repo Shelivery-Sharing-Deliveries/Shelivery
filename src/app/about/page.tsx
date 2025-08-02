@@ -8,7 +8,7 @@ export default function AboutPage() {
   return (
     // Main container for the entire page, applying the dominant background color
     // and ensuring content is centered and takes full height.
-    <div className="flex flex-col items-center min-h-screen font-poppins text-white" style={{ backgroundColor: '#1E566F' }}>
+    <div className="flex flex-col items-center min-h-screen font-poppins text-white" style={{ backgroundColor: '#245b7b' }}>
 
       {/* Hero Section */}
       <section className="flex flex-col lg:flex-row items-center justify-center w-full max-w-[1600px] px-8 py-16 gap-12 lg:gap-24">
@@ -34,7 +34,7 @@ export default function AboutPage() {
               className="rounded-lg px-6 py-3 text-base font-semibold shadow-sm hover:opacity-80 transition-opacity"
               style={{
                 backgroundColor: '#FFD700', // Exact yellow from Canva
-                color: '#1E566F',            // Exact dark blue from Canva
+                color: '#245b7b',            // Exact dark blue from Canva
                 border: 'none',
               }}
             >
@@ -43,15 +43,14 @@ export default function AboutPage() {
           </Link>
         </div>
 
-        {/* Right Image - Hero Image */}
-        <div className="lg:w-1/2 flex justify-center">
-          {/* Placeholder image. Replace with your actual hero image path. */}
+        <div className="lg:w-1/2 flex justify-center items-center h-[40vh]">
           <Image
-            src="/images/about-hero.png" // Replace with your hero image path
+            src="/images/about.png"
             alt="Shelivery Basket"
-            width={600} // Adjust size as needed
-            height={400}
-            className="rounded-lg shadow-xl"
+            width={0}
+            height={0}
+            sizes="100vw"
+            className="h-full w-auto object-contain "
           />
         </div>
       </section>
@@ -93,7 +92,7 @@ export default function AboutPage() {
       </section>
 
       {/* Solution Section */}
-      <section className="w-full py-16 px-8" style={{ backgroundColor: '#1E566F' }}> {/* Dark blue background */}
+      <section className="w-full py-16 px-8" style={{ backgroundColor: '#245b7b' }}> {/* Dark blue background */}
         <div className="max-w-[1600px] mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: '#FFD700' }}>
             The Solution
@@ -179,7 +178,7 @@ export default function AboutPage() {
       </section>
 
       {/* Call to Action / Footer */}
-      <footer className="w-full py-16 px-8 text-center" style={{ backgroundColor: '#1E566F' }}> {/* Dark blue background */}
+      <footer className="w-full py-16 px-8 text-center" style={{ backgroundColor: '#245b7b' }}> {/* Dark blue background */}
         <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: '#FFD700' }}>
           Ready to start saving?
         </h2>
@@ -191,7 +190,7 @@ export default function AboutPage() {
               className="rounded-lg px-6 py-3 text-base font-semibold shadow-sm hover:opacity-80 transition-opacity"
               style={{
                 backgroundColor: '#FFD700', // Exact yellow from Canva
-                color: '#1E566F',            // Exact dark blue from Canva
+                color: '#245b7b',            // Exact dark blue from Canva
                 border: 'none',
               }}
             >

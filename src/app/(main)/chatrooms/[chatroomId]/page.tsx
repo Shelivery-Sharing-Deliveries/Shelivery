@@ -68,6 +68,7 @@ interface ChatMember extends User {
     user_id: string;
     shop_id: number;
     link: string | null;
+    note: string | null;
     amount: number;
     status: "resolved" | "in_pool" | "in_chat";
     is_ready: boolean;
@@ -308,13 +309,14 @@ export default function ChatroomPage() {
             usersData
           );
 
-          // Get baskets for these users
+          // Get baskets for these users in this specific chatroom
           console.log("loadChatroomData: Fetching baskets for members...");
           const { data: basketsData, error: basketsError } = await supabase
             .from("basket")
             .select("*")
             .in("user_id", userIds)
-            .eq("status", "in_chat");
+            .eq("status", "in_chat")
+            .eq("chatroom_id", chatroomId);
 
           if (basketsError) {
             console.error(

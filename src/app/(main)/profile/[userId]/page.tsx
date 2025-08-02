@@ -1,11 +1,12 @@
 "use client";
-import { PushNotificationSettings } from '@/components/ui/PushNotificationSettings';
 
+import { PageLayout } from '@/components/ui/PageLayout'; // <--- IMPORTANT: Adjust this path to your actual PageLayout component location
+import { PushNotificationSettings } from '@/components/ui/PushNotificationSettings';
+import { usePushNotifications } from '@/hooks/usePushNotifications'; // <-- ADD THIS IMPORT
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
-// import { Tables } from "@/lib/supabase"; // Assuming this is for Supabase types, not directly used in component logic here
 
 interface ProfileFormData {
     firstName: string;
@@ -17,7 +18,7 @@ interface ProfileFormData {
 
 export default function ProfileEditPage() {
     const router = useRouter();
-
+    const { unsubscribe } = usePushNotifications();
     const [formData, setFormData] = useState<ProfileFormData>({
         firstName: "",
         lastName: "",
@@ -131,7 +132,7 @@ export default function ProfileEditPage() {
         const { error: removeError } = await supabase.storage.from("avatars").remove([filePath]);
         if (removeError && !removeError.message.includes("not found")) {
             console.error("Error removing old avatar:", removeError);
-            alert("Failed to remove old profile image."); // User feedback
+            // alert("Failed to remove old profile image."); // User feedback - removed alert as per instructions
             return;
         }
 
@@ -142,7 +143,7 @@ export default function ProfileEditPage() {
 
         if (uploadError) {
             console.error("Upload Error:", uploadError);
-            alert("Failed to upload new profile image."); // User feedback
+            // alert("Failed to upload new profile image."); // User feedback - removed alert as per instructions
             return;
         }
 
@@ -160,7 +161,7 @@ export default function ProfileEditPage() {
 
         if (updateError) {
             console.error("Failed to update image in user table:", updateError);
-            alert("Failed to save image URL to your profile."); // User feedback
+            // alert("Failed to save image URL to your profile."); // User feedback - removed alert as per instructions
         }
     };
 
@@ -168,7 +169,8 @@ export default function ProfileEditPage() {
     // Save updated profile data to Supabase
     const handleSave = async () => {
         if (!userId) {
-            alert("User ID not available. Please log in again.");
+            // alert("User ID not available. Please log in again."); // Removed alert
+            console.error("User ID not available. Please log in again.");
             return;
         }
         const { error } = await supabase
@@ -182,9 +184,10 @@ export default function ProfileEditPage() {
             .eq("id", userId);
         if (error) {
             console.error("Error saving profile:", error);
-            alert("Failed to save profile. Please try again.");
+            // alert("Failed to save profile. Please try again."); // Removed alert
         } else {
-            alert("Profile saved successfully!"); // Success feedback
+            // alert("Profile saved successfully!"); // Success feedback - Removed alert
+            console.log("Profile saved successfully!"); // Added console log for feedback
             router.back();
         }
     };
@@ -196,10 +199,17 @@ export default function ProfileEditPage() {
 
     // --- LOGOUT FUNCTION ---
     const handleLogout = async () => {
+
+        const unsubscribeSuccess = await unsubscribe(); 
+        if (unsubscribeSuccess) {
+            console.log("Successfully unsubscribed from push notifications on logout.");
+        } else {
+            console.warn("Failed to unsubscribe from push notifications on logout, but proceeding with logout.");
+        }
         const { error } = await supabase.auth.signOut();
         if (error) {
             console.error("Error logging out:", error);
-            alert("Failed to log out. Please try again."); // Inform user
+            // alert("Failed to log out. Please try again."); // Inform user - Removed alert
         } else {
             // Clear any local state if necessary (though a full page redirect often handles this)
             setFormData({
@@ -213,177 +223,170 @@ export default function ProfileEditPage() {
         }
     };
 
+    // Extract the header content to pass as a prop to PageLayout
+    const profileEditHeader = (
+        <div className="flex items-center gap-2 px-4 py-2">
+            <button
+                onClick={handleBack}
+                className="w-6 h-6 flex items-center justify-center"
+            >
+                <Image
+                    src="/icons/back-arrow.svg"
+                    alt="Back"
+                    width={24}
+                    height={24}
+                />
+            </button>
+            <h1 className="text-black font-inter text-base font-bold leading-8 tracking-[-0.017em]">
+                Edit Profile
+            </h1>
+        </div>
+    );
+
     return (
-        <div className="min-h-screen bg-white w-full max-w-[375px] mx-auto">
-            <div className="w-[375px] h-full bg-white rounded-t-[30px] flex flex-col"> {/* Changed h-[800px] to h-full for better responsiveness */}
-                <div className="flex flex-col gap-6 w-[375px] flex-1">
-                    {/* Header */}
-                    <div className="flex flex-col gap-6 w-full">
-                        <div className="flex flex-col w-full h-[107px]">
-                            <div className="flex flex-col gap-2.5 px-4 w-full shadow-sm bg-white">
-                                <div className="flex items-center gap-2 py-4">
-                                    <button
-                                        onClick={handleBack}
-                                        className="w-6 h-6 flex items-center justify-center"
-                                    >
-                                        <Image
-                                            src="/icons/back-arrow.svg"
-                                            alt="Back"
-                                            width={24}
-                                            height={24}
-                                        />
-                                    </button>
-                                    <h1 className="text-black font-inter text-base font-bold leading-8 tracking-[-0.017em]">
-                                        Edit Profile
-                                    </h1>
-                                </div>
-                            </div>
+        // Wrap the entire content with PageLayout
+        <PageLayout header={profileEditHeader} showNavigation={false}>
+            {/* The original outer divs are now managed by PageLayout */}
+            <div className="flex flex-col justify-between items-center flex-1 gap-8 pb-8">
+                <div className="flex flex-col items-center gap-8 w-full">
+                    {/* Profile Picture Upload */}
+                    <button
+                        className="relative w-[126px] h-[126px] rounded-[16px] bg-cover bg-center"
+                        style={{
+                            backgroundImage: profileImage
+                                ? `url(${profileImage})`
+                                : "url('/images/default-avatar.svg')",
+                        }}
+                        onClick={() => document.getElementById("profile-upload")?.click()}
+                    >
+                        <input
+                            type="file"
+                            id="profile-upload"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                        />
+                        <div className="absolute bottom-0 left-0 w-[126px] h-[31px] bg-[#FFE65B] rounded-b-[16px] flex items-center justify-center gap-1 px-4 py-2">
+                            <Image
+                                src="/icons/upload-icon.svg"
+                                alt="Upload"
+                                width={16}
+                                height={16}
+                            />
+                            <span className="text-black font-inter text-sm font-medium leading-5">
+                                Upload
+                            </span>
                         </div>
-                    </div>
+                    </button>
 
-                    {/* Main Content */}
-                    <div className="flex flex-col justify-between items-center flex-1 gap-8 px-4 pb-8">
-                        <div className="flex flex-col items-center gap-8 w-full">
-                            {/* Profile Picture Upload */}
-                            <button
-                                className="relative w-[126px] h-[126px] rounded-[16px] bg-cover bg-center"
-                                style={{
-                                    backgroundImage: profileImage
-                                        ? `url(${profileImage})`
-                                        : "url('/images/default-avatar.svg')",
-                                }}
-                                onClick={() => document.getElementById("profile-upload")?.click()}
-                            >
+                    {/* Form Fields */}
+                    <div className="flex flex-col gap-4 w-full">
+                        {/* First Name */}
+                        <div className="flex flex-col gap-1 w-full"> {/* Changed w-[343px] to w-full */}
+                            <label className="text-[#111827] font-poppins text-sm font-medium leading-5">
+                                First Name
+                            </label>
+                            <div className="flex items-center gap-2 px-4 py-3 border border-[#E5E8EB] rounded-[18px] w-full">
                                 <input
-                                    type="file"
-                                    id="profile-upload"
-                                    className="hidden"
-                                    accept="image/*"
-                                    onChange={handleImageUpload}
+                                    type="text"
+                                    value={formData.firstName}
+                                    onChange={(e) => handleInputChange("firstName", e.target.value)}
+                                    className="flex-1 text-[#111827] font-poppins text-sm leading-5 bg-transparent border-none outline-none"
                                 />
-                                <div className="absolute bottom-0 left-0 w-[126px] h-[31px] bg-[#FFE65B] rounded-b-[16px] flex items-center justify-center gap-1 px-4 py-2">
-                                    <Image
-                                        src="/icons/upload-icon.svg"
-                                        alt="Upload"
-                                        width={16}
-                                        height={16}
-                                    />
-                                    <span className="text-black font-inter text-sm font-medium leading-5">
-                                        Upload
-                                    </span>
-                                </div>
-                            </button>
-
-                            {/* Form Fields */}
-                            <div className="flex flex-col gap-4 w-full">
-                                {/* First Name */}
-                                <div className="flex flex-col gap-1 w-[343px]">
-                                    <label className="text-[#111827] font-poppins text-sm font-medium leading-5">
-                                        First Name
-                                    </label>
-                                    <div className="flex items-center gap-2 px-4 py-3 border border-[#E5E8EB] rounded-[18px] w-full">
-                                        <input
-                                            type="text"
-                                            value={formData.firstName}
-                                            onChange={(e) => handleInputChange("firstName", e.target.value)}
-                                            className="flex-1 text-[#111827] font-poppins text-sm leading-5 bg-transparent border-none outline-none"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Last Name */}
-                                <div className="flex flex-col gap-1 w-[343px]">
-                                    <label className="text-[#111827] font-poppins text-sm font-medium leading-5">
-                                        Last Name
-                                    </label>
-                                    <div className="flex items-center gap-2 px-4 py-3 border border-[#E5E8EB] rounded-[18px] w-full">
-                                        <input
-                                            type="text"
-                                            value={formData.lastName}
-                                            onChange={(e) => handleInputChange("lastName", e.target.value)}
-                                            className="flex-1 text-[#111827] font-poppins text-sm leading-5 bg-transparent border-none outline-none"
-                                        />
-                                    </div>
-                                </div>
-                                {/* Email (read-only) */}
-                                <div className="flex flex-col gap-1 w-[343px]">
-                                    <label className="text-[#111827] font-poppins text-sm font-medium leading-5">
-                                        Email
-                                    </label>
-                                    <div className="flex items-center gap-2 px-4 py-3 border border-[#E5E8EB] rounded-[18px] bg-gray-100 w-full">
-                                        <input
-                                            type="text"
-                                            value={formData.email}
-                                            readOnly
-                                            className="flex-1 text-[#6B7280] font-poppins text-sm leading-5 bg-transparent border-none outline-none"
-                                        />
-                                    </div>
-                                </div>
-                                {/* Dormitory (read-only) */}
-                                <div className="flex flex-col gap-1 w-[343px]">
-                                    <label className="text-[#111827] font-poppins text-sm font-medium leading-5">
-                                        Location
-                                    </label>
-                                    <div className="flex items-center gap-2 px-4 py-3 border border-[#E5E8EB] bg-gray-100 rounded-[18px] w-full">
-                                        <input
-                                            type="text"
-                                            value={formData.dormitory}
-                                            readOnly
-                                            className="flex-1 text-[#6B7280] font-poppins text-sm leading-5 bg-transparent border-none outline-none"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Favorite Store Dropdown */}
-                                <div className="flex flex-col gap-1 w-[343px]">
-                                    <label className="text-[#111827] font-poppins text-sm font-medium leading-5">
-                                        Favorite Store
-                                    </label>
-                                    <select
-                                        value={formData.favoriteStore}
-                                        onChange={(e) => handleInputChange("favoriteStore", e.target.value)}
-                                        className="px-4 py-3 border border-[#E5E8EB] rounded-[18px] w-full text-[#111827] font-poppins text-sm"
-                                    >
-                                        <option value="" disabled>
-                                            Select a store
-                                        </option>
-                                        {shops.map((shopName) => (
-                                            <option key={shopName} value={shopName}>
-                                                {shopName}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
                             </div>
                         </div>
 
-                        {/* Save Button */}
-                        <button
-                            onClick={handleSave}
-                            className="flex items-center justify-center gap-2 py-3 px-0 w-full bg-[#FFE75B] rounded-[16px] mb-4"
-                        >
-                            <span className="text-black font-poppins text-lg font-semibold leading-[26px]">
-                                Save
-                            </span>
-                        </button>
+                        {/* Last Name */}
+                        <div className="flex flex-col gap-1 w-full"> {/* Changed w-[343px] to w-full */}
+                            <label className="text-[#111827] font-poppins text-sm font-medium leading-5">
+                                Last Name
+                            </label>
+                            <div className="flex items-center gap-2 px-4 py-3 border border-[#E5E8EB] rounded-[18px] w-full">
+                                <input
+                                    type="text"
+                                    value={formData.lastName}
+                                    onChange={(e) => handleInputChange("lastName", e.target.value)}
+                                    className="flex-1 text-[#111827] font-poppins text-sm leading-5 bg-transparent border-none outline-none"
+                                />
+                            </div>
+                        </div>
+                        {/* Email (read-only) */}
+                        <div className="flex flex-col gap-1 w-full"> {/* Changed w-[343px] to w-full */}
+                            <label className="text-[#111827] font-poppins text-sm font-medium leading-5">
+                                Email
+                            </label>
+                            <div className="flex items-center gap-2 px-4 py-3 border border-[#E5E8EB] rounded-[18px] bg-gray-100 w-full">
+                                <input
+                                    type="text"
+                                    value={formData.email}
+                                    readOnly
+                                    className="flex-1 text-[#6B7280] font-poppins text-sm leading-5 bg-transparent border-none outline-none"
+                                />
+                            </div>
+                        </div>
+                        {/* Dormitory (read-only) */}
+                        <div className="flex flex-col gap-1 w-full"> {/* Changed w-[343px] to w-full */}
+                            <label className="text-[#111827] font-poppins text-sm font-medium leading-5">
+                                Location
+                            </label>
+                            <div className="flex items-center gap-2 px-4 py-3 border border-[#E5E8EB] bg-gray-100 rounded-[18px] w-full">
+                                <input
+                                    type="text"
+                                    value={formData.dormitory}
+                                    readOnly
+                                    className="flex-1 text-[#6B7280] font-poppins text-sm leading-5 bg-transparent border-none outline-none"
+                                />
+                            </div>
+                        </div>
 
-                        {/* LOGOUT BUTTON */}
-                        <button
-                            onClick={handleLogout}
-                            className="flex items-center justify-center gap-2 py-3 px-0 w-full bg-red-500 text-white rounded-[16px]"
-                        >
-                            <span className="font-poppins text-lg font-semibold leading-[26px]">
-                                Logout
-                            </span>
-                        </button>
-                        
-                        <div>
-                        <h1>Notification Settings</h1>
-                        <PushNotificationSettings />
+                        {/* Favorite Store Dropdown */}
+                        <div className="flex flex-col gap-1 w-full"> {/* Changed w-[343px] to w-full */}
+                            <label className="text-[#111827] font-poppins text-sm font-medium leading-5">
+                                Favorite Store
+                            </label>
+                            <select
+                                value={formData.favoriteStore}
+                                onChange={(e) => handleInputChange("favoriteStore", e.target.value)}
+                                className="px-4 py-3 border border-[#E5E8EB] rounded-[18px] w-full text-[#111827] font-poppins text-sm"
+                            >
+                                <option value="" disabled>
+                                    Select a store
+                                </option>
+                                {shops.map((shopName) => (
+                                    <option key={shopName} value={shopName}>
+                                        {shopName}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                     </div>
                 </div>
+
+                {/* Save Button */}
+                <button
+                    onClick={handleSave}
+                    className="flex items-center justify-center gap-2 py-3 px-0 w-full bg-[#FFE75B] rounded-[16px] mb-4"
+                >
+                    <span className="text-black font-poppins text-lg font-semibold leading-[26px]">
+                        Save
+                    </span>
+                </button>
+
+                {/* LOGOUT BUTTON */}
+                <button
+                    onClick={handleLogout}
+                    className="flex items-center justify-center gap-2 py-3 px-0 w-full bg-red-500 text-white rounded-[16px]"
+                >
+                    <span className="font-poppins text-lg font-semibold leading-[26px]">
+                        Logout
+                    </span>
+                </button>
+                
+                <div>
+                    <h1 className="text-xl font-bold text-gray-800 mt-8 mb-4">Notification Settings</h1>
+                    <PushNotificationSettings />
+                </div>
             </div>
-        </div>
+        </PageLayout>
     );
 }

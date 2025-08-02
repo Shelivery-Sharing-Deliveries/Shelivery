@@ -1,4 +1,3 @@
-// app/chatrooms/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -8,8 +7,9 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
 import { PageLayout } from "@/components/ui/PageLayout";
 import Image from "next/image"; // Import Image component
+import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/solid'; // Import icons for collapsible section
 
-// Refined Chatroom interface to include shop and dormitory details
+// Refined Chatroom interface to include shop and dormitory details, and now status
 interface ChatroomDisplayData {
   id: string;
   pool_id: string; // The pool this chatroom belongs to
@@ -19,17 +19,20 @@ interface ChatroomDisplayData {
   shop_name: string;
   shop_logo_url: string | null;
   dormitory_name: string;
+  status: 'in_pool' | 'in_chat' | 'resolved' | 'unknown'; // Added status from related basket
 }
 
 export default function ChatroomsPage() {
-  const [chatrooms, setChatrooms] = useState<ChatroomDisplayData[]>([]);
+  const [activeChatrooms, setActiveChatrooms] = useState<ChatroomDisplayData[]>([]); // State for active chatrooms
+  const [resolvedChatrooms, setResolvedChatrooms] = useState<ChatroomDisplayData[]>([]); // State for resolved chatrooms
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showOldChats, setShowOldChats] = useState(false); // State to manage collapsible section for old chats
 
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  // Redirect if not authenticated
+  // Redirect if not authenticated (AuthGuard should handle this, but good as a fallback)
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/auth");
@@ -48,36 +51,32 @@ export default function ChatroomsPage() {
       setError(null);
 
       try {
-        // --- IMPORTANT CHANGE 1: Query the 'user' table for profile info ---
         // 1. Get the user's dormitory name directly from the 'user' table via join
         const { data: userData, error: userError } = await supabase
-          .from("user") // <-- CHANGED from "profile" to "user"
-          .select("dormitory(name)") // Select the dormitory name directly
+          .from("user")
+          .select("dormitory(name)")
           .eq("id", user.id)
           .single();
-        console.log("User Data:", userData);
-        console.log("User Error:", userError);
-        if (userError ) {
-          // If there's an error or dormitory name is not found
+
+        if (userError) {
           console.error("Error fetching user's dormitory:", userError);
           throw new Error(
             "Could not retrieve user's dormitory information. Please ensure your profile is complete."
           );
         }
-        const dormitoryName = (userData.dormitory?.[0] as { name: string })
-          ?.name;
+        const dormitoryName = (userData.dormitory?.[0] as { name: string })?.name;
 
-        // 2. Find all baskets associated with the current user
+        // 2. Find all baskets associated with the current user, including their status
         const { data: userBaskets, error: basketsError } = await supabase
           .from("basket")
-          .select("id, chatroom_id, shop_id")
+          .select("id, chatroom_id, shop_id, status") // <-- Added 'status' here
           .eq("user_id", user.id);
 
         if (basketsError) {
           throw basketsError;
         }
 
-        // Extract unique chatroom_ids and shop_ids
+        // Extract unique chatroom_ids and shop_ids, and map chatroom_id to basket status
         const uniqueChatroomIds = Array.from(
           new Set(userBaskets.map((b) => b.chatroom_id).filter(Boolean))
         ) as string[];
@@ -85,8 +84,19 @@ export default function ChatroomsPage() {
           new Set(userBaskets.map((b) => b.shop_id).filter(Boolean))
         ) as string[];
 
+        // Create a map from chatroom_id to its basket's status
+        const chatroomStatusMap = new Map<string, 'in_pool' | 'in_chat' | 'resolved' | 'unknown'>();
+        userBaskets.forEach(basket => {
+            if (basket.chatroom_id && basket.status) {
+                chatroomStatusMap.set(basket.chatroom_id, basket.status);
+            }
+        });
+
+
         if (uniqueChatroomIds.length === 0) {
-          setChatrooms([]);
+          // setChatrooms([]); // This state is no longer strictly needed as we use active/resolved
+          setActiveChatrooms([]);
+          setResolvedChatrooms([]);
           setLoading(false);
           return;
         }
@@ -143,8 +153,9 @@ export default function ChatroomsPage() {
               ...chatroom,
               shop_name: shop?.name || "Unknown Shop",
               shop_logo_url: shop?.logo_url || null,
-              dormitory_name: dormitoryName, // Now correctly fetched from the 'user' table
+              dormitory_name: dormitoryName,
               last_message_at: latestMessage ? latestMessage.sent_at : null,
+              status: chatroomStatusMap.get(chatroom.id) || 'unknown', // <-- Assign status here
             };
           })
         );
@@ -160,7 +171,13 @@ export default function ChatroomsPage() {
           );
         });
 
-        setChatrooms(chatroomsWithCombinedData);
+        // Filter into active and resolved chatrooms
+        const active = chatroomsWithCombinedData.filter(c => c.status === 'in_chat' || c.status === 'in_pool');
+        const resolved = chatroomsWithCombinedData.filter(c => c.status === 'resolved');
+
+        setActiveChatrooms(active);
+        setResolvedChatrooms(resolved);
+
       } catch (err: any) {
         console.error("Error fetching chatrooms data:", err);
         setError(err.message || "Failed to load chatrooms");
@@ -170,7 +187,7 @@ export default function ChatroomsPage() {
     };
 
     fetchChatroomsData();
-  }, [user]);
+  }, [user]); // Depend on 'user' to refetch if user changes
 
   const handleChatroomSelect = (chatroomId: string) => {
     router.push(`/chatrooms/${chatroomId}`);
@@ -240,8 +257,9 @@ export default function ChatroomsPage() {
 
   return (
     <PageLayout header={headerContent}>
-      {/* Chatrooms List */}
-      {chatrooms.length === 0 ? (
+      {/* Conditional rendering based on active and resolved chatrooms */}
+      {activeChatrooms.length === 0 && resolvedChatrooms.length === 0 ? (
+        // Case 1: No active and no resolved chatrooms
         <div className="text-center py-12">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg
@@ -259,87 +277,197 @@ export default function ChatroomsPage() {
             </svg>
           </div>
           <h3 className="text-lg font-medium text-shelivery-text-primary mb-2">
-            No Active Chatrooms
+            No Chatrooms Yet
           </h3>
           <p className="text-shelivery-text-secondary">
-            You don't have any active chatrooms at the moment.
+            You don't have any chatrooms at the moment. Create a basket to start one!
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {chatrooms.map((chatroom) => (
-            <div
-              key={chatroom.id}
-              className="bg-white rounded-shelivery-lg p-4 border border-gray-200 hover:border-shelivery-primary-blue transition-colors cursor-pointer"
-              onClick={() => handleChatroomSelect(chatroom.id)}
-            >
-              <div className="flex items-start gap-4">
-                {/* Shop Logo */}
-                <div className="w-16 h-16 bg-gray-100 rounded-shelivery-md flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  {chatroom.shop_logo_url ? (
-                    <Image
-                      src={chatroom.shop_logo_url}
-                      alt={chatroom.shop_name}
-                      width={64} // Set appropriate width
-                      height={64} // Set appropriate height
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <svg
-                      className="w-8 h-8 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      />
-                    </svg>
-                  )}
-                </div>
-
-                {/* Chatroom Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <h3 className="text-lg font-semibold text-shelivery-text-primary">
-                        {chatroom.dormitory_name} {chatroom.shop_name} Group
-                      </h3>
-                    </div>
-                    <svg
-                      className="w-5 h-5 text-shelivery-text-tertiary"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </div>
-
-                  {chatroom.last_message_at && (
-                    <p className="text-sm text-shelivery-text-secondary mt-1">
-                      Last activity:{" "}
-                      {new Date(chatroom.last_message_at).toLocaleString()}
-                    </p>
-                  )}
-                  {!chatroom.last_message_at && (
-                    <p className="text-sm text-shelivery-text-secondary mt-1 italic">
-                      No messages yet
-                    </p>
-                  )}
-                </div>
-              </div>
+        <>
+          {activeChatrooms.length === 0 && resolvedChatrooms.length > 0 ? (
+            // Case 2: No active chatrooms, but there are resolved ones
+            <div className="text-center py-12">
+              <h3 className="text-lg font-medium text-shelivery-text-primary mb-2">
+                You have no active chat
+              </h3>
+              <p className="text-shelivery-text-secondary">
+                Your past chats are in the archive below.
+              </p>
             </div>
-          ))}
-        </div>
+          ) : (
+            // Case 3: Active chatrooms exist
+            <div className="space-y-4">
+              {activeChatrooms.map((chatroom) => (
+                <div
+                  key={chatroom.id}
+                  className="bg-white rounded-shelivery-lg p-4 border border-gray-200 hover:border-shelivery-primary-blue transition-colors cursor-pointer"
+                  onClick={() => handleChatroomSelect(chatroom.id)}
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Shop Logo */}
+                    <div className="w-16 h-16 bg-gray-100 rounded-shelivery-md flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {chatroom.shop_logo_url ? (
+                        <Image
+                          src={chatroom.shop_logo_url}
+                          alt={chatroom.shop_name}
+                          width={64}
+                          height={64}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <svg
+                          className="w-8 h-8 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                          />
+                        </svg>
+                      )}
+                    </div>
+
+                    {/* Chatroom Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <h3 className="text-lg font-semibold text-shelivery-text-primary">
+                            {chatroom.dormitory_name} {chatroom.shop_name} Group
+                          </h3>
+                        </div>
+                        <svg
+                          className="w-5 h-5 text-shelivery-text-tertiary"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5l7 7-7 7"
+                          />
+                        </svg>
+                      </div>
+
+                      {chatroom.last_message_at && (
+                        <p className="text-sm text-shelivery-text-secondary mt-1">
+                          Last activity:{" "}
+                          {new Date(chatroom.last_message_at).toLocaleString()}
+                        </p>
+                      )}
+                      {!chatroom.last_message_at && (
+                        <p className="text-sm text-shelivery-text-secondary mt-1 italic">
+                          No messages yet
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* --- NEW SECTION: Old Chats (Collapsible) --- */}
+          {resolvedChatrooms.length > 0 && (
+            <div className="mt-6 border-t border-gray-200 pt-4">
+              <button
+                className="w-full flex justify-between items-center px-4 py-2 bg-gray-100 rounded-md text-gray-700 font-semibold text-left"
+                onClick={() => setShowOldChats(!showOldChats)}
+              >
+                <span>Archive ({resolvedChatrooms.length})</span>
+                {showOldChats ? (
+                  <ChevronUpIcon className="h-5 w-5 text-gray-500" />
+                ) : (
+                  <ChevronDownIcon className="h-5 w-5 text-gray-500" />
+                )}
+              </button>
+              {showOldChats && (
+                <div className="mt-4 space-y-4">
+                  {resolvedChatrooms.map((chatroom) => (
+                    <div
+                      key={chatroom.id}
+                      className="bg-white rounded-shelivery-lg p-4 border border-gray-200 hover:border-shelivery-primary-blue transition-colors cursor-pointer opacity-70" // Added opacity for resolved chats
+                      onClick={() => handleChatroomSelect(chatroom.id)}
+                    >
+                      <div className="flex items-start gap-4">
+                        {/* Shop Logo */}
+                        <div className="w-16 h-16 bg-gray-100 rounded-shelivery-md flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          {chatroom.shop_logo_url ? (
+                            <Image
+                              src={chatroom.shop_logo_url}
+                              alt={chatroom.shop_name}
+                              width={64}
+                              height={64}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <svg
+                              className="w-8 h-8 text-gray-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                              />
+                            </svg>
+                          )}
+                        </div>
+
+                        {/* Chatroom Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <h3 className="text-lg font-semibold text-shelivery-text-primary">
+                                {chatroom.dormitory_name} {chatroom.shop_name} Group
+                              </h3>
+                            </div>
+                            <svg
+                              className="w-5 h-5 text-shelivery-text-tertiary"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 5l7 7-7 7"
+                              />
+                            </svg>
+                          </div>
+
+                          {chatroom.last_message_at && (
+                            <p className="text-sm text-shelivery-text-secondary mt-1">
+                              Last activity:{" "}
+                              {new Date(chatroom.last_message_at).toLocaleString()}
+                            </p>
+                          )}
+                          {!chatroom.last_message_at && (
+                            <p className="text-sm text-shelivery-text-secondary mt-1 italic">
+                              No messages yet
+                            </p>
+                          )}
+                            <p className="text-sm text-gray-500 mt-1">Status: Resolved</p> {/* Indicate resolved status */}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {/* --- END NEW SECTION --- */}
+        </>
       )}
     </PageLayout>
   );

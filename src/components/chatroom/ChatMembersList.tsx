@@ -2,7 +2,7 @@
 
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
-import { Crown, MoreVertical } from "lucide-react";
+import { Crown, MoreVertical, X, ExternalLink, FileText } from "lucide-react";
 import { useState } from "react";
 
 interface User {
@@ -24,6 +24,7 @@ interface ChatMember extends User {
     user_id: string;
     shop_id: number;
     link: string | null;
+    note: string | null;
     amount: number;
     status: "resolved" | "in_pool" | "in_chat";
     is_ready: boolean;
@@ -52,6 +53,7 @@ export function ChatMembersList({
   onRemoveMember,
 }: ChatMembersListProps) {
   const [showActions, setShowActions] = useState<string | null>(null);
+  const [showOrderDetails, setShowOrderDetails] = useState<string | null>(null);
 
   const getMemberDisplayName = (member: ChatMember) => {
     if (member.first_name && member.last_name) {
@@ -105,18 +107,14 @@ export function ChatMembersList({
                 <div className="text-xs text-gray-600">
                   {getMemberBasketAmount(member)} CHF order
                 </div>
-                {/* Order link - only visible to admin */}
-                {isCurrentUserAdmin && member.basket?.link && (
-                  <a
-                    href={member.basket.link.startsWith('http://') || member.basket.link.startsWith('https://') 
-                      ? member.basket.link 
-                      : `https://${member.basket.link}`} // Assuming most links should be HTTPS
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-600 hover:text-blue-800 underline block mt-1"
+                {/* Order details button - only visible to admin */}
+                {isCurrentUserAdmin && (member.basket?.link || member.basket?.note) && (
+                  <button
+                    onClick={() => setShowOrderDetails(member.id)}
+                    className="text-xs text-blue-600 hover:text-blue-800 underline block mt-1 text-left"
                   >
-                    View Order
-                  </a>
+                    View Order Details
+                  </button>
                 )}
               </div>
             </div>
@@ -169,6 +167,110 @@ export function ChatMembersList({
           </div>
         )}
       </div>
+
+      {/* Order Details Popup */}
+      {showOrderDetails && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-y-auto">
+            {(() => {
+              const member = members.find(m => m.id === showOrderDetails);
+              if (!member || !member.basket) return null;
+
+              return (
+                <>
+                  {/* Header */}
+                  <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                      <Avatar
+                        src={member.image}
+                        name={getMemberDisplayName(member) || "User"}
+                        size="sm"
+                      />
+                      <div>
+                        <h3 className="font-semibold text-gray-900">
+                          {getMemberDisplayName(member)}'s Order
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          {member.basket.amount} CHF
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowOrderDetails(null)}
+                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                    >
+                      <X className="h-5 w-5 text-gray-500" />
+                    </button>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-4 space-y-4">
+                    {member.basket.link && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <ExternalLink className="h-4 w-4 text-blue-600" />
+                          <span className="font-medium text-gray-900 text-sm">
+                            Basket Link
+                          </span>
+                        </div>
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                          <a
+                            href={member.basket.link.startsWith('http://') || member.basket.link.startsWith('https://') 
+                              ? member.basket.link 
+                              : `https://${member.basket.link}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 text-sm break-all underline"
+                          >
+                            {member.basket.link}
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
+                    {member.basket.note && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-gray-600" />
+                          <span className="font-medium text-gray-900 text-sm">
+                            Order Note
+                          </span>
+                        </div>
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                          <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
+                            {member.basket.note}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {!member.basket.link && !member.basket.note && (
+                      <div className="text-center py-6">
+                        <div className="text-gray-400 mb-2">📝</div>
+                        <p className="text-gray-600 text-sm">
+                          No order details provided
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  <div className="p-4 border-t border-gray-200">
+                    <Button
+                      onClick={() => setShowOrderDetails(null)}
+                      variant="secondary"
+                      size="sm"
+                      className="w-full"
+                    >
+                      Close
+                    </Button>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
