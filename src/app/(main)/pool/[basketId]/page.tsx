@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { supabase } from "@/lib/supabase";
+import PoolPageTutorial from "@/components/pool/PoolPageTutorial"; // NEW: Import the tutorial component
 
 // 1. Define Interfaces for the Data Structure
 interface ShopData {
@@ -73,6 +74,7 @@ export default function PoolPage({ params }: PoolPageProps) {
     const [isPageLoading, setIsPageLoading] = useState(true);
     const [isButtonLoading, setIsButtonLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showTutorial, setShowTutorial] = useState(false); // NEW: State for tutorial visibility
 
     const handleBack = () => {
         router.back();
@@ -181,6 +183,12 @@ export default function PoolPage({ params }: PoolPageProps) {
         };
 
         loadInitialData();
+
+        // NEW: Check localStorage for tutorial status
+        const hasSeenTutorial = localStorage.getItem('hasSeenPoolPageTutorial');
+        if (!hasSeenTutorial) {
+            setShowTutorial(true);
+        }
     }, [params.basketId, router]); // Added router to dependencies
 
     // --- useEffect for Realtime Pool Subscription (for progress bar) and Basket Polling (for status/redirect) ---
@@ -360,6 +368,12 @@ export default function PoolPage({ params }: PoolPageProps) {
         }
     };
 
+    // NEW: Function to handle tutorial completion
+    const handleTutorialComplete = () => {
+        setShowTutorial(false);
+        localStorage.setItem('hasSeenPoolPageTutorial', 'true'); // Mark tutorial as seen
+    };
+
     if (isPageLoading) {
         return (
             <div className="min-h-screen bg-white w-full max-w-[375px] mx-auto flex items-center justify-center">
@@ -422,7 +436,7 @@ export default function PoolPage({ params }: PoolPageProps) {
     return (
         <div className="min-h-screen bg-white w-full max-w-[375px] mx-auto">
             {/* Header */}
-            <div className="w-[375px] h-auto">
+            <div className="w-[375px] h-auto" id="pool-header"> {/* ADDED ID */}
                 {/* Header Bar */}
                 <div className="bg-white border-b border-[#E5E8EB] px-4 py-4">
                     <div className="flex items-center justify-between">
@@ -451,7 +465,7 @@ export default function PoolPage({ params }: PoolPageProps) {
             {/* Content */}
             <div className="flex flex-col justify-between items-center gap-8 px-4 py-6 min-h-[calc(100vh-120px)]">
                 {/* Main Card */}
-                <div className="w-[355px] bg-[#FFFADF] border border-[#E5E8EB] rounded-[24px] p-4 flex flex-col items-center gap-4">
+                <div className="w-[355px] bg-[#FFFADF] border border-[#E5E8EB] rounded-[24px] p-4 flex flex-col items-center gap-4" id="pool-status-card"> {/* ADDED ID */}
                     {/* Shop Logo */}
                     <div className="w-16 h-16 rounded-xl overflow-hidden border border-[#EFF1F3]">
                         <Image
@@ -477,7 +491,7 @@ export default function PoolPage({ params }: PoolPageProps) {
                 </div>
 
                 {/* Progress Section */}
-                <div className="w-full">
+                <div className="w-full" id="pool-progress-bar"> {/* ADDED ID */}
                     {/* Pool Progress Labels */}
                     <div className="flex justify-between items-center mb-2">
                         {isReady && (
@@ -502,7 +516,7 @@ export default function PoolPage({ params }: PoolPageProps) {
                 </div>
 
                 {/* Details Section */}
-                <div className="w-full flex flex-col gap-2">
+                <div className="w-full flex flex-col gap-2" id="user-basket-details"> {/* ADDED ID */}
                     {/* Total */}
                     <div className="flex items-center gap-2">
                         <div className="w-6 h-6 flex items-center justify-center">
@@ -564,7 +578,7 @@ export default function PoolPage({ params }: PoolPageProps) {
                         <button
                             onClick={handleEdit}
                             className="flex-1 bg-[#EAF7FF] border border-[#D8F0FE] rounded-lg px-4 py-2 flex items-center justify-center gap-1.5 h-9"
-                        >
+                            id="edit-basket-button"                         >
                             <svg
                                 width="16"
                                 height="16"
@@ -583,6 +597,7 @@ export default function PoolPage({ params }: PoolPageProps) {
                         <button
                             onClick={handleDelete}
                             className="flex-1 bg-[#FEF3F2] border border-[#FEE4E2] rounded-lg px-4 py-2 flex items-center justify-center gap-1.5 h-9"
+                            id="delete-basket-button" 
                         >
                             <svg
                                 width="16"
@@ -614,11 +629,14 @@ export default function PoolPage({ params }: PoolPageProps) {
                 disabled={isButtonLoading}
                 className={`w-[343px] h-14 rounded-2xl px-4 py-3 flex items-center justify-center ${buttonColorClass
                     } transition-colors ${isButtonLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                id="main-action-button" 
             >
                 <span className="text-white font-poppins text-lg font-semibold">
                     {buttonText}
                 </span>
             </button>
+            {/* NEW: Render tutorial conditionally */}
+            {showTutorial && <PoolPageTutorial onComplete={handleTutorialComplete} />}
         </div>
     );
 }

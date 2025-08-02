@@ -1,15 +1,15 @@
-"use client";
-
 import { useRouter } from "next/navigation";
 
 interface ProfileCardProps {
   userName: string;
   userAvatar: string;
+  id?: string; // Add id to the interface
 }
 
 export default function ProfileCard({
   userName,
   userAvatar,
+  id, // Destructure id
 }: ProfileCardProps) {
   const router = useRouter();
 
@@ -21,6 +21,7 @@ export default function ProfileCard({
 
   return (
     <button
+      id={id} // Apply the id to the button
       onClick={handleProfileClick}
       className="flex items-center gap-[18px] mb-[18px] w-full text-left hover:opacity-80 transition-opacity cursor-pointer"
     >

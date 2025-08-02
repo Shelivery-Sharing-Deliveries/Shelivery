@@ -1,15 +1,20 @@
+// components/dashboard/Banner.tsx
+"use client"; // Ensure this is present if it uses client-side features
+
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Tables } from "@/lib/supabase"; // type helper
+import React from "react"; // Ensure React is imported if not already
 
 interface BannerProps {
   className?: string;
+  id?: string; // ADDED: Make the id prop optional
 }
 
 type Banner = Tables<"banner">;
 
-export default function Banner({ className = "" }: BannerProps) {
+export default function Banner({ className = "", id }: BannerProps) { // Destructure id from props
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,7 +42,7 @@ export default function Banner({ className = "" }: BannerProps) {
   if (loading) return <p>Loading banners...</p>;
 
   return (
-    <div className={`flex flex-col gap-3 ${className}`}>
+    <div className={`flex flex-col gap-3 ${className}`} id={id}> {/* ADDED: Apply the id prop here */}
       {banners.length === 0 ? (
         <p className="text-center text-gray-500">No new banners</p>
       ) : (
