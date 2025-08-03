@@ -37,7 +37,7 @@ const tutorialSteps: TutorialStep[] = [
   {
     id: 'user-basket-details',
     title: 'Your Basket Details',
-    text: 'Here you can review the total amount of your basket and access the link to your items.',
+    text: 'Here you can review the total amount of your basket, access the link to your items, and view any order notes.',
     position: 'top',
   },
   {

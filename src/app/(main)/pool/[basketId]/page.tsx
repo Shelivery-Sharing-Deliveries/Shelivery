@@ -78,7 +78,12 @@ export default function PoolPage({ params }: PoolPageProps) {
     const [isPageLoading, setIsPageLoading] = useState(true);
     const [isButtonLoading, setIsButtonLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [showTutorial, setShowTutorial] = useState(true); // NEW: State for tutorial visibility
+    const [showTutorial, setShowTutorial] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return !localStorage.getItem('hasSeenPoolPageTutorial');
+        }
+        return false; // Default to false on server-side render
+    }); // NEW: State for tutorial visibility
 
 
     const handleBack = () => {
@@ -393,6 +398,7 @@ export default function PoolPage({ params }: PoolPageProps) {
     const handleTutorialComplete = () => {
         setShowTutorial(false);
         localStorage.setItem('hasSeenPoolPageTutorial', 'true'); // Mark tutorial as seen
+        console.log("DEBUG: handleTutorialComplete called. hasSeenPoolPageTutorial set to true.");
     };
 
     // --- Loading, Error, Not Found States (outside PageLayout) ---
@@ -482,10 +488,7 @@ export default function PoolPage({ params }: PoolPageProps) {
             {/* Main Content Area - this will be scrollable */}
             <div className="flex flex-col justify-between items-center gap-8 py-6">
                 {showTutorial && poolData && (
-                    <>
-                        {console.log("DEBUG: Rendering PoolPageTutorial. showTutorial:", showTutorial, "poolData:", poolData)}
-                        <PoolPageTutorial onComplete={handleTutorialComplete} />
-                    </>
+                    <PoolPageTutorial onComplete={handleTutorialComplete} />
                 )}
                 {/* Main Card */}
                 <div className="w-full bg-[#FFFADF] border border-[#E5E8EB] rounded-[24px] p-4 flex flex-col items-center gap-4" id="pool-status-card"> {/* ADDED ID */}
