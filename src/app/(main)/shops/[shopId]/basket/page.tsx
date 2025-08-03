@@ -422,7 +422,7 @@ export default function BasketCreationPage() {
 
                 <div className="space-y-6">
                     {/* Instructions */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-shelivery-sm p-3">
+                    <div className="bg-blue-50 border border-blue-200 rounded-shelivery-sm p-3" id="basket-instructions-info"> {/* ADDED ID */}
                         <p className="text-sm text-blue-800">
                             <strong>Provide order details:</strong> You can use a basket link, write a note, or use both to describe your order.
                         </p>
@@ -457,7 +457,7 @@ export default function BasketCreationPage() {
                             Provide details about what you want to order from this shop
                         </p>
                         <textarea
-                            id="basketNote"
+                            id="basket-note-input" // ADDED ID
                             placeholder="Put your shopping list or your notes here."
                             value={basketNote}
                             onChange={(e) => setBasketNote(e.target.value)}

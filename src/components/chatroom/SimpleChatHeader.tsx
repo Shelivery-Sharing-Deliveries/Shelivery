@@ -11,6 +11,7 @@ interface SimpleChatHeaderProps {
   onBack: () => void;
   onMenuClick?: () => void;
   showMenuButton?: boolean;
+  menuButtonId?: string;
 }
 
 export function SimpleChatHeader({
@@ -20,6 +21,7 @@ export function SimpleChatHeader({
   onBack,
   onMenuClick,
   showMenuButton = true,
+  menuButtonId,
 }: SimpleChatHeaderProps) {
   return (
     <div className="bg-white border-b border-gray-200 px-4 py-4">
@@ -43,6 +45,7 @@ export function SimpleChatHeader({
 
         {showMenuButton && onMenuClick && (
           <button
+            id={menuButtonId}
             onClick={onMenuClick}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >

@@ -66,6 +66,10 @@ export default function PoolPageTutorial({ onComplete }: PoolPageTutorialProps) 
   const [highlightStyle, setHighlightStyle] = useState<React.CSSProperties>({});
   const tooltipRef = useRef<HTMLDivElement>(null);
 
+
+
+
+
   const updateHighlightAndTooltip = useCallback(() => {
     const currentStep = tutorialSteps[currentStepIndex];
     if (!currentStep) {
@@ -77,12 +81,14 @@ export default function PoolPageTutorial({ onComplete }: PoolPageTutorialProps) 
 
     // If the target element doesn't exist, skip this step and move to the next.
     if (!targetElement) {
-      console.warn(`Tutorial: Element with ID "${currentStep.id}" not found. Skipping step.`);
+      console.warn(`Tutorial: Element with ID "${currentStep.id}" NOT FOUND. Skipping step.`);
       setCurrentStepIndex(prev => prev + 1);
       return;
     } else {
       console.log(`Tutorial: Found element with ID "${currentStep.id}". Highlighting.`);
     }
+
+    console.log(`Tutorial: Attempting to find element with ID: "${currentStep.id}"`);
 
     // Reset z-index for all elements that were previously highlighted
     document.querySelectorAll('[data-tutorial-highlighted="true"]').forEach(el => {

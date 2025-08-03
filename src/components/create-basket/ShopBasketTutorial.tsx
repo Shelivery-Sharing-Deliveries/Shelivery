@@ -17,9 +17,21 @@ interface ShopBasketTutorialProps {
 
 const tutorialSteps: TutorialStep[] = [
   {
+    id: 'basket-instructions-info', // NEW STEP ID
+    title: 'Order Details Guidance',
+    text: 'Here you\'ll find important tips on how to provide your order details, whether you use a link, a note, or both.',
+    position: 'bottom', // Position the tooltip below the instructions box
+  },
+  {
     id: 'basket-link-input',
     title: 'Basket Link (URL)',
     text: 'Enter the direct link to your shopping basket or specific items from the shop here. This helps your group members see what you\'re ordering.',
+    position: 'bottom',
+  },
+  {
+    id: 'basket-note-input', // NEW: Added ID for the note input
+    title: 'Order Note',
+    text: 'If you don\'t have a direct link, or want to add more details, write your shopping list or any specific instructions here.',
     position: 'bottom',
   },
   {
