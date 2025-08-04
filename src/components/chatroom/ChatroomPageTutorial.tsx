@@ -148,8 +148,9 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
         targetElement.style.zIndex = '1001';
         targetElement.setAttribute('data-tutorial-highlighted', 'true'); // Mark it for cleanup
 
-        // Define the padding for both the spotlight hole and the glow
-        const padding = 5;
+        // Define the padding for both the spotlight hole and the glow.
+        // This padding now matches the border thickness (2px) on each side.
+        const padding = 2;
 
         // Style for the transparent div that creates the "hole" with its box-shadow
         setSpotlightOverlayStyle({
@@ -172,7 +173,7 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
             width: rect.width + (padding * 2),
             height: rect.height + (padding * 2),
             borderRadius: currentStep.borderRadius || '1rem', // Use step's borderRadius
-            boxShadow: '0 0 0 4px rgba(255, 219, 13, 0.7)',
+            boxShadow: '0 0 0 rgba(255, 219, 13, 0.7)', // Removed spread radius; border class handles thickness
             zIndex: 1000,
             transition: 'all 0.3s ease-in-out',
             pointerEvents: 'none',
@@ -306,7 +307,7 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
             <div className="spotlight-overlay" style={spotlightOverlayStyle} />
 
             {/* Highlight Glow - This creates the border/glow effect around the bright area */}
-            <div style={highlightGlowStyle} className="rounded-lg border-4 border-[#FFDB0D] animate-pulse-once" />
+            <div style={highlightGlowStyle} className="rounded-lg border-2 border-[#FFDB0D] animate-pulse-once" />
 
             {/* Tooltip */}
             <div

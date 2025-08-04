@@ -106,8 +106,9 @@ export default function ShopBasketTutorial({ onComplete }: ShopBasketTutorialPro
         targetElement.style.zIndex = '1001';
         targetElement.setAttribute('data-tutorial-highlighted', 'true'); // Mark it for cleanup
 
-        // Define the padding for both the spotlight hole and the glow
-        const padding = 5;
+        // Define the padding for both the spotlight hole and the glow.
+        // This padding now matches the border thickness (2px) on each side.
+        const padding = 2;
 
         // Style for the transparent div that creates the "hole" with its box-shadow
         // Adjusted to include the same padding as the highlight glow
@@ -133,7 +134,7 @@ export default function ShopBasketTutorial({ onComplete }: ShopBasketTutorialPro
             width: rect.width + (padding * 2), // Adjust width for padding
             height: rect.height + (padding * 2), // Adjust height for padding
             borderRadius: currentStep.borderRadius || '1rem', // Use step's borderRadius
-            boxShadow: '0 0 0 4px rgba(255, 219, 13, 0.7)', // Bright yellow glow
+            boxShadow: '0 0 0 rgba(255, 219, 13, 0.7)', // Removed spread radius; border class handles thickness
             zIndex: 1000, // This is above the spotlight-overlay (999) but below the targetElement (1001)
             transition: 'all 0.3s ease-in-out',
             pointerEvents: 'none', // Allow clicks to pass through to the actual element if needed
@@ -233,7 +234,7 @@ export default function ShopBasketTutorial({ onComplete }: ShopBasketTutorialPro
             <div className="spotlight-overlay" style={spotlightOverlayStyle} />
 
             {/* Highlight Glow - This creates the border/glow effect around the bright area */}
-            <div style={highlightGlowStyle} className="rounded-lg border-4 border-[#FFDB0D] animate-pulse-once" />
+            <div style={highlightGlowStyle} className="rounded-2xl border-2 border-[#FFDB0D] animate-pulse-once" />
 
             {/* Tooltip */}
             <div

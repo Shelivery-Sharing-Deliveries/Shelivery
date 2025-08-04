@@ -109,11 +109,11 @@ export default function DashboardTutorial({ onComplete }: DashboardTutorialProps
         targetElement.style.zIndex = '1001';
         targetElement.setAttribute('data-tutorial-highlighted', 'true'); // Mark it for cleanup
 
-        // Define the padding for both the spotlight hole and the glow
-        const padding = 5;
+        // Define the padding for both the spotlight hole and the glow.
+        // This padding now matches the border thickness (2px) on each side.
+        const padding = 2;
 
         // Style for the transparent div that creates the "hole" with its box-shadow
-        // Adjusted to include the same padding as the highlight glow
         setSpotlightOverlayStyle({
             position: 'absolute',
             top: rect.top + window.scrollY - padding, // Apply padding
@@ -128,7 +128,6 @@ export default function DashboardTutorial({ onComplete }: DashboardTutorialProps
         });
 
         // Calculate highlight glow style (a glow/border around the element)
-        // This already had the padding, so it remains consistent
         setHighlightGlowStyle({
             position: 'absolute',
             top: rect.top + window.scrollY - padding, // Padding for the glow
@@ -136,7 +135,7 @@ export default function DashboardTutorial({ onComplete }: DashboardTutorialProps
             width: rect.width + (padding * 2), // Adjust width for padding
             height: rect.height + (padding * 2), // Adjust height for padding
             borderRadius: currentStep.borderRadius || '1rem', // Use step's borderRadius
-            boxShadow: '0 0 0 4px rgba(255, 219, 13, 0.7)', // Bright yellow glow
+            boxShadow: '0 0 0 rgba(255, 219, 13, 0.7)', // Removed spread radius; border class handles thickness
             zIndex: 1000, // This is above the spotlight-overlay (999) but below the targetElement (1001)
             transition: 'all 0.3s ease-in-out',
             pointerEvents: 'none', // Allow clicks to pass through to the actual element if needed
@@ -201,7 +200,7 @@ export default function DashboardTutorial({ onComplete }: DashboardTutorialProps
 
     const handleNext = () => {
         const nextStep = currentStepIndex + 1;
-        if (nextStep < tutorialSteps.length) {
+        if (nextStep < tutorialSteps!.length) {
             setCurrentStepIndex(nextStep);
         } else {
             onComplete(); // End tutorial
@@ -232,7 +231,8 @@ export default function DashboardTutorial({ onComplete }: DashboardTutorialProps
             {/* Highlight Glow - This creates the border/glow effect around the bright area */}
             <div
                 style={highlightGlowStyle}
-                className="rounded-2xl border-4 border-[#FFDB0D] animate-pulse-once"
+                // Changed to border-2 for a 2px border
+                className="rounded-2xl border-2 border-[#FFDB0D] animate-pulse-once"
             />
 
             {/* Tooltip */}
@@ -250,7 +250,7 @@ export default function DashboardTutorial({ onComplete }: DashboardTutorialProps
                             <Button onClick={handlePrevious} variant="secondary" className="px-3 py-1 text-xs">Back</Button>
                         )}
                         <Button onClick={handleNext} className="px-3 py-1 text-xs">
-                            {currentStepIndex >= tutorialSteps.length - 1 ? 'Finish' : 'Next'}
+                            {currentStepIndex >= tutorialSteps!.length - 1 ? 'Finish' : 'Next'}
                         </Button>
                     </div>
                 </div>
