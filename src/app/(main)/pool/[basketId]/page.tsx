@@ -7,6 +7,7 @@ import Image from "next/image";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { supabase } from "@/lib/supabase";
 import { PageLayout } from '@/components/ui/PageLayout'; // Import PageLayout
+import PoolPageTutorial from "@/components/pool/PoolPageTutorial"; // NEW: Import the tutorial component
 
 // 1. Define Interfaces for the Data Structure
 interface ShopData {
@@ -70,12 +71,20 @@ const mockParticipants = [
 
 
 export default function PoolPage({ params }: PoolPageProps) {
+    console.log("PoolPage component rendering..."); // Debugging log
     const router = useRouter();
     const [poolData, setPoolData] = useState<DisplayPoolData | null>(null);
     const [isReady, setIsReady] = useState(false);
     const [isPageLoading, setIsPageLoading] = useState(true);
     const [isButtonLoading, setIsButtonLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showTutorial, setShowTutorial] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return !localStorage.getItem('hasSeenPoolPageTutorial');
+        }
+        return false; // Default to false on server-side render
+    }); // NEW: State for tutorial visibility
+
 
     const handleBack = () => {
         router.back();
@@ -163,6 +172,7 @@ export default function PoolPage({ params }: PoolPageProps) {
 
     // --- useEffect for Initial Data Fetch ---
     useEffect(() => {
+        console.log("useEffect for initial data fetch triggered."); // Debugging log
         const loadInitialData = async () => {
             console.log("FETCH_INIT: Starting initial data load for basket ID:", params.basketId);
             setIsPageLoading(true);
@@ -175,10 +185,19 @@ export default function PoolPage({ params }: PoolPageProps) {
             }
 
             const result = await fetchAndProcessBasketData(params.basketId);
+            console.log("Result from fetchAndProcessBasketData:", result); // Debugging log
             if (result) {
                 setPoolData(result.structuredData);
                 setIsReady(result.fetchedBasket.is_ready);
                 console.log("FETCH_INIT_SUCCESS: Initial poolData set.");
+
+                // NEW: Only show tutorial if data loaded successfully and not seen before
+                const hasSeenTutorial = localStorage.getItem('hasSeenPoolPageTutorial');
+                console.log("hasSeenPoolPageTutorial from localStorage:", hasSeenTutorial); // Debugging log
+                if (!hasSeenTutorial) {
+                    setShowTutorial(true);
+                    console.log("setShowTutorial(true) called."); // Debugging log
+                }
             } else {
                 console.log("FETCH_INIT_COMPLETE: No data set, possibly redirected or error occurred.");
             }
@@ -187,6 +206,13 @@ export default function PoolPage({ params }: PoolPageProps) {
 
         loadInitialData();
     }, [params.basketId, router]); // Added router to dependencies
+
+    // Debugging log for showTutorial state
+    useEffect(() => {
+        console.log("Current showTutorial state:", showTutorial);
+        console.log("Current poolData state:", poolData);
+    }, [showTutorial, poolData]);
+
 
     // --- useEffect for Realtime Pool Subscription (for progress bar) and Basket Polling (for status/redirect) ---
     useEffect(() => {
@@ -368,6 +394,13 @@ export default function PoolPage({ params }: PoolPageProps) {
         }
     };
 
+    // NEW: Function to handle tutorial completion
+    const handleTutorialComplete = () => {
+        setShowTutorial(false);
+        localStorage.setItem('hasSeenPoolPageTutorial', 'true'); // Mark tutorial as seen
+        console.log("DEBUG: handleTutorialComplete called. hasSeenPoolPageTutorial set to true.");
+    };
+
     // --- Loading, Error, Not Found States (outside PageLayout) ---
     // These states should render full-page content, so they remain outside PageLayout
     if (isPageLoading) {
@@ -430,7 +463,7 @@ export default function PoolPage({ params }: PoolPageProps) {
 
     // --- Header Content for PageLayout ---
     const poolHeader = (
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4" id="pool-header"> {/* ADDED ID */}
             <button
                 onClick={handleBack}
                 className="w-6 h-6 flex items-center justify-center"
@@ -454,8 +487,11 @@ export default function PoolPage({ params }: PoolPageProps) {
         <PageLayout header={poolHeader} showNavigation={false}> {/* No footer prop passed */}
             {/* Main Content Area - this will be scrollable */}
             <div className="flex flex-col justify-between items-center gap-8 py-6">
+                {showTutorial && poolData && (
+                    <PoolPageTutorial onComplete={handleTutorialComplete} />
+                )}
                 {/* Main Card */}
-                <div className="w-full bg-[#FFFADF] border border-[#E5E8EB] rounded-[24px] p-4 flex flex-col items-center gap-4">
+                <div className="w-full bg-[#FFFADF] border border-[#E5E8EB] rounded-[24px] p-4 flex flex-col items-center gap-4" id="pool-status-card"> {/* ADDED ID */}
                     {/* Shop Logo */}
                     <div className="w-16 h-16 rounded-xl overflow-hidden border border-[#EFF1F3]">
                         <Image
@@ -481,7 +517,7 @@ export default function PoolPage({ params }: PoolPageProps) {
                 </div>
 
                 {/* Progress Section */}
-                <div className="w-full">
+                <div className="w-full" id="pool-progress-bar"> {/* ADDED ID */}
                     {/* Pool Progress Labels */}
                     <div className="flex justify-between items-center mb-2">
                         {isReady && (
@@ -506,7 +542,7 @@ export default function PoolPage({ params }: PoolPageProps) {
                 </div>
 
                 {/* Details Section */}
-                <div className="w-full flex flex-col gap-2">
+                <div className="w-full flex flex-col gap-2" id="user-basket-details"> {/* ADDED ID */}
                     {/* Total */}
                     <div className="flex items-center gap-2">
                         <div className="w-6 h-6 flex items-center justify-center">
@@ -599,6 +635,7 @@ export default function PoolPage({ params }: PoolPageProps) {
                         <button
                             onClick={handleEdit}
                             className="flex-1 bg-[#EAF7FF] border border-[#D8F0FE] rounded-lg px-4 py-2 flex items-center justify-center gap-1.5 h-9"
+                            id="edit-basket-button" 
                         >
                             <svg
                                 width="16"
@@ -618,6 +655,7 @@ export default function PoolPage({ params }: PoolPageProps) {
                         <button
                             onClick={handleDelete}
                             className="flex-1 bg-[#FEF3F2] border border-[#FEE4E2] rounded-lg px-4 py-2 flex items-center justify-center gap-1.5 h-9"
+                            id="delete-basket-button" 
                         >
                             <svg
                                 width="16"
@@ -648,6 +686,7 @@ export default function PoolPage({ params }: PoolPageProps) {
                     disabled={isButtonLoading}
                     className={`w-full h-14 rounded-2xl px-4 py-3 flex items-center justify-center ${buttonColorClass
                         } transition-colors ${isButtonLoading ? 'opacity-50 cursor-not-allowed' : ''} mt-auto`}
+                    id="main-action-button" 
                 >
                     <span className="text-white font-poppins text-lg font-semibold">
                         {buttonText}

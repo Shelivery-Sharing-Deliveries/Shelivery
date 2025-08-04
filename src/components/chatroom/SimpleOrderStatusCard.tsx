@@ -5,6 +5,7 @@ import { TimeLeft } from "@/components/chatroom/TimeLeft";
 
 
 interface SimpleOrderStatusCardProps {
+  id?: string; // Add id prop
   state: "waiting" | "active" | "ordered" | "resolved";
   poolTotal: number;
   orderCount: number;
@@ -15,6 +16,7 @@ interface SimpleOrderStatusCardProps {
 }
 
 export function SimpleOrderStatusCard({
+  id, // Destructure id prop
   state,
   poolTotal,
   orderCount,
@@ -65,7 +67,7 @@ export function SimpleOrderStatusCard({
   const StatusIcon = status.icon;
 
   return (
-    <div className={`p-4 rounded-lg border ${status.color}`}>
+    <div id={id} className={`p-4 rounded-lg border ${status.color}`}>
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <div className={`p-2 rounded-full bg-white`}>
@@ -106,30 +108,7 @@ export function SimpleOrderStatusCard({
         </div>
       </div>
 
-      {/* Action Buttons for Admin */}
-      {isAdmin && (
-        <div className="space-y-2">
-          {(state === "waiting" || state === "active") && onMarkOrdered && (
-            <button
-              onClick={onMarkOrdered}
-              className="w-full bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
-            >
-              <CheckCircle className="w-4 h-4" />
-              Mark as Ordered
-            </button>
-          )}
-
-          {state === "ordered" && onMarkDelivered && (
-            <button
-              onClick={onMarkDelivered}
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
-            >
-              <Package className="w-4 h-4" />
-              Mark as Delivered
-            </button>
-          )}
-        </div>
-      )}
+      
     </div>
   );
 }

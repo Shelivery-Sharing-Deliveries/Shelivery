@@ -1,11 +1,13 @@
+// shops/[id]/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useParams, useSearchParams } from "next/navigation"; // Import useSearchParams
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
 import { PageLayout } from "@/components/ui/PageLayout";
+import ShopBasketTutorial from "@/components/create-basket/ShopBasketTutorial"; // UPDATED: Import the tutorial component from the new path
 
 interface Shop {
     id: string;
@@ -29,6 +31,7 @@ export default function BasketCreationPage() {
     const [isEditMode, setIsEditMode] = useState(false); // New state to track edit mode
     const [existingBasketId, setExistingBasketId] = useState<string | null>(null); // To store the basket ID if in edit mode
     const [currentBasketPoolId, setCurrentBasketPoolId] = useState<string | null>(null); // NEW: To store the pool ID of the existing basket
+    const [showTutorial, setShowTutorial] = useState(false); // NEW: State for tutorial visibility
 
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
@@ -42,6 +45,7 @@ export default function BasketCreationPage() {
             router.push("/auth");
         }
     }, [user, authLoading, router]);
+
     // Fetch shop details and handle edit mode pre-population
     useEffect(() => {
         const fetchShopAndBasket = async () => {
@@ -54,7 +58,7 @@ export default function BasketCreationPage() {
             setError(null);
 
             try {
-                // 1. Fetch Shop Details (Keep this as is for now)
+                // 1. Fetch Shop Details
                 const { data: shopData, error: fetchShopError } = await supabase
                     .from("shop")
                     .select("id, name, min_amount, logo_url, is_active")
@@ -71,12 +75,10 @@ export default function BasketCreationPage() {
                 }
                 setShop(shopData);
 
-                // 2. Check for Edit Mode and Fetch Existing Basket (THIS IS THE PART TO EDIT)
+                // 2. Check for Edit Mode and Fetch Existing Basket
                 const urlBasketId = searchParams.get("basketId");
-                // const urlLink = searchParams.get("link"); // <-- REMOVE THIS
-                // const urlAmount = searchParams.get("amount"); // <-- REMOVE THIS
 
-                if (urlBasketId) { // Changed condition to just check for urlBasketId
+                if (urlBasketId) {
                     setIsEditMode(true);
                     setExistingBasketId(urlBasketId);
 
@@ -90,7 +92,6 @@ export default function BasketCreationPage() {
 
                     if (fetchBasketError || !existingBasketData) {
                         console.error("Error fetching existing basket or not found:", fetchBasketError);
-                        // If basket not found or doesn't belong to user, treat as new basket creation for this shop
                         setError("Existing basket not found or you don't have permission to edit it. Starting a new basket.");
                         setIsEditMode(false);
                         setExistingBasketId(null);
@@ -142,6 +143,12 @@ export default function BasketCreationPage() {
         };
 
         fetchShopAndBasket();
+
+        // NEW: Check localStorage for tutorial status
+        const hasSeenTutorial = localStorage.getItem('hasSeenShopBasketTutorial');
+        if (!hasSeenTutorial) {
+            setShowTutorial(true);
+        }
     }, [user, shopId, searchParams, router]); // Depend on searchParams and router to react to URL changes and redirect
 
     const calculateTotalAmount = () => {
@@ -285,6 +292,12 @@ export default function BasketCreationPage() {
         }
     };
 
+    // NEW: Function to handle tutorial completion
+    const handleTutorialComplete = () => {
+        setShowTutorial(false);
+        localStorage.setItem('hasSeenShopBasketTutorial', 'true'); // Mark tutorial as seen
+    };
+
     if (authLoading || loading) {
         return (
             <div className="min-h-screen bg-shelivery-background-gray">
@@ -409,7 +422,7 @@ export default function BasketCreationPage() {
 
                 <div className="space-y-6">
                     {/* Instructions */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-shelivery-sm p-3">
+                    <div className="bg-blue-50 border border-blue-200 rounded-shelivery-sm p-3" id="basket-instructions-info"> {/* ADDED ID */}
                         <p className="text-sm text-blue-800">
                             <strong>Provide order details:</strong> You can use a basket link, write a note, or use both to describe your order.
                         </p>
@@ -422,7 +435,7 @@ export default function BasketCreationPage() {
                         </label>
                         <input
                             type="url"
-                            id="basketLink"
+                            id="basket-link-input" // CORRECTED ID
                             placeholder="e.g., https://shop.com/my-order"
                             value={basketLink}
                             onChange={(e) => setBasketLink(e.target.value)}
@@ -444,7 +457,7 @@ export default function BasketCreationPage() {
                             Provide details about what you want to order from this shop
                         </p>
                         <textarea
-                            id="basketNote"
+                            id="basket-note-input" // ADDED ID
                             placeholder="Put your shopping list or your notes here."
                             value={basketNote}
                             onChange={(e) => setBasketNote(e.target.value)}
@@ -461,7 +474,7 @@ export default function BasketCreationPage() {
                         </label>
                         <input
                             type="number"
-                            id="basketAmount"
+                            id="basket-amount-input" // CORRECTED ID
                             placeholder="e.g., 25.50"
                             value={basketAmount}
                             onChange={(e) => setBasketAmount(e.target.value)}
@@ -481,7 +494,7 @@ export default function BasketCreationPage() {
             </div>
 
             {/* Order Summary (Simplified) */}
-            <div className="bg-white rounded-shelivery-lg p-4 border border-gray-200 mb-6">
+            <div className="bg-white rounded-shelivery-lg p-4 border border-gray-200 mb-6" id="order-summary-section"> {/* ADDED ID */}
                 <h3 className="text-lg font-semibold text-shelivery-text-primary mb-4">
                     Order Summary
                 </h3>
@@ -503,11 +516,15 @@ export default function BasketCreationPage() {
                 loading={submitting}
                 className="w-full"
                 size="lg"
+                id="submit-basket-button" // ADDED ID
             >
                 {submitting
                     ? (isEditMode ? "Saving Changes..." : "Creating Basket...")
                     : (isEditMode ? "Save Changes" : "Join Pool & Create Basket")}
             </Button>
+
+            {/* NEW: Render tutorial conditionally */}
+            {showTutorial && <ShopBasketTutorial onComplete={handleTutorialComplete} />}
         </PageLayout>
     );
 }

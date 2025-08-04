@@ -1,3 +1,4 @@
+// app/chatroom/[chatroomId]/page.tsx
 "use client";
 import { useNotify } from "@/components/ui/NotificationsContext";
 import { useEffect, useState } from "react";
@@ -19,6 +20,7 @@ import {
 } from "@/components/chatroom/NotificationBanner";
 import { TimeExtensionModal } from "@/components/chatroom/TimeExtensionModal";
 import LoadingBall from "@/components/ui/LoadingBall";
+import ChatroomPageTutorial from "@/components/chatroom/ChatroomPageTutorial"; // NEW: Import the tutorial component
 
 interface Chatroom {
   id: string;
@@ -115,6 +117,7 @@ export default function ChatroomPage() {
   const [timeRunningOut, setTimeRunningOut] = useState(false);
   const [newMemberJoined, setNewMemberJoined] = useState(false);
   const [adminAssigned, setAdminAssigned] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false); // NEW: State for tutorial visibility
 
   // Define refreshChatroom function before using it in the hook
   const refreshChatroom = async () => {
@@ -423,6 +426,13 @@ export default function ChatroomPage() {
         console.log(
           "loadChatroomData: All data fetches completed successfully."
         );
+
+        // NEW: Check localStorage for tutorial status after all data is loaded
+        const hasSeenTutorial = localStorage.getItem('hasSeenChatroomPageTutorial');
+        if (!hasSeenTutorial) {
+            setShowTutorial(true);
+        }
+
       } catch (error) {
         console.error(
           "loadChatroomData: Caught an error during chatroom data loading:",
@@ -593,6 +603,13 @@ export default function ChatroomPage() {
     };
   }, [chatroomId, authLoading, refreshChatroom, notify, currentUser]); // Added all dependencies
 
+  // NEW: Function to handle tutorial completion
+  const handleTutorialComplete = () => {
+    setShowTutorial(false);
+    localStorage.setItem('hasSeenChatroomPageTutorial', 'true'); // Mark tutorial as seen
+  };
+
+
   // This is the point where the UI decides what to render based on the 'loading' state
   if (authLoading || loading) {
     console.log("Render: Displaying Loading state...");
@@ -652,6 +669,17 @@ export default function ChatroomPage() {
           onExtendTime={() => {
             /* your extend logic */
           }}
+          // NEW: Pass tutorial props to OrderDetailsView
+          showTutorial={showTutorial}
+          tutorialStepIds={{
+            adminSection: "order-details-admin-section",
+            changeAdminButton: "change-admin-button",
+            membersList: "order-details-members-list",
+            readyStatus: "order-details-ready-status",
+            markOrderedButton: "mark-as-ordered-button",
+            markDeliveredButton: "mark-as-delivered-button", // Assuming you'll add this ID
+            leaveGroupButton: "leave-group-button", // Assuming you'll add this ID
+          }}
         />
 
         {/* Time Extension Modal */}
@@ -666,6 +694,14 @@ export default function ChatroomPage() {
               setTimeout(() => setNotification(null), 3000);
             }}
           />
+        )}
+        {/* NEW: Render ChatroomPageTutorial if showTutorial is true AND currentView is orderDetails */}
+        {showTutorial && currentView === "orderDetails" && (
+            <ChatroomPageTutorial
+                onComplete={handleTutorialComplete}
+                currentView={currentView}
+                setCurrentView={setCurrentView}
+            />
         )}
       </>
     );
@@ -683,6 +719,8 @@ export default function ChatroomPage() {
           onBack={() => router.push("/dashboard")}
           onMenuClick={() => setCurrentView("orderDetails")}
           showMenuButton={true}
+          // NEW: Add ID for tutorial targeting
+          menuButtonId="chat-menu-button"
         />
       </div>
 
@@ -757,6 +795,14 @@ export default function ChatroomPage() {
             setTimeout(() => setNotification(null), 3000);
           }}
         />
+      )}
+      {/* NEW: Render ChatroomPageTutorial if showTutorial is true AND currentView is chat */}
+      {showTutorial && currentView === "chat" && (
+          <ChatroomPageTutorial
+              onComplete={handleTutorialComplete}
+              currentView={currentView}
+              setCurrentView={setCurrentView}
+          />
       )}
     </div>
   );

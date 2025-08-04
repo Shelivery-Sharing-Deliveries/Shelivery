@@ -6,6 +6,7 @@ import ProfileCard from "@/components/dashboard/ProfileCard";
 import AddBasket from "@/components/dashboard/AddBasket";
 import Baskets from "@/components/dashboard/Baskets";
 import Banner from "@/components/dashboard/Banner";
+import DashboardTutorial from "@/components/dashboard/DashboardTutorial"; // NEW: Import the tutorial component
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
@@ -57,6 +58,7 @@ export default function DashboardPage() {
     const [loadingBaskets, setLoadingBaskets] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showOldOrders, setShowOldOrders] = useState(false); // State to manage collapsible section
+    const [showTutorial, setShowTutorial] = useState(false); // NEW: State for tutorial visibility
 
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
@@ -137,6 +139,11 @@ export default function DashboardPage() {
         // Only proceed if user is loaded and not null, meaning AuthGuard has done its job
         if (!authLoading && user) {
             fetchData();
+            // NEW: Check localStorage for tutorial status
+            const hasSeenTutorial = localStorage.getItem('hasSeenDashboardTutorial');
+            if (!hasSeenTutorial) {
+                setShowTutorial(true);
+            }
         }
     }, [user, authLoading]); // Depend on 'user' and 'authLoading' from useAuth
 
@@ -171,8 +178,12 @@ export default function DashboardPage() {
         // though your current setup implies all have chatrooms), no navigation would occur.
     };
 
+    // NEW: Function to handle tutorial completion
+    const handleTutorialComplete = () => {
+        setShowTutorial(false);
+        localStorage.setItem('hasSeenDashboardTutorial', 'true'); // Mark tutorial as seen
+    };
     
-
     return (
         <PageLayout >
             {authLoading || !user ? (
@@ -182,11 +193,11 @@ export default function DashboardPage() {
                 </div>
             ) : (
                 <>  
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center" id="dashboard-header"> {/* ADDED ID */}
                         <h1 className="text-[16px] font-bold leading-8 text-black">
                             Dashboard
                         </h1>
-                        <Button onClick={handleInviteFriend} className="bg-[#245B7B] text-white px-4 py-2 rounded-lg text-[12px] font-semibold">
+                        <Button onClick={handleInviteFriend} className="bg-[#245B7B] text-white px-4 py-2 rounded-lg text-[12px] font-semibold" id="invite-friends-button"> {/* ADDED ID */}
                             Invite Friends
                         </Button>
                     </div>
@@ -194,6 +205,7 @@ export default function DashboardPage() {
                         <ProfileCard
                             userName={userProfile.userName}
                             userAvatar={userProfile.userAvatar}
+                            id="profile-card" // ADDED ID
                         />
                         
                     ) : (<div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}> {/* Inline Flexbox */}
@@ -204,7 +216,7 @@ export default function DashboardPage() {
                         </div>
                     </div>)}
                     
-                    <AddBasket onClick={handleAddBasket} />
+                    <AddBasket onClick={handleAddBasket} id="add-basket-button" /> 
                     {loadingBaskets ? (
                         
                         <div className="flex items-center justify-center py-8">
@@ -225,7 +237,7 @@ export default function DashboardPage() {
                     ) : (
                         <>
                             {activeBaskets.length === 0 ? (
-                                <div className="text-center py-8 text-gray-500">
+                                <div className="text-center py-8 text-gray-500" id="no-active-baskets-message"> {/* ADDED ID */}
                                     <img
                                         src="/graphics/empty-basket.svg"  // Replace with your actual image path
                                         alt="No active baskets"
@@ -236,16 +248,16 @@ export default function DashboardPage() {
                                     <p>Create a basket and have shared shopping experience!</p>
                                 </div>
                             ) : (
-                                <Baskets baskets={activeBaskets} onBasketClick={handleBasketClick} />
+                                <Baskets baskets={activeBaskets} onBasketClick={handleBasketClick} id="active-baskets-list" />
                             )}
-                            <Banner />
+                            <Banner id="dashboard-banner" /> {/* ADDED ID */}
 
-                            {/* --- NEW SECTION: Old Orders (Collapsible) --- */}
                             {resolvedBaskets.length > 0 && (
-                                <div className="mt-6 border-t border-gray-200 pt-4">
+                                <div className="mt-6 border-t border-gray-200 pt-4" id="old-orders-section"> {/* ADDED ID */}
                                     <button
                                         className="w-full flex justify-between items-center px-4 py-2 bg-gray-100 rounded-md text-gray-700 font-semibold text-left"
                                         onClick={() => setShowOldOrders(!showOldOrders)}
+                                        id="old-orders-toggle" 
                                     >
                                         <span>Archive ({resolvedBaskets.length})</span>
                                         {showOldOrders ? (
@@ -255,18 +267,19 @@ export default function DashboardPage() {
                                         )}
                                     </button>
                                     {showOldOrders && (
-                                        <div className="mt-4">
+                                        <div className="mt-4" id="resolved-baskets-list"> {/* ADDED ID */}
                                             {/* Re-using Baskets component for resolved baskets */}
                                             <Baskets baskets={resolvedBaskets} onBasketClick={handleBasketClick} />
                                         </div>
                                     )}
                                 </div>
                             )}
-                            {/* --- END NEW SECTION --- */}
                         </>
                     )}
                 </>
             )}
+            {/* Render tutorial conditionally */}
+            {showTutorial && <DashboardTutorial onComplete={handleTutorialComplete} />}
         </PageLayout>
     );
 }

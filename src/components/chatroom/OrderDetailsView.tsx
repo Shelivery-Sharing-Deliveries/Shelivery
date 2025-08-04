@@ -73,6 +73,8 @@ interface OrderDetailsViewProps {
   onDismissNewMember: () => void;
   onDismissAdminAssigned: () => void;
   onExtendTime: () => void;
+  showTutorial: boolean;
+  tutorialStepIds: { [key: string]: string };
 }
 
 export function OrderDetailsView({
@@ -148,6 +150,7 @@ export function OrderDetailsView({
       {/* Content */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden px-4 py-4 gap-y-4">
         <SimpleOrderStatusCard
+          id="order-details-ready-status"
           state={state}
           poolTotal={poolTotal}
           orderCount={orderCount}
@@ -166,17 +169,42 @@ export function OrderDetailsView({
           onRemoveMember={onRemoveMember}
         />
 
-<div className="flex flex-col gap-2 pb-6">
-  <Button
-    variant="error"
-    size="md"
-    onClick={onLeaveGroup}
-    className="w-full"
-    disabled={state === "ordered"} // Disable when state is 'ordered'
-  >
-    {state === "resolved" ? "Leave Group" : "Leave Order"}
-  </Button>
-</div>
+{isAdmin && (
+          <div className="space-y-2">
+            {(state === "waiting" || state === "active") && onMarkOrdered && (
+              <Button
+                id="mark-as-ordered-button"
+                onClick={onMarkOrdered}
+                className="w-full"
+              >
+                Mark as Ordered
+              </Button>
+            )}
+
+            {state === "ordered" && onMarkDelivered && (
+              <Button
+                id="mark-as-delivered-button"
+                onClick={onMarkDelivered}
+                className="w-full"
+              >
+                Mark as Delivered
+              </Button>
+            )}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-2 pb-6">
+          <Button
+            id="leave-group-button"
+            variant="error"
+            size="md"
+            onClick={onLeaveGroup}
+            className="w-full"
+            disabled={state === "ordered"} // Disable when state is 'ordered'
+          >
+            {state === "resolved" ? "Leave Group" : "Leave Order"}
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -1,14 +1,20 @@
+// components/dashboard/AddBasket.tsx
+"use client"; // Ensure this is present if it uses client-side features
+
 import Image from "next/image";
+import React from "react"; // Ensure React is imported if not already present
 
 interface AddBasketProps {
   onClick?: () => void;
+  id?: string; // ADDED: Make the id prop optional
 }
 
-export default function AddBasket({ onClick }: AddBasketProps) {
+export default function AddBasket({ onClick, id }: AddBasketProps) { // Destructure id from props
   return (
     <div className="w-full h-[67px] mb-[18px]">
       <div
-        className="w-full h-full bg-[#FFDB0D]  rounded-[18px] flex px-4 cursor-pointer hover:opacity-90 transition-opacity "
+        id={id} // ADDED: Apply the id prop here
+        className="w-full h-full bg-[#FFDB0D] rounded-[18px] flex px-4 cursor-pointer hover:opacity-90 transition-opacity "
         onClick={onClick}
       >
         <div className="flex items-center gap-3">

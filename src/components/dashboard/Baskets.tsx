@@ -1,4 +1,8 @@
+// components/dashboard/Baskets.tsx
+"use client"; // Ensure this is present if it uses client-side features
+
 import Image from "next/image";
+import React from "react"; // Ensure React is imported
 
 interface Basket {
     id: string;
@@ -11,6 +15,7 @@ interface Basket {
 interface BasketsProps {
     baskets: Basket[];
     onBasketClick?: (basketId: string) => void;
+    id?: string; // ADDED: Make the id prop optional
 }
 
 // Updated statusConfig to match database 'status' values
@@ -35,11 +40,11 @@ const statusConfig = {
     },
 };
 
-export default function Baskets({ baskets, onBasketClick }: BasketsProps) {
+export default function Baskets({ baskets, onBasketClick, id }: BasketsProps) { // Destructure id from props
     const isEmpty = baskets.length === 0;
 
     return (
-        <div className="mb-6">
+        <div className="mb-6" id={id}> {/* ADDED: Apply the id prop here */}
             {/* Section Header */}
             <div className="flex items-center mb-4">
                 <h2 className="text-[16px] font-bold leading-8 text-black">
