@@ -1,17 +1,10 @@
 {
   "ExpandedNodes": [
     "",
+    "\\public",
     "\\src",
-    "\\src\\app",
-    "\\src\\app\\(main)",
-    "\\src\\app\\(main)\\chatrooms",
-    "\\src\\app\\(main)\\chatrooms\\[chatroomId]",
-    "\\src\\components",
-    "\\src\\components\\dashboard",
-    "\\src\\hooks",
-    "\\src\\lib",
-    "\\src\\styles"
+    "\\src\\components\\pool"
   ],
-  "SelectedNode": "\\src\\components\\dashboard\\DashboardTutorial.tsx",
+  "SelectedNode": "\\public\\manifest.json",
   "PreviewInSolutionExplorer": false
 }
