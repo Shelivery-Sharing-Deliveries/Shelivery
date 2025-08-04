@@ -444,3 +444,18 @@
     @apply bg-background text-foreground;
   }
 }
+/* Add this to your global CSS file */
+.spotlight-overlay {
+    /* This creates the dark overlay with a transparent hole */
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7);
+    /* Puts it on top of the page content, but below the highlighted element */
+    z-index: 999; /* Changed to 999 to ensure targetElement (1001) is above */
+    /* Prevents the overlay from blocking clicks on the page */
+    pointer-events: none;
+    /* Ensure it covers the viewport */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+}
