@@ -190,5 +190,7 @@ key1.pub
 localhost-key.pem
 localhost.pem
 
+/.vs
+
 /.gitignore
 /.gitignore
