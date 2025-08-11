@@ -11,7 +11,7 @@ import {
 } from "@/components/auth";
 import SetPasswordForm from "@/components/auth/SetPasswordForm";
 import EmailConfirmationForm from "@/components/auth/EmailConfirmationForm";
-import  ForgotPasswordForm from "@/components/auth/ForgotPasswordForm"; // NEW: Import ForgotPasswordForm
+import ForgotPasswordForm from "@/components/auth/ForgotPasswordForm"; // NEW: Import ForgotPasswordForm
 import { useAuth } from "@/hooks/useAuth";
 
 type AuthStep =
@@ -34,6 +34,8 @@ function AuthPageContent() {
     const [resendCountdown, setResendCountdown] = useState(0);
     const [password, setPassword] = useState("");
     const [forgotPasswordEmail, setForgotPasswordEmail] = useState(""); // State for email in forgot password flow
+    const [isProfileCheckLoading, setIsProfileCheckLoading] = useState(true); // NEW: State for profile check loading
+
 
     const {
         user,
@@ -46,13 +48,52 @@ function AuthPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    // Redirect if user is already logged in and tries to access /auth.
+    // --- NEW: Redirect based on profile completeness (runs after initial auth check) ---
     useEffect(() => {
-        if (!authLoading && user) {
-            console.log("AuthPage: User is logged in, redirecting to profile setup.");
-            // FIXED: Redirect to profile-set with user ID
-            router.replace(`/profile-set/${user.id}`);
-        }
+        const checkProfileAndRedirect = async () => {
+            // Only proceed if user is logged in and authLoading is complete
+            if (!authLoading && user) {
+                setIsProfileCheckLoading(true); // Start loading for profile check
+                console.log("AuthPage: User logged in. Checking profile completeness...");
+
+                // FETCHING: Include all fields that define a "complete" profile
+                // Based on ProfileEditPage, first_name, last_name, and favorite_store are updated.
+                // Dormitory is read-only, so we won't strictly rely on it for completeness here.
+                const { data: userData, error: profileError } = await supabase
+                    .from("user")
+                    .select("first_name, last_name, favorite_store") // Added last_name and favorite_store
+                    .eq("id", user.id)
+                    .single();
+
+                if (profileError) {
+                    console.error("AuthPage: Error fetching user profile for completeness check:", profileError);
+                    // If there's an error fetching profile, assume it's not complete or a problem, direct to setup
+                    router.replace(`/profile-set/${user.id}`);
+                    setIsProfileCheckLoading(false);
+                    return;
+                }
+
+                // Check if first_name, last_name, AND favorite_store are set.
+                // Adjust these fields based on what truly defines a "complete" profile for your app.
+                const isProfileComplete = userData?.first_name &&
+                    userData?.last_name &&
+                    userData?.favorite_store; // Checks for non-null/non-empty string
+
+                if (isProfileComplete) {
+                    console.log("AuthPage: Profile is complete. Redirecting to dashboard.");
+                    router.replace("/dashboard");
+                } else {
+                    console.log("AuthPage: Profile is NOT complete. Redirecting to profile setup.");
+                    router.replace(`/profile-set/${user.id}`);
+                }
+                setIsProfileCheckLoading(false); // End loading for profile check
+            } else if (!authLoading && !user) {
+                // If no user and auth loading is done, then stop profile check loading
+                setIsProfileCheckLoading(false);
+            }
+        };
+
+        checkProfileAndRedirect();
     }, [user, authLoading, router]); // Re-run when user or authLoading state changes
 
     // NEW: Handle email confirmation success from URL query parameters
@@ -132,7 +173,7 @@ function AuthPageContent() {
                     setError(signInError || "An unexpected error occurred during login.");
                 }
             } else {
-                // Successfully signed in. The useEffect above will handle redirection.
+                // Successfully signed in. The useEffect that checks profile will handle redirection.
             }
         } catch (err: any) {
             setError(err.message || "An unexpected error occurred");
@@ -226,7 +267,7 @@ function AuthPageContent() {
                 setError(error.message);
                 return;
             }
-            // OTP successful. The useEffect at the top will handle redirection.
+            // OTP successful. The useEffect above will handle redirection.
         } catch (err: any) {
             setError(err.message || "Invalid verification code");
         } finally {
@@ -307,8 +348,9 @@ function AuthPageContent() {
     };
 
 
-    // Show a loading spinner only while the *initial* Supabase session is being determined.
-    if (authLoading) {
+    // Show a loading spinner only while the *initial* Supabase session is being determined
+    // OR while the profile completeness check is ongoing.
+    if (authLoading || isProfileCheckLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-white">
                 <div className="text-center">
