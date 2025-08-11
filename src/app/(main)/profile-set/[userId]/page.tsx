@@ -6,7 +6,9 @@ import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth"; // Assuming useAuth hook is available
-// import { Tables } from "@/lib/supabase"; // Not directly used in this component, assuming types are handled
+import { PushNotificationSettings } from "@/components/ui/PushNotificationSettings"; // NEW: Import PushNotificationSettings
+import { usePushNotifications } from '@/hooks/usePushNotifications'; // NEW: Import usePushNotifications hook
+import { useNotify } from "@/components/ui/NotificationsContext"; // NEW: Import useNotify for pop-up messages
 
 // Assuming AuthLayout is in components/auth/AuthLayout.tsx
 import AuthLayout from "@/components/auth/AuthLayout";
@@ -33,6 +35,9 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
     const router = useRouter();
     const params = useParams();
     const { user, loading: authLoading } = useAuth(); // Use useAuth hook for user data
+    const notify = useNotify(); // Initialize useNotify
+    const { subscribe, isSubscribed, unsubscribe } = usePushNotifications(); // NEW: Initialize the hook with subscribe and isSubscribed
+
 
     const [formData, setFormData] = useState<ProfileFormData>({
         firstName: "",
@@ -51,6 +56,7 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
     const [loading, setLoading] = useState(false); // For form submission and initial data fetch
     const [error, setError] = useState<string | null>(null);
     const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+    const [showPushNotificationOptIn, setShowPushNotificationOptIn] = useState(false); // NEW: State for push notification opt-in prompt
 
     const currentUrlUserId = params?.userId as string;
 
@@ -159,6 +165,19 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
 
         loadProfile();
     }, [user, initialDataLoaded]);
+
+    // NEW: Effect to check push notification subscription status and control opt-in prompt visibility
+    useEffect(() => {
+        if (!loading && !authLoading && user) {
+            // Only show opt-in if Notifications API is available, user is not subscribed
+            // AND the browser permission is 'default' (meaning it hasn't been explicitly granted or denied yet).
+            if ("Notification" in window && Notification.permission === 'default' && !isSubscribed) {
+                setShowPushNotificationOptIn(true);
+            } else {
+                setShowPushNotificationOptIn(false);
+            }
+        }
+    }, [user, loading, authLoading, isSubscribed]); // isSubscribed needs to be a dependency
 
     // Update form field values
     const handleInputChange = (field: keyof ProfileFormData, value: string | null) => {
@@ -273,6 +292,28 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
             setError(err.message || "Failed to save profile. Please try again.");
         } finally {
             setLoading(false); // End loading for save operation
+        }
+    };
+
+    // NEW: Function to handle push notification activation
+    const handleActivatePushNotifications = async () => {
+        setLoading(true); // Use general loading for this action
+        setError(null); // Clear previous errors
+
+        try {
+            const success = await subscribe(); // Call the subscribe function from the hook
+            if (success) {
+                notify({ type: "success", title: "Success!", message: "Push notifications enabled." });
+                setShowPushNotificationOptIn(false); // Hide the opt-in prompt
+            } else {
+                // Changed 'error' to 'warning' to match expected types
+                notify({ type: "warning", title: "Error", message: "Failed to enable push notifications. Please check browser permissions." });
+            }
+        } catch (err: any) {
+            // Changed 'error' to 'warning' to match expected types
+            notify({ type: "warning", title: "Error", message: err.message || "An unexpected error occurred while enabling notifications." });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -439,6 +480,30 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
                         </div>
                     </div>
 
+                    {/* NEW: Conditional Push Notification Opt-in Prompt */}
+                    {showPushNotificationOptIn && (
+                        <div className="w-full mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
+                            <h2 className="text-lg font-bold text-blue-800 mb-2">Enable Notifications</h2>
+                            <p className="text-sm text-blue-700 mb-4">
+                                Get instant updates on your orders and basket activities.
+                            </p>
+                            <button
+                                onClick={handleActivatePushNotifications}
+                                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                                disabled={loading}
+                            >
+                                {loading ? "Activating..." : "Activate Push Notifications"}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Existing Push Notification Settings */}
+                    <div className="w-full mt-4">
+                        <h2 className="text-xl font-bold text-gray-800 mb-4">Notification Settings</h2>
+                        <PushNotificationSettings />
+                    </div>
+
+                    {/* Save Button */}
                     <button
                         onClick={handleSave}
                         className="flex items-center justify-center gap-2 py-3 px-0 w-full bg-[#FFE75B] rounded-[16px] disabled:opacity-50 disabled:cursor-not-allowed"
