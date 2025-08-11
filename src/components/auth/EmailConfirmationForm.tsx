@@ -3,17 +3,24 @@
 
 import React from 'react';
 import AuthLayout from './AuthLayout'; // Assuming AuthLayout is in the same directory or accessible
+import { Button } from "@/components/ui/Button"; // Assuming you have a Button component
 
 interface EmailConfirmationFormProps {
     email: string;
     loading?: boolean;
     error?: string | undefined;
+    message?: string | undefined; // NEW: Message prop for success/info
+    onResendClick: () => void; // NEW: Callback for resend button click
+    resendCountdown: number; // NEW: Countdown for resend button
 }
 
 const EmailConfirmationForm: React.FC<EmailConfirmationFormProps> = ({
     email,
     loading = false,
     error,
+    message, // Destructure message
+    onResendClick, // Destructure new prop
+    resendCountdown, // Destructure new prop
 }) => {
     return (
         <AuthLayout className="gap-8">
@@ -28,33 +35,37 @@ const EmailConfirmationForm: React.FC<EmailConfirmationFormProps> = ({
                     </p>
                 </div>
 
+                {/* Display error message */}
                 {error && (
                     <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm font-medium">
                         <span className="block sm:inline">{error}</span>
                     </div>
                 )}
 
-                {loading && (
-                    <div className="text-center">
-                        <div className="w-8 h-8 border-4 border-[#FFDB0D] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                        <p className="text-[#A4A7AE]">Sending email...</p>
+                {/* Display success/info message */}
+                {message && (
+                    <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative text-sm font-medium">
+                        <span className="block sm:inline">{message}</span>
                     </div>
                 )}
 
-                {/* You might consider adding a "Resend Confirmation Email" button here if needed */}
-                {/* For now, keeping it simple as OTP resend was commented out */}
-                {/*
-        <div className="text-center mt-4">
-          <button
-            type="button"
-            onClick={() => { /* Implement resend confirmation email logic here * / }}
-            className="text-[#245B7B] font-inter text-[14px] font-medium leading-[16.94px] underline"
-            disabled={loading}
-          >
-            Resend confirmation email
-          </button>
-        </div>
-        */}
+                {/* Resend button */}
+                <div className="text-center mt-4">
+                    <Button
+                        type="button"
+                        onClick={onResendClick}
+                        disabled={loading || resendCountdown > 0}
+                        className="w-full" // Make button full width if needed
+                        size="lg" // Use your Button component's size prop
+                        loading={loading} // Pass loading state to the Button component
+                    >
+                        {loading
+                            ? "Sending..."
+                            : resendCountdown > 0
+                                ? `Resend in ${resendCountdown}s`
+                                : "Resend Confirmation Email"}
+                    </Button>
+                </div>
             </div>
         </AuthLayout>
     );
