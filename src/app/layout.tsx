@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next/types";
 import { Inter } from "next/font/google";
 import "@/styles/globals.css";
 import { Navigation } from "@/components/ui/Navigation";
+import { PostHogProvider } from "@/components/posthog/PostHogProvider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -90,10 +91,11 @@ export default function RootLayout({
       <body
         className={`${inter.className} antialiased min-h-screen bg-background font-sans`}
       >
-        <div className="relative flex min-h-screen flex-col">
-          <div className="flex-1">{children}</div>
-        </div>
-        
+        <PostHogProvider>
+          <div className="relative flex min-h-screen flex-col">
+            <div className="flex-1">{children}</div>
+          </div>
+        </PostHogProvider>
       </body>
     </html>
   );
