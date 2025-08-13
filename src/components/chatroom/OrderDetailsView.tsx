@@ -183,7 +183,7 @@ export function OrderDetailsView({
                 <div className="flex flex-col gap-2 pb-6">
                     {isAdmin && ( // Only requires isAdmin to show admin actions block
                         <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 space-y-3">
-                            <h2 className="text-lg font-bold text-gray-800">Admin Actions</h2>
+                            <h2 className="text-lg font-bold text-gray-800">Actions</h2>
                             {/* Mark as Ordered Button */}
                             {/* MODIFIED: Disabled only if already ordered or resolved */}
                             {(state === "waiting" || state === "active") && onMarkOrdered && (
