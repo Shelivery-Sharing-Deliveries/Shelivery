@@ -1,13 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { ChevronDown, Send, AlertCircle } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { PageLayout } from "@/components/ui";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function App() {
   const router = useRouter();
@@ -32,7 +33,7 @@ export default function App() {
   );
 
   return (
-    <PageLayout header={headerContent} showNavigation={true} >
+    <PageLayout header={headerContent} showNavigation={true}>
       <div className="flex justify-center pt-4">
         <FeedbackForm />
       </div>
@@ -41,8 +42,7 @@ export default function App() {
 }
 
 function FeedbackForm() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
+  const { user, loading: authLoading } = useAuth();
 
   const [feedbackType, setFeedbackType] = useState("Add a Store");
   const [message, setMessage] = useState("");
@@ -52,27 +52,10 @@ function FeedbackForm() {
   // Different placeholders for each dropdown option
   const placeholders: Record<string, string> = {
     General: "Write your general feedback here...",
-    "Add a Store": "Suggest a store you’d like us to add. Please include the store name, link, and any other relevant details.",
+    "Add a Store":
+      "Suggest a store you’d like us to add. Please include the store name, link, and any other relevant details.",
     "Dormitory Change": "Explain the dormitory change request here...",
   };
-
-  useEffect(() => {
-    const fetchUserSession = async () => {
-      try {
-        const {
-          data: { user: supabaseUser },
-        } = await supabase.auth.getUser();
-        setUser(supabaseUser);
-      } catch (error) {
-        console.error("Error fetching Supabase user session:", error);
-        setUser(null);
-      } finally {
-        setLoadingUser(false);
-      }
-    };
-
-    fetchUserSession();
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -124,6 +107,46 @@ function FeedbackForm() {
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="mt-6 p-4 bg-blue-50 rounded-xl text-blue-700 text-center text-sm font-medium flex items-center justify-center">
+        <svg
+          className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-700"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          ></circle>
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 
+            0 0 5.373 0 12h4zm2 5.291A7.962 
+            7.962 0 014 12H0c0 3.042 1.135 
+            5.824 3 7.938l3-2.647z"
+          ></path>
+        </svg>
+        Loading user session...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="mt-6 p-4 bg-red-50 rounded-xl text-red-700 text-center text-sm font-medium flex items-center justify-center">
+        <AlertCircle className="h-5 w-5 mr-2" />
+        You must be logged in to submit feedback.
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-lg border border-gray-200">
       <h2 className="text-3xl font-extrabold text-gray-900 text-center mb-6">
@@ -133,42 +156,6 @@ function FeedbackForm() {
         We'd love to hear from you. Please select a feedback type and let us
         know your thoughts.
       </p>
-
-      {loadingUser && (
-        <div className="mt-6 p-4 bg-blue-50 rounded-xl text-blue-700 text-center text-sm font-medium flex items-center justify-center">
-          <svg
-            className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-700"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            ></circle>
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 
-              0 0 5.373 0 12h4zm2 5.291A7.962 
-              7.962 0 014 12H0c0 3.042 1.135 
-              5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
-          Loading user session...
-        </div>
-      )}
-
-      {!loadingUser && !user && (
-        <div className="mt-6 p-4 bg-red-50 rounded-xl text-red-700 text-center text-sm font-medium flex items-center justify-center">
-          <AlertCircle className="h-5 w-5 mr-2" />
-          You must be logged in to submit feedback.
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
