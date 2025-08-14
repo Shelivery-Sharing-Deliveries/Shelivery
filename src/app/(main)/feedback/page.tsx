@@ -16,7 +16,7 @@ export default function App() {
   const headerContent = (
     <div className="flex items-center gap-2 px-4 py-2">
       <button
-        onClick={() => router.push("/")}
+        onClick={() => router.push("/dashboard")}
         className="w-6 h-6 flex items-center justify-center"
       >
         <Image

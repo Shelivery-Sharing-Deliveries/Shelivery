@@ -8,6 +8,8 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { supabase } from "@/lib/supabase";
 import { PageLayout } from '@/components/ui/PageLayout'; // Import PageLayout
 import PoolPageTutorial from "@/components/pool/PoolPageTutorial"; // NEW: Import the tutorial component
+import { Share } from "next/font/google";
+import ShareButtons from "@/components/ui/ShareButtons"; // Import ShareButtons component
 
 // 1. Define Interfaces for the Data Structure
 interface ShopData {
@@ -441,6 +443,7 @@ export default function PoolPage({ params }: PoolPageProps) {
 
     const currentProgressBarAmount = poolData.currentAmount;
     const isPoolFilled = poolData.currentAmount >= poolData.minAmount && poolData.minAmount > 0;
+    const shareLink= `https://app.shelivery.com/shops/${poolData.shop_id}/basket`; // Link to share
 
     // Determine button text and action based on state
     let buttonText = "";
@@ -480,6 +483,8 @@ export default function PoolPage({ params }: PoolPageProps) {
                     {poolData.shopName} Basket
                 </h1>
             </div>
+            <div className="flex-1"></div> {/* Spacer to push content to the left */}
+            <ShareButtons content={`Join me in the Shelivery pool for ${poolData.shopName}! We need ${poolData.minAmount-poolData.currentAmount} CHF more to do a Shelivery : ${shareLink || "No link provided"}`} />
         </div>
     );
 
