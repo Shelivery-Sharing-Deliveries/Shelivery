@@ -185,7 +185,7 @@ export default function ShopsPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 py-2">
             {filteredShops.map((shop) => (
               <div
                 key={shop.id}

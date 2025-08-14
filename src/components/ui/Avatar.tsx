@@ -1,20 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 interface AvatarProps {
-  src?: string | null | undefined;
+  src?: string | null;
   name?: string;
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
 }
 
 const sizeClasses = {
-  sm: "shelivery-avatar-sm",
-  md: "shelivery-avatar-md",
-  lg: "shelivery-avatar-lg",
-  xl: "shelivery-avatar-xl",
+  sm: "shelivery-avatar-sm", // e.g. w-8 h-8
+  md: "shelivery-avatar-md", // e.g. w-10 h-10
+  lg: "shelivery-avatar-lg", // e.g. w-12 h-12
+  xl: "shelivery-avatar-xl", // e.g. w-16 h-16
 };
 
 export function Avatar({ src, name, size = "md", className }: AvatarProps) {
@@ -42,19 +43,34 @@ export function Avatar({ src, name, size = "md", className }: AvatarProps) {
   const colorIndex = name ? name.charCodeAt(0) % initialsColors.length : 0;
   const backgroundColor = initialsColors[colorIndex];
 
+  // Resize if backend supports (Supabase example)
+  const optimizedSrc =
+    src && src.includes("supabase")
+      ? `${src}?width=128&quality=70`
+      : src || "";
+
   return (
-    <div className={cn("shelivery-avatar", sizeClasses[size], className)}>
-      {src && !imageError ? (
-        <img
-          src={src}
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-full flex items-center justify-center text-white font-medium",
+        sizeClasses[size],
+        className
+      )}
+    >
+      {optimizedSrc && !imageError ? (
+        <Image
+          src={optimizedSrc}
           alt={name || "Avatar"}
-          className="w-full h-full object-cover"
+          fill
+          sizes="64px"
+          className="object-cover"
           onError={() => setImageError(true)}
+          loading="lazy"
         />
       ) : (
         <div
           className={cn(
-            "w-full h-full flex items-center justify-center text-white font-medium",
+            "w-full h-full flex items-center justify-center",
             backgroundColor
           )}
         >

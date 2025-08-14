@@ -296,7 +296,7 @@ export default function ChatroomsPage() {
                         </div>
                     ) : (
                         // Case 3: Active chatrooms exist
-                        <div className="space-y-4">
+                        <div className="space-y-4 py-2">
                             {activeChatrooms.map((chatroom) => (
                                 <div
                                     key={chatroom.id}
