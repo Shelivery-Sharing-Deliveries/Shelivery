@@ -30,7 +30,6 @@ interface Chatroom {
     created_at: string;
     updated_at: string;
     expire_at: string;
-    // NEW: Add extension-related columns to the interface
     extended_once_before_ordered: boolean;
     total_extension_days_ordered_state: number;
     pool: {
@@ -80,6 +79,7 @@ interface ChatMember extends User {
         chatroom_id: string | null;
         created_at: string;
         updated_at: string;
+        is_delivered_by_user: boolean; // Added this property for user-driven delivery
     } | null;
 }
 
@@ -115,7 +115,7 @@ export default function ChatroomPage() {
         "chat"
     );
     const [orderPlaced, setOrderPlaced] = useState(false);
-    const [orderDelivered, setOrderDelivered] = useState(false);
+    const [orderDelivered, setOrderDelivered] = useState(false); // State for global order delivered notification
     const [timeRunningOut, setTimeRunningOut] = useState(false);
     const [newMemberJoined, setNewMemberJoined] = useState(false);
     const [adminAssigned, setAdminAssigned] = useState(false);
@@ -130,8 +130,8 @@ export default function ChatroomPage() {
             .select(
                 `
                 *,
-                extended_once_before_ordered, 
-                total_extension_days_ordered_state, 
+                extended_once_before_ordered,
+                total_extension_days_ordered_state,
                 pool:pool(
                     id,
                     shop_id,
@@ -142,7 +142,7 @@ export default function ChatroomPage() {
                     shop:shop(id, name, min_amount, created_at),
                     dormitory:dormitory(id, name)
                 )
-            `
+                `
             )
             .eq("id", chatroomId)
             .single();
@@ -181,7 +181,7 @@ export default function ChatroomPage() {
                     .from("basket")
                     .select("*")
                     .in("user_id", userIds)
-                    .eq("chatroom_id", chatroomId); // *** MODIFIED: Removed .eq("status", "in_chat") ***
+                    .eq("chatroom_id", chatroomId); // No longer filtering by "in_chat" status
                 if (basketsError) {
                     console.error("Realtime: Error fetching baskets for refresh:", basketsError);
                     return;
@@ -205,7 +205,8 @@ export default function ChatroomPage() {
         uploadFileToStorage,
         sendMessage,
         markAsOrdered,
-        markAsDelivered,
+        markMyBasketAsDelivered, // This is for users to mark their own basket as delivered
+        // If there's an admin function to mark ALL delivered, it would be here, e.g., markAllBasketsAsDelivered
         leaveGroup,
         makeAdmin,
         removeMember,
@@ -216,7 +217,7 @@ export default function ChatroomPage() {
         chatroom,
         refreshChatroom,
         setNotification,
-        setMembers,
+        members, // Pass members to the hook for the delivery check
     });
 
     useEffect(() => {
@@ -261,8 +262,8 @@ export default function ChatroomPage() {
                     .select(
                         `
                         *,
-                        extended_once_before_ordered, 
-                        total_extension_days_ordered_state, 
+                        extended_once_before_ordered,
+                        total_extension_days_ordered_state,
                         pool:pool(
                             id,
                             shop_id,
@@ -273,7 +274,7 @@ export default function ChatroomPage() {
                             shop:shop(id, name, min_amount, created_at),
                             dormitory:dormitory(id, name)
                         )
-                    `
+                        `
                     )
                     .eq("id", chatroomId)
                     .single();
@@ -314,8 +315,7 @@ export default function ChatroomPage() {
                         .from("basket")
                         .select("*")
                         .in("user_id", userIds)
-                        // .eq("status", "in_chat") // *** REMOVED THIS FILTER ***
-                        .eq("chatroom_id", chatroomId); // Ensure basket is linked to this chatroom
+                        .eq("chatroom_id", chatroomId); // No longer filtering by "in_chat" status
                     if (basketsError) throw basketsError;
 
                     const processedMembers: ChatMember[] =
@@ -397,7 +397,6 @@ export default function ChatroomPage() {
                 },
                 async (payload) => {
                     console.log("Realtime: New message received:", payload.new);
-                    // Removed the condition: if (payload.new.user_id === currentUser?.id) return;
                     // This ensures messages sent by the current user are also processed by the subscription
 
                     const { data: userData, error: userDataError } = await supabase
@@ -451,6 +450,66 @@ export default function ChatroomPage() {
                     console.log("Realtime: Chatroom update received (payload):", payload); // DEBUG LOG: Full payload
                     console.log("Realtime: Chatroom state changed to:", payload.new.state); // DEBUG LOG: New state
                     refreshChatroom(); // Refresh chatroom data on update
+
+                    // Check if chatroom state specifically moved to 'resolved' to trigger banner
+                    if (payload.old.state !== 'resolved' && payload.new.state === 'resolved') {
+                        console.log("Realtime: Chatroom state is now 'resolved'. Triggering Order Delivered notification.");
+                        setOrderDelivered(true);
+                        notify({ type: "success", title: "Order Delivered!", message: "All baskets have been resolved." });
+                    }
+                }
+            )
+            .subscribe();
+
+        // NEW: Subscribe to basket updates to detect when all baskets are resolved
+        const basketSubscription = supabase
+            .channel(`baskets:${chatroomId}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "basket",
+                    filter: `chatroom_id=eq.${chatroomId}`,
+                },
+                async (payload) => {
+                    console.log("Realtime: Basket update received:", payload.new);
+
+                    // Re-fetch chatroom data to get the latest members and their basket statuses.
+                    // This is essential because the `members` state needs to reflect the change
+                    // to determine if *all* baskets are resolved.
+                    await refreshChatroom();
+
+                    // After refreshChatroom completes and updates the `members` state,
+                    // check if all currently loaded members have their baskets resolved.
+                    // This check needs to be based on the updated `members` state, which `refreshChatroom` provides.
+                    // To ensure this check happens after the state update from refreshChatroom,
+                    // we might need to rely on the next render cycle or use a temporary local variable
+                    // that is populated right after refreshChatroom.
+                    // A simpler way is to re-fetch the basket data for this specific check,
+                    // or rely primarily on the chatroom state update if the backend correctly updates it.
+
+                    // Let's refine this to explicitly check all baskets.
+                    // It's crucial that `refreshChatroom` has completed and updated `members` state.
+                    // Alternatively, we can re-query all baskets here:
+                    const { data: allBasketsInChatroom, error: allBasketsError } = await supabase
+                        .from("basket")
+                        .select("status")
+                        .eq("chatroom_id", chatroomId);
+
+                    if (allBasketsError) {
+                        console.error("Realtime: Error fetching all baskets for check:", allBasketsError);
+                        return;
+                    }
+
+                    if (allBasketsInChatroom && allBasketsInChatroom.length > 0) {
+                        const allAreResolved = allBasketsInChatroom.every(b => b.status === 'resolved');
+                        if (allAreResolved) {
+                            console.log("Realtime: All baskets in chatroom are resolved! Triggering Order Delivered notification.");
+                            setOrderDelivered(true);
+                            notify({ type: "success", title: "Order Delivered!", message: "All baskets in this chatroom have been resolved." });
+                        }
+                    }
                 }
             )
             .subscribe();
@@ -492,6 +551,7 @@ export default function ChatroomPage() {
             console.log("Realtime: Unsubscribing from real-time channels.");
             messagesSubscription.unsubscribe();
             chatroomSubscription.unsubscribe();
+            basketSubscription.unsubscribe(); // IMPORTANT: Unsubscribe from the new basket channel
             membershipSubscription.unsubscribe();
         };
     }, [chatroomId, authLoading, refreshChatroom, notify, currentUser]);
@@ -598,7 +658,7 @@ export default function ChatroomPage() {
                     timeLeft={chatroom.expire_at}
                     isAdmin={isAdmin}
                     onMarkOrdered={markAsOrdered}
-                    onMarkDelivered={markAsDelivered}
+                    onMarkMyBasketDelivered={markMyBasketAsDelivered} // Pass the new prop here
                     members={members}
                     currentUser={currentUser}
                     adminId={chatroom.admin_id || ""}
@@ -606,7 +666,7 @@ export default function ChatroomPage() {
                     onRemoveMember={removeMember}
                     onLeaveGroup={leaveGroup}
                     orderPlaced={orderPlaced}
-                    orderDelivered={orderDelivered}
+                    orderDelivered={orderDelivered} // Corrected prop name: orderDelivered
                     timeRunningOut={timeRunningOut}
                     newMemberJoined={newMemberJoined}
                     adminAssigned={adminAssigned}
@@ -623,7 +683,7 @@ export default function ChatroomPage() {
                         membersList: "order-details-members-list",
                         readyStatus: "order-details-ready-status",
                         markOrderedButton: "mark-as-ordered-button",
-                        markDeliveredButton: "mark-as-delivered-button",
+                        markDeliveredButton: "mark-as-delivered-button", // Keep this ID for tutorial, even if button removed
                         leaveGroupButton: "leave-group-button",
                     }}
                 />

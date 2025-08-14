@@ -1,3 +1,4 @@
+// src/hooks/useChatroomActions.ts
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -11,7 +12,6 @@ interface User {
     updated_at: string | null;
     first_name: string | null;
     last_name: string | null;
-    favorite_store: string | null;
     image: string | null;
 }
 
@@ -44,6 +44,24 @@ interface Chatroom {
     };
 }
 
+interface ChatMember extends User {
+    basket: {
+        id: string;
+        user_id: string;
+        shop_id: number;
+        link: string | null;
+        note: string | null;
+        amount: number;
+        status: "resolved" | "in_pool" | "in_chat";
+        is_ready: boolean;
+        pool_id: string | null;
+        chatroom_id: string | null;
+        created_at: string;
+        updated_at: string;
+        is_delivered_by_user: boolean;
+    } | null;
+}
+
 interface UseChatroomActionsProps {
     chatroomId: string;
     currentUser: User | null;
@@ -51,7 +69,7 @@ interface UseChatroomActionsProps {
     chatroom: Chatroom | null;
     refreshChatroom: () => Promise<void>;
     setNotification: (message: string | null) => void;
-    setMembers: React.Dispatch<React.SetStateAction<any[]>>;
+    members: ChatMember[];
 }
 
 export const useChatroomActions = ({
@@ -61,11 +79,16 @@ export const useChatroomActions = ({
     chatroom,
     refreshChatroom,
     setNotification,
-    setMembers,
+    members,
 }: UseChatroomActionsProps) => {
     const router = useRouter();
 
-    // Function for uploading voice or image messages to private "chat-uploads" bucket
+    /**
+     * Uploads a file (image or audio) to the private "chat-uploads" Supabase bucket.
+     * @param file The file to upload.
+     * @param folder The subfolder within "chat-uploads" (e.g., "images", "audio").
+     * @returns The file path if successful, otherwise null.
+     */
     const uploadFileToStorage = async (
         file: File,
         folder: "images" | "audio"
@@ -94,7 +117,10 @@ export const useChatroomActions = ({
         return fileName;
     };
 
-    // Function to send messages and different content types as image or voice messages
+    /**
+     * Sends a message to the chatroom. Supports text, image, and audio messages.
+     * @param content The message content (string for text, or object for file paths).
+     */
     const sendMessage = async (
         content: string | { type: "audio" | "image"; url: string }
     ) => {
@@ -113,7 +139,7 @@ export const useChatroomActions = ({
             }
             messageContent = content.trim();
         } else {
-            messageContent = content.url; // Now this is the file path, not a signed URL
+            messageContent = content.url; // File path (e.g., "images/chatroom123_abc.png")
             messageType = content.type; // "audio" or "image"
         }
 
@@ -123,8 +149,8 @@ export const useChatroomActions = ({
             const { error } = await supabase.from("message").insert({
                 chatroom_id: chatroomId,
                 user_id: currentUser.id,
-                content: messageContent, // file path or plain text
-                type: messageType, // "text", "image", or "audio"
+                content: messageContent,
+                type: messageType,
             });
 
             if (error) {
@@ -137,7 +163,9 @@ export const useChatroomActions = ({
         }
     };
 
-    // Function to mark the order as placed
+    /**
+     * Marks the current chatroom as 'ordered'. This action is typically performed by the admin.
+     */
     const markAsOrdered = async () => {
         if (!isAdmin) {
             console.warn("markAsOrdered: User is not admin, cannot mark as ordered.");
@@ -156,7 +184,7 @@ export const useChatroomActions = ({
                     error
                 );
             } else {
-                await refreshChatroom(); // Immediately fetch fresh chatroom state
+                await refreshChatroom(); // Immediately fetch fresh chatroom state to update UI
                 setNotification("Order has been marked as placed!");
                 setTimeout(() => setNotification(null), 3000);
                 console.log("markAsOrdered: Chatroom state updated to 'ordered'.");
@@ -169,101 +197,154 @@ export const useChatroomActions = ({
         }
     };
 
-    // Function to mark the order as delivered
-    const markAsDelivered = async () => {
-        if (!isAdmin) {
-            console.warn(
-                "markAsDelivered: User is not admin, cannot mark as delivered."
-            );
+    /**
+     * Marks the current user's basket as 'delivered' (is_delivered_by_user = true).
+     * After updating, it checks if all other members have also marked their baskets delivered.
+     * If all are delivered, the chatroom state and all associated baskets' statuses are updated to 'resolved'.
+     */
+    const markMyBasketAsDelivered = async () => {
+        if (!currentUser || !chatroomId) {
+            console.warn("markMyBasketAsDelivered: Current user or chatroom ID missing.");
             return;
         }
-        console.log("markAsDelivered: Attempting to mark as delivered (client-side)...");
+
+        console.log(`markMyBasketAsDelivered: User ${currentUser.id} attempting to mark their basket as delivered in chatroom ${chatroomId}.`);
+
         try {
-            // 1. Update the overall chatroom state to 'resolved'
-            const { error: chatroomUpdateError } = await supabase
-                .from("chatroom")
-                .update({ state: "resolved", updated_at: new Date().toISOString() })
-                .eq("id", chatroomId);
+            // 1. Update the current user's basket to indicate it's delivered
+            const { error: updateBasketError } = await supabase
+                .from("basket")
+                .update({ is_delivered_by_user: true, updated_at: new Date().toISOString() })
+                .eq("user_id", currentUser.id)
+                .eq("chatroom_id", chatroomId);
 
-            if (chatroomUpdateError) {
-                console.error(
-                    "markAsDelivered: Error updating chatroom state to resolved:",
-                    chatroomUpdateError
-                );
-                throw new Error("Failed to update chatroom state.");
+            if (updateBasketError) {
+                console.error("markMyBasketAsDelivered: Error updating user's basket status:", updateBasketError);
+                setNotification("Failed to mark your basket as delivered.");
+                setTimeout(() => setNotification(null), 3000);
+                return; // Stop execution if update fails
             }
-            console.log("markAsDelivered: Chatroom state updated to 'resolved'.");
 
-            // 2. Update the status of ALL baskets belonging to this chatroom to 'resolved'
-            // This ensures individual basket statuses also reflect the delivered state.
-            const { error: basketsUpdateError } = await supabase
-                .from("basket") // Target the 'basket' table
-                .update({ status: "resolved", updated_at: new Date().toISOString() })
-                .eq("chatroom_id", chatroomId); // Ensure you're updating baskets only for this specific chatroom
-
-            if (basketsUpdateError) {
-                console.error(
-                    "markAsDelivered: Error updating baskets status:",
-                    basketsUpdateError
-                );
-                throw new Error("Failed to update associated baskets.");
-            }
-            console.log("markAsDelivered: All baskets in chatroom updated to 'resolved'.");
-
-
-            await refreshChatroom(); // Immediately fetch fresh chatroom and member states to update UI
-            setNotification("Order has been marked as delivered!");
+            console.log("markMyBasketAsDelivered: Current user's basket marked as delivered.");
+            setNotification("Your basket has been marked as delivered!");
             setTimeout(() => setNotification(null), 3000);
-            console.log("markAsDelivered: Chatroom state and baskets updated to 'resolved'.");
+            await refreshChatroom(); // Refresh to get the latest basket statuses for all members
+
+            // 2. Now, check if all members have marked their baskets as delivered
+            console.log("markMyBasketAsDelivered: Checking if all baskets are delivered...");
+            const { data: allBaskets, error: fetchBasketsError } = await supabase
+                .from("basket")
+                .select("id, user_id, is_delivered_by_user, status") // Select status too for more detailed logging
+                .eq("chatroom_id", chatroomId);
+
+            if (fetchBasketsError) {
+                console.error("markMyBasketAsDelivered: Error fetching all baskets for check:", fetchBasketsError);
+                return;
+            }
+
+            // --- DEBUG: Log all retrieved baskets ---
+            console.log("markMyBasketAsDelivered: All baskets retrieved:", allBaskets);
+            // --- END DEBUG ---
+
+            if (allBaskets && allBaskets.length > 0) {
+                // Log current 'is_delivered_by_user' status for all baskets
+                console.log("markMyBasketAsDelivered: Current 'is_delivered_by_user' status for all baskets in chatroom:",
+                    allBaskets.map(b => ({ id: b.id, userId: b.user_id, isDelivered: b.is_delivered_by_user, status: b.status }))
+                );
+
+                const allMembersDelivered = allBaskets.every(basket => basket.is_delivered_by_user === true);
+
+                if (allMembersDelivered) {
+                    console.log("markMyBasketAsDelivered: All members have marked their baskets as delivered. Updating chatroom and all baskets to 'resolved'.");
+
+                    // Update the overall chatroom state to 'resolved'
+                    const { error: chatroomUpdateError } = await supabase
+                        .from("chatroom")
+                        .update({ state: "resolved", updated_at: new Date().toISOString() })
+                        .eq("id", chatroomId);
+
+                    if (chatroomUpdateError) {
+                        console.error("markMyBasketAsDelivered: Error updating chatroom state to resolved:", chatroomUpdateError);
+                        setNotification("Error finalizing order as delivered.");
+                        setTimeout(() => setNotification(null), 3000);
+                        return;
+                    }
+                    console.log("markMyBasketAsDelivered: Chatroom state updated to 'resolved' successfully.");
+
+                    // --- START OF NEW CHANGE: Call RPC for bulk basket update ---
+                    const { error: rpcError } = await supabase.rpc("resolve_chatroom_baskets", {
+                        p_chatroom_id: chatroomId,
+                    });
+
+                    if (rpcError) {
+                        console.error("markMyBasketAsDelivered: Error calling RPC to resolve all baskets:", rpcError);
+                        setNotification("Error finalizing baskets as delivered.");
+                        setTimeout(() => setNotification(null), 3000);
+                        return;
+                    }
+                    console.log("markMyBasketAsDelivered: RPC 'resolve_chatroom_baskets' called successfully.");
+                    // --- END OF NEW CHANGE ---
+
+                    console.log("markMyBasketAsDelivered: All baskets in chatroom status updated to 'resolved' successfully."); // This log now reflects RPC success
+                    setNotification("Order fully delivered and closed!");
+                    setTimeout(() => setNotification(null), 3000);
+                    await refreshChatroom(); // Final refresh to show resolved state
+
+                } else {
+                    console.log("markMyBasketAsDelivered: Not all members have marked their baskets as delivered yet.");
+                }
+            } else {
+                console.log("markMyBasketAsDelivered: No baskets found for this chatroom, or an unexpected state.");
+            }
+
         } catch (error) {
-            console.error(
-                "markAsDelivered: Caught error during mark as delivered:",
-                error
-            );
+            console.error("markMyBasketAsDelivered: Caught error during basket delivery process:", error);
+            setNotification("An unexpected error occurred.");
+            setTimeout(() => setNotification(null), 3000);
         }
     };
 
+    /**
+     * Allows a user to leave the current chat group.
+     * This calls a Supabase RPC function to handle the complex logic of leaving.
+     */
     const leaveGroup = async () => {
         if (!currentUser) {
             console.warn("leaveGroup: No current user to leave group.");
             return;
         }
-        console.log(
-            "leaveGroup: Attempting to leave group via backend function..."
-        );
+        console.log("leaveGroup: Attempting to leave group via backend function...");
 
         try {
-            // Call the new Supabase RPC function
             const { error } = await supabase.rpc("leave_chatroom", {
-                chatroom_id_param: chatroomId, // Ensure parameter name matches your SQL function's parameter
+                chatroom_id_param: chatroomId,
             });
 
             if (error) {
                 console.error("leaveGroup: Error calling backend function:", error);
+                setNotification("Failed to leave group.");
             } else {
                 router.push("/dashboard"); // Redirect on success
-                console.log(
-                    "leaveGroup: Successfully left group, redirecting to dashboard."
-                );
+                setNotification("Successfully left group!");
+                console.log("leaveGroup: Successfully left group, redirecting to dashboard.");
             }
-        } catch (error) {
-            console.error(
-                "leaveGroup: Caught unexpected error during leave group RPC call:",
-                error
-            );
-            if (error) {
-                console.error("leaveGroup: Error calling backend function:", error);
-            }
-
-
+            setTimeout(() => setNotification(null), 3000);
+        }
+        catch (error) {
+            console.error("leaveGroup: Caught unexpected error during leave group RPC call:", error);
+            setNotification("An unexpected error occurred while leaving.");
+            setTimeout(() => setNotification(null), 3000);
         }
     };
 
+    /**
+     * Transfers admin privileges to another user within the chatroom.
+     * Only the current admin can perform this action.
+     * @param userId The ID of the user to make admin.
+     */
     const makeAdmin = async (userId: string) => {
         if (!isAdmin) {
-            console.warn(
-                "makeAdmin: Current user is not admin, cannot make another user admin."
-            );
+            console.warn("makeAdmin: Current user is not admin, cannot make another user admin.");
             return;
         }
         console.log("makeAdmin: Attempting to make user", userId, "admin.");
@@ -286,11 +367,13 @@ export const useChatroomActions = ({
         }
     };
 
+    /**
+     * Removes a member from the chatroom. Only the admin can perform this, and they cannot remove themselves.
+     * @param userId The ID of the user to remove.
+     */
     const removeMember = async (userId: string) => {
         if (!isAdmin || userId === currentUser?.id) {
-            console.warn(
-                "removeMember: Cannot remove member. Either not admin or trying to remove self."
-            );
+            console.warn("removeMember: Cannot remove member. Either not admin or trying to remove self.");
             return;
         }
         console.log("removeMember: Attempting to remove member:", userId);
@@ -302,28 +385,55 @@ export const useChatroomActions = ({
                 .eq("user_id", userId);
 
             if (error) {
-                console.error(
-                    "removeMember: Error removing member from chat_memberships:",
-                    error
-                );
+                console.error("removeMember: Error removing member from chat_memberships:", error);
             } else {
-                setMembers((prev) => prev.filter((member) => member.id !== userId));
                 setNotification("Member removed from group");
                 setTimeout(() => setNotification(null), 3000);
                 console.log("removeMember: Member removed successfully.");
+                await refreshChatroom(); // Ensure UI reflects the change properly
             }
         } catch (error) {
             console.error("removeMember: Caught error during remove member:", error);
         }
     };
 
+    /**
+     * Extends the expiration time of the chatroom. Only the admin can perform this.
+     */
+    const onExtendTime = async () => {
+        if (!isAdmin) {
+            console.warn("onExtendTime: User is not admin, cannot extend time.");
+            return;
+        }
+        console.log("onExtendTime: Attempting to extend chatroom time...");
+        try {
+            const { error } = await supabase.rpc("extend_chatroom_expiration", {
+                p_chatroom_id: chatroomId,
+                p_minutes_to_add: 30, // Example: add 30 minutes to expiration
+            });
+
+            if (error) {
+                console.error("onExtendTime: Error extending chatroom time:", error);
+                setNotification("Failed to extend time.");
+            } else {
+                await refreshChatroom();
+                setNotification("Chatroom time extended by 30 minutes!");
+            }
+            setTimeout(() => setNotification(null), 3000);
+        } catch (error) {
+            console.error("onExtendTime: Caught error during extend time:", error);
+        }
+    };
+
+
     return {
         uploadFileToStorage,
         sendMessage,
         markAsOrdered,
-        markAsDelivered,
+        markMyBasketAsDelivered,
         leaveGroup,
         makeAdmin,
         removeMember,
+        onExtendTime,
     };
 };

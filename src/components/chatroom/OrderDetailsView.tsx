@@ -1,3 +1,4 @@
+// src/components/chatroom/OrderDetailsView.tsx
 "use client";
 
 import React from "react";
@@ -43,6 +44,7 @@ interface ChatMember extends User {
         chatroom_id: string | null;
         created_at: string;
         updated_at: string;
+        is_delivered_by_user: boolean; // This remains, as it's per-user basket status
     } | null;
 }
 
@@ -55,7 +57,8 @@ interface OrderDetailsViewProps {
     timeLeft: string;
     isAdmin: boolean;
     onMarkOrdered?: () => void;
-    onMarkDelivered?: () => void;
+    // REMOVED: The onMarkDelivered prop for admin is no longer part of this component's interface.
+    onMarkMyBasketDelivered?: () => void; // For individual users to mark their basket delivered
     members: ChatMember[];
     currentUser: User | null;
     adminId: string;
@@ -86,7 +89,8 @@ export function OrderDetailsView({
     timeLeft,
     isAdmin,
     onMarkOrdered,
-    onMarkDelivered,
+    // REMOVED: onMarkDelivered is no longer destructured here, as it's removed from props.
+    onMarkMyBasketDelivered,
     members,
     currentUser,
     adminId,
@@ -109,7 +113,17 @@ export function OrderDetailsView({
 }: OrderDetailsViewProps) {
     const isOrderPlaced = state === "ordered" || state === "resolved";
     const isOrderDelivered = state === "resolved";
-    // const allMembersReady = members.every(member => member.basket?.is_ready); // Kept for reference but not used for Mark as Ordered button disabled state
+
+    // Find the current user's basket delivery status
+    const currentUserBasket = members.find(member => member.id === currentUser?.id)?.basket;
+    const isCurrentUserBasketDelivered = currentUserBasket?.is_delivered_by_user === true;
+
+    // Determine if the "Mark My Basket as Delivered" button should be shown
+    const showMarkMyBasketDeliveredButton =
+        state === "ordered" && // Only show when the order is placed
+        currentUserBasket !== null && // Ensure current user has a basket
+        !isCurrentUserBasketDelivered && // Only show if their basket isn't already marked delivered
+        onMarkMyBasketDelivered; // Ensure the prop is provided
 
     return (
         <div className="fixed inset-0 flex flex-col bg-white">
@@ -163,7 +177,7 @@ export function OrderDetailsView({
                     timeLeft={timeLeft}
                     isAdmin={isAdmin}
                     onMarkOrdered={onMarkOrdered || (() => { })}
-                    onMarkDelivered={onMarkDelivered || (() => { })}
+                // IMPORTANT: onMarkDelivered is removed here, as it's no longer a relevant prop for admin actions.
                 />
 
                 {/* ChatMembersList */}
@@ -179,39 +193,29 @@ export function OrderDetailsView({
                     />
                 </div>
 
-                {/* Admin Actions and Leave Group Buttons */}
+                {/* Action Buttons Section */}
                 <div className="flex flex-col gap-2 pb-6">
-                    {isAdmin && ( // Only requires isAdmin to show admin actions block
+                    {/* Admin Actions Block (conditionally rendered for admin) */}
+                    {isAdmin && (
                         <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 space-y-3">
                             <h2 className="text-lg font-bold text-gray-800">Admin Actions</h2>
-                            {/* Mark as Ordered Button */}
-                            {/* MODIFIED: Disabled only if already ordered or resolved */}
+                            {/* Mark as Ordered Button - Only visible for admin and not yet ordered/resolved */}
                             {(state === "waiting" || state === "active") && onMarkOrdered && (
                                 <Button
                                     id={tutorialStepIds?.markOrderedButton}
                                     onClick={onMarkOrdered}
-                                    disabled={isOrderPlaced} // Disabled only if state is 'ordered' or 'resolved'
-                                    className="w-full bg-shelivery-primary-blue hover:bg-shelivery-primary-blue-dark text-white" // Reverted to original color, added specific hover
+                                    disabled={isOrderPlaced}
+                                    className="w-full bg-shelivery-primary-blue hover:bg-shelivery-primary-blue-dark text-white"
                                 >
                                     Mark as Ordered
                                 </Button>
                             )}
 
-                            {/* Mark as Delivered Button */}
-                            {state === "ordered" && onMarkDelivered && (
-                                <Button
-                                    id={tutorialStepIds?.markDeliveredButton}
-                                    onClick={onMarkDelivered}
-                                    // Modified className to match Mark as Ordered button
-                                    className="w-full bg-shelivery-primary-blue hover:bg-shelivery-primary-blue-dark text-white"
-                                >
-                                    Mark as Delivered
-                                </Button>
-                            )}
+                            {/* IMPORTANT: The admin's 'Mark Entire Order as Delivered' button is removed based on new logic. */}
 
-                            {/* Extend Time Button - Always visible if isAdmin, regardless of order state */}
+                            {/* Extend Time Button - Always visible if isAdmin */}
                             <Button
-                                id={tutorialStepIds?.["extend-time-button"]} 
+                                id={tutorialStepIds?.["extend-time-button"]}
                                 onClick={onExtendTime}
                                 className="w-full bg-yellow-400 hover:bg-yellow-600 text-white"
                                 variant="primary"
@@ -221,6 +225,16 @@ export function OrderDetailsView({
                         </div>
                     )}
 
+                    {/* Mark My Basket as Delivered Button (for individual users) */}
+                    {showMarkMyBasketDeliveredButton && (
+                        <Button
+                            onClick={onMarkMyBasketDelivered}
+                            className="w-full bg-shelivery-primary-blue hover:bg-shelivery-primary-blue-dark text-white"
+                        >
+                            Mark My Basket as Delivered
+                        </Button>
+                    )}
+
                     {/* Leave Group Button */}
                     <Button
                         id={tutorialStepIds?.leaveGroupButton}
@@ -228,7 +242,7 @@ export function OrderDetailsView({
                         size="md"
                         onClick={onLeaveGroup}
                         className="w-full"
-                        disabled={state === "ordered"} // Still disabled when state is 'ordered'
+                        disabled={state === "ordered"}
                     >
                         {state === "resolved" ? "Leave Group" : "Leave Order"}
                     </Button>
