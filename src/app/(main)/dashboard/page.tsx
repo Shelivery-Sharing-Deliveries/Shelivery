@@ -207,7 +207,7 @@ export default function DashboardPage() {
                             Invite Friends
                         </Button>
                         <a
-                            href="/feedback"
+                            onClick={() => router.push("/feedback")}
                             className="flex items-center justify-center px-2 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
                             title="Support Ticket"
                         >
