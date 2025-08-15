@@ -5,7 +5,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 interface AvatarProps {
-  src?: string | null;
+  src?: string | null | undefined;
   name?: string;
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
