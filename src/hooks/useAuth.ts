@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { User, Session } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase";
+import { supabaseAuthClient } from "@/lib/supabaseAuthClient"; // IMPORTANT: Changed import to use the auth-specific client
 
 interface AuthState {
     user: User | null;
@@ -25,10 +25,11 @@ export function useAuth() {
 
         const getInitialSession = async () => {
             try {
-                const { data: { session }, error } = await supabase.auth.getSession();
+                // Use supabaseAuthClient for session management
+                const { data: { session }, error } = await supabaseAuthClient.auth.getSession();
 
                 if (!isMounted) {
-                    return; // Component unmounted, don't update state
+                    return;
                 }
 
                 if (error) {
@@ -63,10 +64,11 @@ export function useAuth() {
 
         getInitialSession();
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        // Use supabaseAuthClient for authentication state changes listener
+        const { data: { subscription } } = supabaseAuthClient.auth.onAuthStateChange(
             (event, session) => {
                 if (!isMounted) {
-                    return; // Component unmounted, don't update state
+                    return;
                 }
 
                 setState({
@@ -85,7 +87,8 @@ export function useAuth() {
         const handleVisibilityChange = async () => {
             if (document.visibilityState === 'visible' && !state.loading) {
                 try {
-                    const { error } = await supabase.auth.refreshSession();
+                    // Use supabaseAuthClient to refresh session
+                    const { error } = await supabaseAuthClient.auth.refreshSession();
                     if (error) {
                         console.error("useAuth: Error refreshing session on tab visibility change:", error);
                         setState(prevState => ({ ...prevState, error: error.message }));
@@ -108,7 +111,10 @@ export function useAuth() {
 
     const handleUserProfileCreation = useCallback(async (user: User) => {
         try {
-            await supabase.rpc("track_event", {
+            // If track_event is a Supabase function that doesn't need auth-helpers context,
+            // you might choose to use the general 'supabase' client here instead for clarity.
+            // However, using supabaseAuthClient is fine too.
+            await supabaseAuthClient.rpc("track_event", {
                 event_type_param: "user_signin",
                 metadata_param: { user_id: user.id },
             });
@@ -120,7 +126,8 @@ export function useAuth() {
     const signUp = useCallback(async (email: string, password: string, invitationCode?: string) => {
         setState(prevState => ({ ...prevState, loading: true, error: null }));
         try {
-            const { data, error } = await supabase.auth.signUp({
+            // Use supabaseAuthClient for signUp
+            const { data, error } = await supabaseAuthClient.auth.signUp({
                 email,
                 password,
                 options: {
@@ -143,7 +150,8 @@ export function useAuth() {
     const signIn = useCallback(async (email: string, password: string) => {
         setState(prevState => ({ ...prevState, loading: true, error: null }));
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({
+            // Use supabaseAuthClient for signIn
+            const { data, error } = await supabaseAuthClient.auth.signInWithPassword({
                 email,
                 password,
             });
@@ -167,7 +175,8 @@ export function useAuth() {
         setState(prevState => ({ ...prevState, loading: true, error: null }));
         try {
             if (invitationCode) {
-                const { data: isValid, error: validateError } = await supabase.rpc("validate_invitation", {
+                // Use supabaseAuthClient for RPC call
+                const { data: isValid, error: validateError } = await supabaseAuthClient.rpc("validate_invitation", {
                     invitation_code_param: invitationCode,
                 });
 
@@ -177,7 +186,8 @@ export function useAuth() {
                 }
             }
 
-            const { error } = await supabase.auth.signInWithOAuth({
+            // Use supabaseAuthClient for signInWithOAuth
+            const { error } = await supabaseAuthClient.auth.signInWithOAuth({
                 provider,
                 options: {
                     redirectTo: `${window.location.origin}/auth/callback`,
@@ -197,7 +207,8 @@ export function useAuth() {
     const signOut = useCallback(async () => {
         setState(prevState => ({ ...prevState, loading: true, error: null }));
         try {
-            const { error } = await supabase.auth.signOut();
+            // Use supabaseAuthClient for signOut
+            const { error } = await supabaseAuthClient.auth.signOut();
             if (error) throw error;
             setState({ user: null, session: null, loading: false, error: null });
             return { error: null };
@@ -211,7 +222,8 @@ export function useAuth() {
     const resetPassword = useCallback(async (email: string) => {
         setState(prevState => ({ ...prevState, loading: true, error: null }));
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            // Use supabaseAuthClient for resetPasswordForEmail
+            const { error } = await supabaseAuthClient.auth.resetPasswordForEmail(email, {
                 redirectTo: `${window.location.origin}/auth/reset-password`,
             });
             if (error) throw error;
@@ -227,7 +239,8 @@ export function useAuth() {
     const updatePassword = useCallback(async (password: string) => {
         setState(prevState => ({ ...prevState, loading: true, error: null }));
         try {
-            const { error } = await supabase.auth.updateUser({ password });
+            // Use supabaseAuthClient for updateUser
+            const { error } = await supabaseAuthClient.auth.updateUser({ password });
             if (error) throw error;
             setState(prevState => ({ ...prevState, loading: false, error: null }));
             return { error: null };
@@ -241,7 +254,8 @@ export function useAuth() {
     const checkUserExists = useCallback(async (email: string): Promise<boolean> => {
         setState(prevState => ({ ...prevState, loading: true, error: null }));
         try {
-            const { data, error } = await supabase.rpc('check_user_exists', { p_email: email });
+            // Use supabaseAuthClient for RPC call
+            const { data, error } = await supabaseAuthClient.rpc('check_user_exists', { p_email: email });
             if (error) {
                 console.error("useAuth: Error checking if user exists via RPC:", error);
                 setState(prevState => ({ ...prevState, loading: false, error: error.message }));
