@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth"; // Assuming useAuth hook is available
 import { PushNotificationSettings } from "@/components/ui/PushNotificationSettings"; // NEW: Import PushNotificationSettings
 import { usePushNotifications } from '@/hooks/usePushNotifications'; // NEW: Import usePushNotifications hook
 import { useNotify } from "@/components/ui/NotificationsContext"; // NEW: Import useNotify for pop-up messages
+import PrivacyPopup from "@/components/ui/PrivacyPopup";
 
 // Assuming AuthLayout is in components/auth/AuthLayout.tsx
 import AuthLayout from "@/components/auth/AuthLayout";
@@ -57,6 +58,9 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
     const [error, setError] = useState<string | null>(null);
     const [initialDataLoaded, setInitialDataLoaded] = useState(false);
     const [showPushNotificationOptIn, setShowPushNotificationOptIn] = useState(false); // NEW: State for push notification opt-in prompt
+
+    const [showPrivacyPopup, setShowPrivacyPopup] = useState(false);
+    const [privacyAccepted, setPrivacyAccepted] = useState(false);
 
     const currentUrlUserId = params?.userId as string;
 
@@ -246,6 +250,11 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
 
     // Save updated profile data to Supabase
     const handleSave = async () => {
+        if (!privacyAccepted) {
+            setShowPrivacyPopup(true);
+            notify({ type: "warning", title: "Action Required", message: "Please accept the Privacy Policy before saving your profile." });
+            return;
+        }
         if (!userId) {
             setError("User not authenticated.");
             return;
@@ -337,6 +346,13 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
     }
 
     return (
+        <>
+        <PrivacyPopup onAccept={() => {
+            setPrivacyAccepted(true);
+            setShowPrivacyPopup(false);
+            notify({ type: "success", title: "Accepted", message: "Privacy Policy accepted. You can now save your profile." });
+        }} />
+
         <AuthLayout className="gap-8"> {/* Using AuthLayout for consistent styling */}
             <div className="w-full flex flex-col gap-6 flex-1">
                 {/* Header */}
@@ -497,11 +513,7 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
                         </div>
                     )}
 
-                    {/* Existing Push Notification Settings */}
-                    <div className="w-full mt-4">
-                        <h2 className="text-xl font-bold text-gray-800 mb-4">Notification Settings</h2>
-                        <PushNotificationSettings />
-                    </div>
+                    
 
                     {/* Save Button */}
                     <button
@@ -516,5 +528,6 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
                 </div>
             </div>
         </AuthLayout>
+        </>
     );
 }
