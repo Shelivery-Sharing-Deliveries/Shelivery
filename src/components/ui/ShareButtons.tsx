@@ -10,6 +10,7 @@ const ShareButton = ({ content }: ShareButtonProps) => {
     if (navigator.share) {
       try {
         await navigator.share({
+          title: "Join this Shelivery pool!",
           text: content,
         });
         console.log("Shared successfully!");
