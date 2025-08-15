@@ -60,6 +60,7 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
     const [showPushNotificationOptIn, setShowPushNotificationOptIn] = useState(false); // NEW: State for push notification opt-in prompt
 
     const [showPrivacyPopup, setShowPrivacyPopup] = useState(false);
+    const [termsAccepted, setTermsAccepted] = useState(false);
     const [privacyAccepted, setPrivacyAccepted] = useState(false);
 
     const currentUrlUserId = params?.userId as string;
@@ -250,9 +251,9 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
 
     // Save updated profile data to Supabase
     const handleSave = async () => {
-        if (!privacyAccepted) {
+        if (!termsAccepted || !privacyAccepted) {
             setShowPrivacyPopup(true);
-            notify({ type: "warning", title: "Action Required", message: "Please accept the Privacy Policy before saving your profile." });
+            notify({ type: "warning", title: "Action Required", message: "Please accept both Terms of Service and Privacy Policy before saving your profile." });
             return;
         }
         if (!userId) {
@@ -347,11 +348,19 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
 
     return (
         <>
-        <PrivacyPopup onAccept={() => {
-            setPrivacyAccepted(true);
-            setShowPrivacyPopup(false);
-            notify({ type: "success", title: "Accepted", message: "Privacy Policy accepted. You can now save your profile." });
-        }} />
+        {showPrivacyPopup && (
+            <PrivacyPopup 
+                onAccept={(termsAccepted, privacyAccepted) => {
+                    setTermsAccepted(termsAccepted);
+                    setPrivacyAccepted(privacyAccepted);
+                    setShowPrivacyPopup(false);
+                    notify({ type: "success", title: "Accepted", message: "Terms of Service and Privacy Policy accepted. You can now save your profile." });
+                }}
+                onBack={() => {
+                    setShowPrivacyPopup(false);
+                }}
+            />
+        )}
 
         <AuthLayout className="gap-8"> {/* Using AuthLayout for consistent styling */}
             <div className="w-full flex flex-col gap-6 flex-1">
