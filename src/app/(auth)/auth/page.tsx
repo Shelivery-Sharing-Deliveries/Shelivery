@@ -1,5 +1,5 @@
 "use client";
-import { supabase } from "@/lib/supabase";
+import { supabaseAuth } from "@/lib/supabase";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -54,7 +54,7 @@ function AuthPageContent() {
                 setIsProfileCheckLoading(true);
                 console.log("AuthPage: User logged in. Checking profile completeness...");
 
-                const { data: userData, error: profileError } = await supabase
+                const { data: userData, error: profileError } = await supabaseAuth
                     .from("user")
                     .select("first_name, last_name, favorite_store")
                     .eq("id", user.id)
@@ -243,7 +243,7 @@ function AuthPageContent() {
 
     const sendOTP = async (email: string) => {
         console.log("Sending OTP to email:", email);
-        const { error } = await supabase.auth.signInWithOtp({
+        const { error } = await supabaseAuth.auth.signInWithOtp({
             email: email,
             options: {
                 // emailRedirectTo: `${window.location.origin}/auth/callback`,
@@ -263,7 +263,7 @@ function AuthPageContent() {
         setMessage(null);
 
         try {
-            const { data, error } = await supabase.auth.verifyOtp({
+            const { data, error } = await supabaseAuth.auth.verifyOtp({
                 email,
                 token: code,
                 type: "email",
@@ -288,7 +288,7 @@ function AuthPageContent() {
         setResendCountdown(60);
 
         try {
-            const { error: resendError } = await supabase.auth.resend({
+            const { error: resendError } = await supabaseAuth.auth.resend({
                 type: 'signup',
                 email: email,
             });
@@ -323,7 +323,7 @@ function AuthPageContent() {
         console.log("Sending password reset link for:", submittedEmail);
 
         try {
-            const { error: resetError } = await supabase.auth.resetPasswordForEmail(submittedEmail, {
+            const { error: resetError } = await supabaseAuth.auth.resetPasswordForEmail(submittedEmail, {
                 redirectTo: `${window.location.origin}/auth/update-password`,
             });
 
