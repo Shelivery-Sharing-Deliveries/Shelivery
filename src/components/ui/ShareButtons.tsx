@@ -46,7 +46,7 @@ const ShareButton = ({ content }: ShareButtonProps) => {
       // Modern clipboard API (preferred)
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(content);
-        showShareFeedback("Text copied! You can now share it anywhere.");
+        alert("Text copied! You can now share it anywhere.");
       } else {
         // Legacy fallback for older browsers
         const textArea = document.createElement('textarea');
@@ -61,7 +61,7 @@ const ShareButton = ({ content }: ShareButtonProps) => {
         try {
           const successful = document.execCommand('copy');
           if (successful) {
-            showShareFeedback("Text copied! You can now share it anywhere.");
+            alert("Text copied! You can now share it anywhere.");
           } else {
             throw new Error('Copy command failed');
           }
@@ -71,22 +71,7 @@ const ShareButton = ({ content }: ShareButtonProps) => {
       }
     } catch (err: unknown) {
       console.error("Copy failed:", err);
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      //showShareFeedback(`Unable to copy text: ${errorMessage}`, true);
     }
-  };
-  
-  // Better user feedback function with proper types
-  const showShareFeedback = (message: string, isError: boolean = false): void => {
-    // You can replace this with a toast notification, modal, or other UI feedback
-    if (isError) {
-      alert(`Error: ${message}`);
-    } else {
-      alert(message);
-    }
-    
-    // Alternative: Use a custom toast/notification system
-    // showToast(message, isError ? 'error' : 'success');
   };
 
   return (
