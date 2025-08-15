@@ -142,35 +142,37 @@ export default function AboutPage() {
             <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-16">
               <div className="lg:w-1/2 text-center lg:text-left">
                 <h3 className="text-2xl font-bold mb-4" style={{ color: '#FFD700' }}>1. Create a Basket</h3>
-                <p className="text-base text-white">Start a new group order by creating a basket for your desired shop. Set a minimum amount or a time limit.</p>
+                <p className="text-base text-white">Navigate through the dashboard to create your a Shelivery basket.</p>
               </div>
               <div className="lg:w-1/2 flex justify-center">
                 {/* Placeholder image. Replace with your actual step 1 image. */}
-                <Image src="/images/how-it-works-step1.png" alt="Create Basket" width={500} height={300} className="rounded-lg shadow-xl" />
+                <Image src="/images/dashboard.png" alt="Create Basket" width={300} height={100} className="rounded-lg " />
               </div>
             </div>
 
             {/* Step 2 */}
             <div className="flex flex-col lg:flex-row-reverse items-center gap-8 lg:gap-16">
               <div className="lg:w-1/2 text-center lg:text-right">
-                <h3 className="text-2xl font-bold mb-4" style={{ color: '#FFD700' }}>2. Share with Dormmates</h3>
-                <p className="text-base text-white">Invite your dormmates to join your basket. They can add their items, and you can track the total amount together.</p>
+                <h3 className="text-2xl font-bold mb-4" style={{ color: '#FFD700' }}>2. Choose a shop and provide your items detail</h3>
+                <p className="text-base text-white">Select your preferred shop and enter the product link, a short note about the item (e.g., color, size, special instructions), and the order price. This will help processing your request accurately and quickly.</p>
               </div>
               <div className="lg:w-1/2 flex justify-center">
                 {/* Placeholder image. Replace with your actual step 2 image. */}
-                <Image src="/images/how-it-works-step2.png" alt="Share with Dormmates" width={500} height={300} className="rounded-lg shadow-xl" />
+                <Image src="/images/shop.png" alt="Share with Dormmates" width={300} height={100} className="rounded-lg" />
               </div>
             </div>
 
             {/* Step 3 */}
             <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-16">
               <div className="lg:w-1/2 text-center lg:text-left">
-                <h3 className="text-2xl font-bold mb-4" style={{ color: '#FFD700' }}>3. Place Order & Enjoy!</h3>
-                <p className="text-base text-white">Once the minimum amount is reached or time is up, the admin places the order. Enjoy shared savings and convenient delivery!</p>
+                <h3 className="text-2xl font-bold mb-4" style={{ color: '#FFD700' }}>3. Wait for others to join!</h3>
+                <p className="text-base text-white">Invite your dormmates to join your basket or wait for others to join. Others can add their items, and you can track the total amount together.</p>
+                <p className="text-base text-white">Once the minimum amount is reached or time is up, you will be directed to a chatroom. You can finlaize the order submission together! </p>
+                <p className="text-base text-white">Enjoy shared savings and convenient delivery!</p>
               </div>
               <div className="lg:w-1/2 flex justify-center">
                 {/* Placeholder image. Replace with your actual step 3 image. */}
-                <Image src="/images/how-it-works-step3.png" alt="Place Order" width={500} height={300} className="rounded-lg shadow-xl" />
+                <Image src="/images/pool.png" alt="Place Order" width={300} height={100} className="rounded-lg " />
               </div>
             </div>
           </div>
