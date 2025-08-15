@@ -72,7 +72,7 @@ const ShareButton = ({ content }: ShareButtonProps) => {
     } catch (err: unknown) {
       console.error("Copy failed:", err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      showShareFeedback(`Unable to copy text: ${errorMessage}`, true);
+      //showShareFeedback(`Unable to copy text: ${errorMessage}`, true);
     }
   };
   
