@@ -2,14 +2,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation"; // ⭐ MODIFIED: Import useSearchParams
 import Image from "next/image";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { supabase } from "@/lib/supabase";
-import { PageLayout } from '@/components/ui/PageLayout'; // Import PageLayout
-import PoolPageTutorial from "@/components/pool/PoolPageTutorial"; // NEW: Import the tutorial component
-import { Share } from "next/font/google";
-import ShareButtons from "@/components/ui/ShareButtons"; // Import ShareButtons component
+import { PageLayout } from '@/components/ui/PageLayout';
+import PoolPageTutorial from "@/components/pool/PoolPageTutorial";
+import ShareButtons from "@/components/ui/ShareButtons";
+import { generateInvite } from "@/lib/invites";
 
 // 1. Define Interfaces for the Data Structure
 interface ShopData {
@@ -26,15 +26,15 @@ interface BasketData {
     id: string;
     user_id: string;
     shop_id: string;
-    pool_id: string | null; // Made nullable as it can be NULL when in chatroom
-    chatroom_id: string | null; // Added chatroom_id
+    pool_id: string | null;
+    chatroom_id: string | null;
     amount: number;
     link: string | null;
     note: string | null;
     is_ready: boolean;
-    status: 'resolved' | 'in_pool' | 'in_chat'; // Added status
-    shop: ShopData; // Nested shop data from join
-    pool: PoolInfo | null; // Nested pool data from join, made nullable as pool_id can be null
+    status: 'resolved' | 'in_pool' | 'in_chat';
+    shop: ShopData;
+    pool: PoolInfo | null;
 }
 
 interface DisplayPoolData {
@@ -50,8 +50,8 @@ interface DisplayPoolData {
         total: number;
         itemsUrl: string | null;
         itemsNote: string | null;
-        status: 'resolved' | 'in_pool' | 'in_chat'; // Added status
-        chatroomId: string | null; // Added chatroom ID
+        status: 'resolved' | 'in_pool' | 'in_chat';
+        chatroomId: string | null;
     };
     participants: { id: number; avatar: string; amount: number }[];
 }
@@ -73,8 +73,9 @@ const mockParticipants = [
 
 
 export default function PoolPage({ params }: PoolPageProps) {
-    console.log("PoolPage component rendering..."); // Debugging log
+    console.log("PoolPage component rendering...");
     const router = useRouter();
+    const searchParams = useSearchParams(); // ⭐ NEW: Get search params for the current URL
     const [poolData, setPoolData] = useState<DisplayPoolData | null>(null);
     const [isReady, setIsReady] = useState(false);
     const [isPageLoading, setIsPageLoading] = useState(true);
@@ -84,8 +85,12 @@ export default function PoolPage({ params }: PoolPageProps) {
         if (typeof window !== 'undefined') {
             return !localStorage.getItem('hasSeenPoolPageTutorial');
         }
-        return false; // Default to false on server-side render
-    }); // NEW: State for tutorial visibility
+        return false;
+    });
+    const [inviteCodeForShare, setInviteCodeForShare] = useState<string | null>(null);
+
+    // ⭐ NEW: Extract invite code from the PoolPage's URL
+    const urlInviteCodeFromPoolPage = searchParams.get("invite");
 
 
     const handleBack = () => {
@@ -96,22 +101,22 @@ export default function PoolPage({ params }: PoolPageProps) {
     const fetchAndProcessBasketData = async (basketId: string) => {
         try {
             const { data, error: supabaseError } = await supabase
-                .from('basket') // Use singular 'basket'
+                .from('basket')
                 .select(`
           id,
           amount,
           link,
           note,
           is_ready,
-          status,             
+          status,
           shop_id,
           pool_id,
-          chatroom_id,        
-          shop (              
+          chatroom_id,
+          shop (
             name,
             logo_url
           ),
-          pool (              
+          pool (
             min_amount,
             current_amount
           )
@@ -130,14 +135,12 @@ export default function PoolPage({ params }: PoolPageProps) {
 
             const fetchedBasket: BasketData = data as unknown as BasketData;
 
-            // CRITICAL: Check for chatroom_id and status to redirect immediately
             if (fetchedBasket.status === 'in_chat' && fetchedBasket.chatroom_id) {
                 console.log(`REDIRECT_TRIGGER: Basket ${basketId} is in chat state. Redirecting to chatroom ${fetchedBasket.chatroom_id}`);
                 router.replace(`/chatrooms/${fetchedBasket.chatroom_id}`);
-                return null; // Indicate that a redirect is happening
+                return null;
             }
 
-            // Handle cases where shop or pool data might be missing (e.g., if basket is resolved)
             if (!fetchedBasket.shop || (fetchedBasket.status === 'in_pool' && !fetchedBasket.pool)) {
                 if (fetchedBasket.status !== 'in_chat' && fetchedBasket.status !== 'resolved') {
                     throw new Error("Missing shop or pool data for this basket. Check foreign keys or basket status.");
@@ -172,13 +175,26 @@ export default function PoolPage({ params }: PoolPageProps) {
         }
     };
 
-    // --- useEffect for Initial Data Fetch ---
+    // --- useEffect for Initial Data Fetch and AUTH CHECK ---
     useEffect(() => {
-        console.log("useEffect for initial data fetch triggered."); // Debugging log
+        console.log("useEffect for initial data fetch triggered.");
         const loadInitialData = async () => {
             console.log("FETCH_INIT: Starting initial data load for basket ID:", params.basketId);
             setIsPageLoading(true);
             setError(null);
+
+            // ⭐ NEW: Authentication check
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                console.log("AUTH_CHECK: No user found. Redirecting to auth page with invite code if present.");
+                let redirectPath = '/auth';
+                // If an invite code was in the URL of THIS page, pass it to the auth page
+                if (urlInviteCodeFromPoolPage) {
+                    redirectPath += `?invite=${urlInviteCodeFromPoolPage}`;
+                }
+                router.replace(redirectPath as any);
+                return; // Stop execution if redirecting
+            }
 
             if (!params.basketId) {
                 setError("No basket ID provided.");
@@ -187,18 +203,17 @@ export default function PoolPage({ params }: PoolPageProps) {
             }
 
             const result = await fetchAndProcessBasketData(params.basketId);
-            console.log("Result from fetchAndProcessBasketData:", result); // Debugging log
+            console.log("Result from fetchAndProcessBasketData:", result);
             if (result) {
                 setPoolData(result.structuredData);
                 setIsReady(result.fetchedBasket.is_ready);
                 console.log("FETCH_INIT_SUCCESS: Initial poolData set.");
 
-                // NEW: Only show tutorial if data loaded successfully and not seen before
                 const hasSeenTutorial = localStorage.getItem('hasSeenPoolPageTutorial');
-                console.log("hasSeenPoolPageTutorial from localStorage:", hasSeenTutorial); // Debugging log
+                console.log("hasSeenPoolPageTutorial from localStorage:", hasSeenTutorial);
                 if (!hasSeenTutorial) {
                     setShowTutorial(true);
-                    console.log("setShowTutorial(true) called."); // Debugging log
+                    console.log("setShowTutorial(true) called.");
                 }
             } else {
                 console.log("FETCH_INIT_COMPLETE: No data set, possibly redirected or error occurred.");
@@ -207,7 +222,28 @@ export default function PoolPage({ params }: PoolPageProps) {
         };
 
         loadInitialData();
-    }, [params.basketId, router]); // Added router to dependencies
+    }, [params.basketId, router, urlInviteCodeFromPoolPage]); // ⭐ MODIFIED: Add urlInviteCodeFromPoolPage to dependency array
+
+    // ⭐ MODIFIED: useEffect to fetch invite code using generateInvite (already existing)
+    useEffect(() => {
+        const fetchInviteCode = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+
+            if (user) {
+                const code = await generateInvite(user.id);
+                setInviteCodeForShare(code);
+                console.log("Invite code fetched/generated using generateInvite for share link:", code);
+            } else {
+                console.log("No user logged in, cannot generate invite code for share (Auth check should have redirected if needed).");
+                setInviteCodeForShare(null);
+            }
+        };
+
+        if (!isPageLoading && !urlInviteCodeFromPoolPage) { // Only run if page loading is complete and no invite code already in URL
+            fetchInviteCode();
+        }
+    }, [isPageLoading, urlInviteCodeFromPoolPage]); // Depend on isPageLoading and urlInviteCodeFromPoolPage
+
 
     // Debugging log for showTutorial state
     useEffect(() => {
@@ -225,15 +261,13 @@ export default function PoolPage({ params }: PoolPageProps) {
 
         // 1. Pool Channel Realtime Subscription (for progress bar updates)
         let poolSubscription: any;
-        // Only subscribe to pool channel if poolData and pool_id are available
-        // This will re-run if poolData.pool_id changes (e.g., on initial fetch)
         if (poolData?.pool_id) {
             console.log(`REALTIME_INIT: Starting realtime subscription for pool ID: ${poolData.pool_id}`);
             poolSubscription = supabase
-                .channel(`pool_updates:${poolData.pool_id}`) // Unique channel name
+                .channel(`pool_updates:${poolData.pool_id}`)
                 .on(
                     'postgres_changes',
-                    { event: 'UPDATE', schema: 'public', table: 'pool', filter: `id=eq.${poolData.pool_id}` }, // Use singular 'pool'
+                    { event: 'UPDATE', schema: 'public', table: 'pool', filter: `id=eq.${poolData.pool_id}` },
                     (payload) => {
                         console.log("REALTIME_POOL_UPDATE: RECEIVED payload:", payload.new);
                         setPoolData(prevData => {
@@ -265,16 +299,13 @@ export default function PoolPage({ params }: PoolPageProps) {
             console.log("POLLING: Fetching latest basket status via poll...");
             const result = await fetchAndProcessBasketData(params.basketId);
             if (result) {
-                // If result is not null, it means no redirect happened yet (or error was handled)
                 setPoolData(result.structuredData);
                 setIsReady(result.fetchedBasket.is_ready);
                 console.log(`POLLING_SUCCESS: Basket status: ${result.fetchedBasket.status}`);
             } else {
-                // If result is null, it means fetchAndProcessBasketData either redirected or hit an error.
-                // In case of redirect, this interval will be cleared by the cleanup function.
                 console.log("POLLING_INFO: Fetch result was null (possibly redirected or error handled).");
             }
-        }, 3000); // Poll every 3 seconds (adjust as needed)
+        }, 3000);
 
 
         // Cleanup function for both subscriptions and polling interval
@@ -283,13 +314,10 @@ export default function PoolPage({ params }: PoolPageProps) {
             if (poolSubscription) {
                 supabase.removeChannel(poolSubscription);
             }
-            clearInterval(pollingInterval); // Clear the polling interval
+            clearInterval(pollingInterval);
             console.log('CLEANUP: Realtime subscriptions and polling stopped.');
         };
-    }, [params.basketId, router, poolData?.pool_id]); // poolData?.pool_id is kept as a dependency
-    // to ensure the pool subscription is correctly
-    // initialized or re-initialized if the basket's
-    // associated pool changes.
+    }, [params.basketId, router, poolData?.pool_id]);
 
 
     // --- handleToggleReady for updating is_ready status ---
@@ -307,7 +335,7 @@ export default function PoolPage({ params }: PoolPageProps) {
                 .from('basket')
                 .update({ is_ready: newIsReadyState,updated_at: new Date().toISOString() })
                 .eq('id', basketIdToUpdate)
-                .select('id, status, chatroom_id') // Select status and chatroom_id to check for immediate redirect
+                .select('id, status, chatroom_id')
                 .single();
 
             if (supabaseError) {
@@ -320,7 +348,6 @@ export default function PoolPage({ params }: PoolPageProps) {
                 setIsReady(newIsReadyState);
                 console.log(`UPDATE_SUCCESS: Basket ${basketIdToUpdate} 'is_ready' set to ${newIsReadyState}. New status from direct update response: ${data.status}`);
 
-                // Immediate redirect check after the update operation
                 if (data.status === 'in_chat' && data.chatroom_id) {
                     console.log("REDIRECT_IMMEDIATE: Basket status immediately became in_chat after direct update. Redirecting.");
                     router.replace(`/chatrooms/${data.chatroom_id}`);
@@ -360,13 +387,11 @@ export default function PoolPage({ params }: PoolPageProps) {
     const handleDelete = async () => {
         if (!poolData || isButtonLoading) return;
 
-        // Using a custom modal/dialog instead of window.confirm as per instructions
-        // For this example, we'll simulate the confirmation
-        const confirmed = true; // In a real app, this would be from a custom modal
+        const confirmed = true; // Replace with a custom modal for confirmation
         if (!confirmed) {
             return;
         }
-        console.log("Simulating: User confirmed deletion."); // Log for demo
+        console.log("Simulating: User confirmed deletion.");
 
         setIsButtonLoading(true);
         setError(null);
@@ -399,12 +424,11 @@ export default function PoolPage({ params }: PoolPageProps) {
     // NEW: Function to handle tutorial completion
     const handleTutorialComplete = () => {
         setShowTutorial(false);
-        localStorage.setItem('hasSeenPoolPageTutorial', 'true'); // Mark tutorial as seen
+        localStorage.setItem('hasSeenPoolPageTutorial', 'true');
         console.log("DEBUG: handleTutorialComplete called. hasSeenPoolPageTutorial set to true.");
     };
 
-    // --- Loading, Error, Not Found States (outside PageLayout) ---
-    // These states should render full-page content, so they remain outside PageLayout
+    // --- Loading, Error, Not Found States ---
     if (isPageLoading) {
         return (
             <div className="min-h-screen bg-white w-full max-w-[375px] mx-auto flex items-center justify-center">
@@ -443,7 +467,12 @@ export default function PoolPage({ params }: PoolPageProps) {
 
     const currentProgressBarAmount = poolData.currentAmount;
     const isPoolFilled = poolData.currentAmount >= poolData.minAmount && poolData.minAmount > 0;
-    const shareLink= `https://app.shelivery.com/shops/${poolData.shop_id}/basket`; // Link to share
+
+    // Construct the share link with the invite code from 'inviteCodeForShare' state
+    let shareLink = `${window.location.origin}/shops/${poolData.shop_id}/basket?basketId=${params.basketId}`;
+    if (inviteCodeForShare) {
+        shareLink += `&invite=${inviteCodeForShare}`;
+    }
 
     // Determine button text and action based on state
     let buttonText = "";
@@ -452,21 +481,21 @@ export default function PoolPage({ params }: PoolPageProps) {
 
     if (isPoolFilled && isReady && poolData.userBasket.chatroomId) {
         buttonText = isButtonLoading ? "Entering Chat..." : "Chat";
-        buttonColorClass = "bg-[#4C8FD3] hover:bg-[#3A70A6]"; // Primary blue color
+        buttonColorClass = "bg-[#4C8FD3] hover:bg-[#3A70A6]";
         buttonOnClick = handleGoToChat;
     } else if (isReady) {
         buttonText = isButtonLoading ? "Cancelling..." : "Cancel";
-        buttonColorClass = "bg-[#F04438] hover:bg-[#D92D20]"; // Red for Cancel
+        buttonColorClass = "bg-[#F04438] hover:bg-[#D92D20]";
         buttonOnClick = handleToggleReady;
     } else {
         buttonText = isButtonLoading ? "Setting Ready..." : "Ready To Order";
-        buttonColorClass = "bg-[#FFDB0D] hover:bg-[#F7C600]"; // Yellow for Ready
+        buttonColorClass = "bg-[#FFDB0D] hover:bg-[#F7C600]";
         buttonOnClick = handleToggleReady;
     }
 
     // --- Header Content for PageLayout ---
     const poolHeader = (
-        <div className="flex items-center gap-4" id="pool-header"> {/* ADDED ID */}
+        <div className="flex items-center gap-4" id="pool-header">
             <button
                 onClick={handleBack}
                 className="w-6 h-6 flex items-center justify-center"
@@ -483,21 +512,18 @@ export default function PoolPage({ params }: PoolPageProps) {
                     {poolData.shopName} Basket
                 </h1>
             </div>
-            <div className="flex-1"></div> {/* Spacer to push content to the left */}
-            <ShareButtons content={`Join me in the Shelivery pool for ${poolData.shopName}! We need ${poolData.minAmount-poolData.currentAmount} CHF more to do a Shelivery : ${shareLink || "No link provided"}`} />
+            <div className="flex-1"></div>
+            <ShareButtons content={`Join me in the Shelivery pool for ${poolData.shopName}! We need ${poolData.minAmount - poolData.currentAmount} CHF more to do a Shelivery : ${shareLink}`} />
         </div>
     );
 
     return (
-        <PageLayout header={poolHeader} showNavigation={false}> {/* No footer prop passed */}
-            {/* Main Content Area - this will be scrollable */}
+        <PageLayout header={poolHeader} showNavigation={false}>
             <div className="flex flex-col justify-between items-center gap-8 py-6">
                 {showTutorial && poolData && (
                     <PoolPageTutorial onComplete={handleTutorialComplete} />
                 )}
-                {/* Main Card */}
-                <div className="w-full bg-[#FFFADF] border border-[#E5E8EB] rounded-[24px] p-4 flex flex-col items-center gap-4" id="pool-status-card"> {/* ADDED ID */}
-                    {/* Shop Logo */}
+                <div className="w-full bg-[#FFFADF] border border-[#E5E8EB] rounded-[24px] p-4 flex flex-col items-center gap-4" id="pool-status-card">
                     <div className="w-16 h-16 rounded-xl overflow-hidden border border-[#EFF1F3]">
                         <Image
                             src={poolData.shopLogo || "/shop-logo/default-logo.png"}
@@ -507,8 +533,6 @@ export default function PoolPage({ params }: PoolPageProps) {
                             className="w-full h-full object-cover"
                         />
                     </div>
-
-                    {/* Title and Description */}
                     <div className="flex flex-col items-center gap-2">
                         <h2 className="text-[#111827] font-poppins text-base font-bold text-center">
                             {isReady ? "Joining Soon" : "Ready To Join ?"}
@@ -521,9 +545,7 @@ export default function PoolPage({ params }: PoolPageProps) {
                     </div>
                 </div>
 
-                {/* Progress Section */}
-                <div className="w-full" id="pool-progress-bar"> {/* ADDED ID */}
-                    {/* Pool Progress Labels */}
+                <div className="w-full" id="pool-progress-bar">
                     <div className="flex justify-between items-center mb-2">
                         {isReady && (
                             <span className="text-[#111827] font-poppins text-xs font-semibold">
@@ -535,7 +557,6 @@ export default function PoolPage({ params }: PoolPageProps) {
                         </span>
                     </div>
 
-                    {/* Dynamic ProgressBar Component */}
                     <ProgressBar
                         current={currentProgressBarAmount}
                         target={poolData.minAmount}
@@ -546,9 +567,7 @@ export default function PoolPage({ params }: PoolPageProps) {
                     />
                 </div>
 
-                {/* Details Section */}
-                <div className="w-full flex flex-col gap-2" id="user-basket-details"> {/* ADDED ID */}
-                    {/* Total */}
+                <div className="w-full flex flex-col gap-2" id="user-basket-details">
                     <div className="flex items-center gap-2">
                         <div className="w-6 h-6 flex items-center justify-center">
                             <svg
@@ -575,7 +594,6 @@ export default function PoolPage({ params }: PoolPageProps) {
                         </div>
                     </div>
 
-                    {/* Items Detail */}
                     <div className="flex items-start gap-2">
                         <div className="w-6 h-6 flex items-center justify-center mt-0.5">
                             <svg
@@ -600,17 +618,17 @@ export default function PoolPage({ params }: PoolPageProps) {
                                         <span className="text-[#6B7280] font-poppins text-xs font-medium mb-1">
                                             Basket Link:
                                         </span>
-                                        <a 
-                                            href={poolData.userBasket.itemsUrl} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer" 
+                                        <a
+                                            href={poolData.userBasket.itemsUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
                                             className="text-[#4C8FD3] font-poppins text-xs leading-tight break-all underline hover:text-[#3A70A6] transition-colors"
                                         >
                                             {poolData.userBasket.itemsUrl}
                                         </a>
                                     </div>
                                 )}
-                                
+
                                 {poolData.userBasket.itemsNote && (
                                     <div className="flex flex-col">
                                         <span className="text-[#6B7280] font-poppins text-xs font-medium mb-1">
@@ -623,7 +641,7 @@ export default function PoolPage({ params }: PoolPageProps) {
                                         </div>
                                     </div>
                                 )}
-                                
+
                                 {!poolData.userBasket.itemsUrl && !poolData.userBasket.itemsNote && (
                                     <span className="text-[#9CA3AF] font-poppins text-xs italic">
                                         No order details provided
@@ -634,13 +652,12 @@ export default function PoolPage({ params }: PoolPageProps) {
                     </div>
                 </div>
 
-                {/* Action Buttons (Edit/Delete) */}
                 {!isReady && (
                     <div className="flex gap-3 w-full">
                         <button
                             onClick={handleEdit}
                             className="flex-1 bg-[#EAF7FF] border border-[#D8F0FE] rounded-lg px-4 py-2 flex items-center justify-center gap-1.5 h-9"
-                            id="edit-basket-button" 
+                            id="edit-basket-button"
                         >
                             <svg
                                 width="16"
@@ -660,7 +677,7 @@ export default function PoolPage({ params }: PoolPageProps) {
                         <button
                             onClick={handleDelete}
                             className="flex-1 bg-[#FEF3F2] border border-[#FEE4E2] rounded-lg px-4 py-2 flex items-center justify-center gap-1.5 h-9"
-                            id="delete-basket-button" 
+                            id="delete-basket-button"
                         >
                             <svg
                                 width="16"
@@ -685,13 +702,12 @@ export default function PoolPage({ params }: PoolPageProps) {
                     <p className="text-red-500 text-sm mt-2 font-medium">{error}</p>
                 )}
 
-                {/* Bottom Action Button - Dynamic Text and Color (MOVED BACK HERE) */}
                 <button
                     onClick={buttonOnClick}
                     disabled={isButtonLoading}
                     className={`w-full h-14 rounded-2xl px-4 py-3 flex items-center justify-center ${buttonColorClass
                         } transition-colors ${isButtonLoading ? 'opacity-50 cursor-not-allowed' : ''} mt-auto`}
-                    id="main-action-button" 
+                    id="main-action-button"
                 >
                     <span className="text-white font-poppins text-lg font-semibold">
                         {buttonText}

@@ -2,47 +2,46 @@
 import { supabase } from "@/lib/supabase";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Image from "next/image"; // Make sure Image is imported for the back arrow
+import Image from "next/image";
 import {
     LoginForm,
-    PasswordForm, // This is the component that will receive onForgotPasswordClick
-    InviteCodeForm,
+    PasswordForm,
+    // InviteCodeForm, // We might not need to render this directly in the flow if always skipped for URL invites
     OTPVerificationForm,
 } from "@/components/auth";
 import SetPasswordForm from "@/components/auth/SetPasswordForm";
 import EmailConfirmationForm from "@/components/auth/EmailConfirmationForm";
-import ForgotPasswordForm from "@/components/auth/ForgotPasswordForm"; // NEW: Import ForgotPasswordForm
+import ForgotPasswordForm from "@/components/auth/ForgotPasswordForm";
+import InviteCodeForm from "@/components/auth/InviteCodeForm"; // Make sure to import this if still used for manual entry
 import { useAuth } from "@/hooks/useAuth";
 
 type AuthStep =
     | "login"
     | "password"
-    | "invite"
+    | "invite" // Keep this step for manual invite code entry if needed
     | "setPassword"
     | "otp"
     | "register"
     | "awaitingEmailConfirmation"
-    | "forgotPassword"; // NEW: Added forgotPassword step
+    | "forgotPassword";
 
 function AuthPageContent() {
     const [step, setStep] = useState<AuthStep>("login");
     const [email, setEmail] = useState("");
-    const [inviteCode, setInviteCode] = useState("");
-    const [loading, setLoading] = useState(false); // For form submission loading
+    const [inviteCode, setInviteCode] = useState(""); // This will store the code from URL or manual entry
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [message, setMessage] = useState<string | null>(null); // For success messages
+    const [message, setMessage] = useState<string | null>(null);
     const [resendCountdown, setResendCountdown] = useState(0);
     const [password, setPassword] = useState("");
-    const [forgotPasswordEmail, setForgotPasswordEmail] = useState(""); // State for email in forgot password flow
-    const [isProfileCheckLoading, setIsProfileCheckLoading] = useState(true); // NEW: State for profile check loading
-
+    const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+    const [isProfileCheckLoading, setIsProfileCheckLoading] = useState(true);
 
     const {
         user,
-        loading: authLoading, // This is the loading state from useAuth, indicating initial session check
+        loading: authLoading,
         signIn,
         signUp,
-        // signInWithOAuth, // Removed as it's not used in this component's logic
         checkUserExists,
     } = useAuth();
     const router = useRouter();
@@ -51,33 +50,26 @@ function AuthPageContent() {
     // --- NEW: Redirect based on profile completeness (runs after initial auth check) ---
     useEffect(() => {
         const checkProfileAndRedirect = async () => {
-            // Only proceed if user is logged in and authLoading is complete
             if (!authLoading && user) {
-                setIsProfileCheckLoading(true); // Start loading for profile check
+                setIsProfileCheckLoading(true);
                 console.log("AuthPage: User logged in. Checking profile completeness...");
 
-                // FETCHING: Include all fields that define a "complete" profile
-                // Based on ProfileEditPage, first_name, last_name, and favorite_store are updated.
-                // Dormitory is read-only, so we won't strictly rely on it for completeness here.
                 const { data: userData, error: profileError } = await supabase
                     .from("user")
-                    .select("first_name, last_name, favorite_store") // Added last_name and favorite_store
+                    .select("first_name, last_name, favorite_store")
                     .eq("id", user.id)
                     .single();
 
                 if (profileError) {
                     console.error("AuthPage: Error fetching user profile for completeness check:", profileError);
-                    // If there's an error fetching profile, assume it's not complete or a problem, direct to setup
                     router.replace(`/profile-set/${user.id}`);
                     setIsProfileCheckLoading(false);
                     return;
                 }
 
-                // Check if first_name, last_name, AND favorite_store are set.
-                // Adjust these fields based on what truly defines a "complete" profile for your app.
                 const isProfileComplete = userData?.first_name &&
                     userData?.last_name &&
-                    userData?.favorite_store; // Checks for non-null/non-empty string
+                    userData?.favorite_store;
 
                 if (isProfileComplete) {
                     console.log("AuthPage: Profile is complete. Redirecting to dashboard.");
@@ -86,15 +78,14 @@ function AuthPageContent() {
                     console.log("AuthPage: Profile is NOT complete. Redirecting to profile setup.");
                     router.replace(`/profile-set/${user.id}`);
                 }
-                setIsProfileCheckLoading(false); // End loading for profile check
+                setIsProfileCheckLoading(false);
             } else if (!authLoading && !user) {
-                // If no user and auth loading is done, then stop profile check loading
                 setIsProfileCheckLoading(false);
             }
         };
 
         checkProfileAndRedirect();
-    }, [user, authLoading, router]); // Re-run when user or authLoading state changes
+    }, [user, authLoading, router]);
 
     // NEW: Handle email confirmation success from URL query parameters
     useEffect(() => {
@@ -102,19 +93,19 @@ function AuthPageContent() {
         if (confirmedParam === "true") {
             console.log("AuthPage: Detected confirmed=true parameter in URL.");
             setMessage("Your email has been successfully confirmed! You can now log in.");
-            setStep("login"); // Ensure the login form is visible
-            // Clear the query parameter from the URL to prevent the message
-            // from re-appearing on subsequent refreshes.
-            router.replace('/auth');
+            setStep("login");
+            router.replace('/auth'); // Clear the query parameter
         }
     }, [searchParams, router]);
 
-    // Check for invitation code in URL
+    // ⭐ MODIFIED: Check for invitation code in URL
     useEffect(() => {
         const urlInviteCode = searchParams.get("invite");
         if (urlInviteCode) {
-            setInviteCode(urlInviteCode);
-            setStep("invite");
+            setInviteCode(urlInviteCode); // Store the invite code
+            // No need to change step here directly. Keep it at 'login'
+            // or whatever the initial step is, the logic will handle it in handleEmailSubmit.
+            console.log(`AuthPage: Invite code "${urlInviteCode}" found in URL. Stored it.`);
         }
     }, [searchParams]);
 
@@ -126,14 +117,14 @@ function AuthPageContent() {
             }, 1000);
             return () => clearTimeout(timer);
         } else {
-            return () => { }; // Clear timeout if countdown is complete)
+            return () => { };
         }
     }, [resendCountdown]);
 
     const handleEmailSubmit = async (submittedEmail: string) => {
         setLoading(true);
         setError(null);
-        setMessage(null); // Clear messages on new submit
+        setMessage(null);
         setEmail(submittedEmail);
 
         try {
@@ -143,7 +134,18 @@ function AuthPageContent() {
             if (userExists) {
                 setStep("password");
             } else {
-                setStep("invite");
+                // ⭐ MODIFIED LOGIC HERE:
+                if (inviteCode) {
+                    // If invite code is already present (from URL), skip 'invite' step
+                    // and go directly to setting the password for registration.
+                    console.log("AuthPage: User does not exist, and invite code is present. Proceeding to set password.");
+                    setStep("setPassword");
+                } else {
+                    // If user does not exist AND no invite code from URL,
+                    // then prompt for manual invite code entry.
+                    console.log("AuthPage: User does not exist, no invite code from URL. Prompting for invite code.");
+                    setStep("invite");
+                }
             }
         } catch (err: any) {
             console.error("Error in handleEmailSubmit:", err);
@@ -156,7 +158,7 @@ function AuthPageContent() {
     const handlePasswordSubmit = async (password: string) => {
         setLoading(true);
         setError(null);
-        setMessage(null); // Clear messages on new submit
+        setMessage(null);
 
         try {
             const { error: signInError } = await signIn(email, password);
@@ -185,21 +187,23 @@ function AuthPageContent() {
     const handleBackToEmail = () => {
         setStep("login");
         setError(null);
-        setMessage(null); // Clear messages
+        setMessage(null);
     };
 
     const handleInviteCodeSubmit = async (code: string) => {
         setLoading(true);
         setError(null);
-        setMessage(null); // Clear messages on new submit
-        setInviteCode(code);
+        setMessage(null);
+        setInviteCode(code); // Update inviteCode state from manual entry
 
         try {
             if (code.length < 4) {
                 setError("Please enter a valid invite code");
                 return;
             }
-
+            // In a real scenario, you'd likely validate the invite code on the backend here.
+            // For now, we assume it's valid if it passes length check and proceed.
+            console.log(`AuthPage: Manually entered invite code "${code}" submitted. Proceeding to set password.`);
             setStep("setPassword");
         } catch (err: any) {
             setError(err.message || "Invalid invite code");
@@ -211,15 +215,17 @@ function AuthPageContent() {
     const handleSetPasswordSubmit = async (submittedPassword: string) => {
         setLoading(true);
         setError(null);
-        setMessage(null); // Clear messages on new submit
+        setMessage(null);
 
         try {
-            setPassword(submittedPassword);
+            setPassword(submittedPassword); // Store password (though not strictly necessary as it's used immediately)
 
+            // ⭐ IMPORTANT: The inviteCode state is used here for signUp,
+            // whether it came from the URL or was manually entered.
             const { error: signUpError } = await signUp(
                 email,
                 submittedPassword,
-                inviteCode
+                inviteCode // The invite code is passed here
             );
 
             if (signUpError) {
@@ -240,7 +246,7 @@ function AuthPageContent() {
         const { error } = await supabase.auth.signInWithOtp({
             email: email,
             options: {
-                // emailRedirectTo: `${window.location.origin}/auth/callback`, // Keep this if you use OTP for sign-in/up
+                // emailRedirectTo: `${window.location.origin}/auth/callback`,
             },
         });
 
@@ -254,7 +260,7 @@ function AuthPageContent() {
     const handleOTPSubmit = async (code: string) => {
         setLoading(true);
         setError(null);
-        setMessage(null); // Clear messages on new submit
+        setMessage(null);
 
         try {
             const { data, error } = await supabase.auth.verifyOtp({
@@ -275,15 +281,13 @@ function AuthPageContent() {
         }
     };
 
-    // MODIFIED: handleResendCode to use Supabase's resend method
     const handleResendCode = async () => {
-        setLoading(true); // Indicate loading for resend action
+        setLoading(true);
         setError(null);
         setMessage(null);
-        setResendCountdown(60); // Start countdown immediately
+        setResendCountdown(60);
 
         try {
-            // Use supabase.auth.resend with type 'signup' for re-sending confirmation link
             const { error: resendError } = await supabase.auth.resend({
                 type: 'signup',
                 email: email,
@@ -303,53 +307,49 @@ function AuthPageContent() {
         }
     };
 
-    // NEW: Forgot Password Handlers
     const handleForgotPasswordClick = () => {
-        console.log("Forgot password button clicked! Current email:", email); // DEBUG LOG
-        setForgotPasswordEmail(email); // Pre-fill email if available from login form
+        console.log("Forgot password button clicked! Current email:", email);
+        setForgotPasswordEmail(email);
         setStep("forgotPassword");
-        setError(null); // Clear any previous errors
-        setMessage(null); // Clear any previous messages
-        console.log("Step set to:", "forgotPassword"); // DEBUG LOG
+        setError(null);
+        setMessage(null);
+        console.log("Step set to:", "forgotPassword");
     };
 
     const handleForgotPasswordRequest = async (submittedEmail: string) => {
         setLoading(true);
         setError(null);
-        setMessage(null); // Clear messages on new submit
-        console.log("Sending password reset link for:", submittedEmail); // DEBUG LOG
+        setMessage(null);
+        console.log("Sending password reset link for:", submittedEmail);
 
         try {
             const { error: resetError } = await supabase.auth.resetPasswordForEmail(submittedEmail, {
-                redirectTo: `${window.location.origin}/auth/update-password`, // URL for user to set new password
+                redirectTo: `${window.location.origin}/auth/update-password`,
             });
 
             if (resetError) {
                 setError(resetError.message);
-                console.error("Password reset error:", resetError); // DEBUG LOG
+                console.error("Password reset error:", resetError);
             } else {
                 setMessage("Password reset link sent! Check your email inbox (and spam folder).");
-                console.log("Password reset link sent successfully."); // DEBUG LOG
+                console.log("Password reset link sent successfully.");
             }
         } catch (err: any) {
             setError(err.message || "An unexpected error occurred during password reset.");
-            console.error("Unexpected error during password reset:", err); // DEBUG LOG
+            console.error("Unexpected error during password reset:", err);
         } finally {
             setLoading(false);
         }
     };
 
     const handleBackToLoginFromForgot = () => {
-        console.log("Back to login from forgot password."); // DEBUG LOG
+        console.log("Back to login from forgot password.");
         setStep("login");
         setError(null);
-        setMessage(null); // Clear messages
-        setForgotPasswordEmail(""); // Clear email for next attempt
+        setMessage(null);
+        setForgotPasswordEmail("");
     };
 
-
-    // Show a loading spinner only while the *initial* Supabase session is being determined
-    // OR while the profile completeness check is ongoing.
     if (authLoading || isProfileCheckLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-white">
@@ -361,29 +361,23 @@ function AuthPageContent() {
         );
     }
 
-    // DEBUG LOG: Log the current step before rendering forms
     console.log("AuthPageContent current rendering step:", step);
 
-    // If user is null (not authenticated) and not loading, render the appropriate auth form.
     return (
-        // Make the main div relative to position the back button
         <div className="min-h-screen bg-white relative">
-            {/* NEW: Go Back Button */}
-            {/* Positioned at the top-left, uses back-arrow.svg icon */}
             <button
-                onClick={() => router.push('/')} // Navigate to the main page
-                className="absolute top-4 left-4 p-2 rounded-full hover:bg-gray-100 transition-colors z-10" // Added z-10 to ensure it's on top
+                onClick={() => router.push('/')}
+                className="absolute top-4 left-4 p-2 rounded-full hover:bg-gray-100 transition-colors z-10"
                 aria-label="Go back to main page"
             >
                 <Image
-                    src="/icons/back-arrow.svg" // Assuming this icon path is correct
+                    src="/icons/back-arrow.svg"
                     alt="Go Back"
                     width={24}
                     height={24}
                 />
             </button>
 
-            {/* Message display for confirmation or general success */}
             {message && (
                 <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20 w-full max-w-sm p-3 rounded-lg bg-green-100 border border-green-200 text-green-700 text-center shadow-md">
                     {message}
@@ -403,13 +397,15 @@ function AuthPageContent() {
                     email={email}
                     onPasswordSubmit={handlePasswordSubmit}
                     onBackToEmail={handleBackToEmail}
-                    onForgotPasswordClick={handleForgotPasswordClick} // NEW: Pass the handler
+                    onForgotPasswordClick={handleForgotPasswordClick}
                     loading={loading}
                     error={error || undefined}
                 />
             )}
 
             {step === "invite" && (
+                // This form will only show if no invite code was found in the URL
+                // AND the email submitted by the user does not exist.
                 <InviteCodeForm
                     onCodeSubmit={handleInviteCodeSubmit}
                     loading={loading}
@@ -429,9 +425,9 @@ function AuthPageContent() {
                     email={email}
                     loading={loading}
                     error={error || undefined}
-                    message={message || undefined} // Pass message to EmailConfirmationForm
-                    onResendClick={handleResendCode} // Pass resend handler
-                    resendCountdown={resendCountdown} // Pass countdown
+                    message={message || undefined}
+                    onResendClick={handleResendCode}
+                    resendCountdown={resendCountdown}
                 />
             )}
             {step === "otp" && (
@@ -444,14 +440,14 @@ function AuthPageContent() {
                     resendCountdown={resendCountdown}
                 />
             )}
-            {step === "forgotPassword" && ( // NEW: Render ForgotPasswordForm
+            {step === "forgotPassword" && (
                 <ForgotPasswordForm
                     initialEmail={forgotPasswordEmail}
                     onSubmit={handleForgotPasswordRequest}
                     onBackToLogin={handleBackToLoginFromForgot}
                     loading={loading}
                     error={error}
-                    message={message} // Pass message prop
+                    message={message}
                 />
             )}
         </div>
