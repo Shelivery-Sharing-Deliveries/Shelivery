@@ -3,12 +3,22 @@
 import Image from "next/image";
 import React, { useState } from "react";
 import { ChevronDown, Send, AlertCircle } from "lucide-react";
-import { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { PageLayout } from "@/components/ui";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/hooks/useAuth";
+
+// ✏️ Easily editable dropdown options
+const feedbackOptions = ["General", "Add a Store", "Dormitory Change","Report a bug"];
+
+// ✏️ Easily editable placeholders matching the dropdown options above
+const feedbackPlaceholders = [
+  "Write your general feedback here...",
+  "Suggest a store you’d like us to add. Please include the store name, link, and any other relevant details.",
+  "Explain the dormitory change request here...",
+  "Describe the bug you encountered, including steps to reproduce it and any relevant information.",
+];
 
 export default function App() {
   const router = useRouter();
@@ -44,18 +54,11 @@ export default function App() {
 function FeedbackForm() {
   const { user, loading: authLoading } = useAuth();
 
-  const [feedbackType, setFeedbackType] = useState("Add a Store");
+  const [feedbackType, setFeedbackType] = useState<string>(feedbackOptions[1] || "");
+
   const [message, setMessage] = useState("");
   const [submitMessage, setSubmitMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
-  // Different placeholders for each dropdown option
-  const placeholders: Record<string, string> = {
-    General: "Write your general feedback here...",
-    "Add a Store":
-      "Suggest a store you’d like us to add. Please include the store name, link, and any other relevant details.",
-    "Dormitory Change": "Explain the dormitory change request here...",
-  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -95,7 +98,7 @@ function FeedbackForm() {
         "Thank you for your message! We have received your ticket and will get back to you shortly."
       );
 
-      setFeedbackType("Add a Store");
+      setFeedbackType(feedbackOptions[1] || "" ); // reset to default
       setMessage("");
     } catch (error) {
       console.error("Submission Error:", error);
@@ -153,8 +156,7 @@ function FeedbackForm() {
         Submit Your Feedback
       </h2>
       <p className="text-center text-gray-500 mb-8">
-        We'd love to hear from you. Please select a feedback type and let us
-        know your thoughts.
+        We’d love to hear from you. Please select a feedback type and share your request, suggestion, or comments with us.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -174,9 +176,11 @@ function FeedbackForm() {
               className="mt-1 block w-full py-3 px-4 border border-gray-300 bg-white rounded-xl shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none pr-10"
               disabled={isLoading || !user}
             >
-              <option value="General">General</option>
-              <option value="Add a Store">Add a Store</option>
-              <option value="Dormitory Change">Dormitory Change</option>
+              {feedbackOptions.map((option, index) => (
+                <option key={index} value={option}>
+                  {option}
+                </option>
+              ))}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
               <ChevronDown className="h-5 w-5" />
@@ -198,7 +202,10 @@ function FeedbackForm() {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 mt-1 block w-full sm:text-sm border border-gray-300 rounded-xl p-4 resize-none"
-            placeholder={placeholders[feedbackType]}
+            placeholder={
+              feedbackPlaceholders[feedbackOptions.indexOf(feedbackType)] ?? ""
+            }
+
             required
             disabled={isLoading || !user}
           />
