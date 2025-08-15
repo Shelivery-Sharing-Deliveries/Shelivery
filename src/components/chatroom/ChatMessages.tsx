@@ -23,6 +23,13 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Scroll to bottom on initial load
+  useEffect(() => {
+    if (messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+    }
+  }, []);
+
   // Generate signed URLs for all media messages
   useEffect(() => {
     const fetchSignedUrls = async () => {
@@ -178,10 +185,10 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
                     </div>
 
                     <div
-                    className={`${
-                      message.type === "text" ? "inline-block" : "flex-1 max-w-md"
-                    } ${isOwnMessage ? "text-right" : ""}`}
-                  >
+                      className={`flex flex-col ${
+                        isOwnMessage ? "items-end" : "items-start"
+                      } max-w-md`}
+                    >
                       {showAvatar && (
                         <div
                           className={`flex items-center gap-2 mb-1 ${
@@ -200,12 +207,13 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
                       )}
 
                       <div
-                        className={`rounded-2xl p-2 max-w-xs w-full
+                        className={`rounded-2xl p-3 inline-block max-w-xs
                           ${
                             isOwnMessage
-                              ? "bg-[#245b7b] text-white rounded-br-lg ml-auto text-right"
-                              : "bg-white text-gray-900 rounded-bl-lg border border-gray-200 mr-auto text-left"
+                              ? "bg-[#245b7b] text-white rounded-br-lg"
+                              : "bg-white text-gray-900 rounded-bl-lg border border-gray-200"
                           }
+                          ${message.type === "image" || message.type === "audio" ? "w-full" : ""}
                         `}
                       >
                         {message.type === "image" && signedUrls[message.id] ? (

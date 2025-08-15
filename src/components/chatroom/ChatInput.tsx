@@ -145,26 +145,26 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
   }
 
   return (
-    <div className="px-3 py-2 bg-white border-t border-gray-200 safe-area-padding">
+    <div className="px-2 sm:px-3 py-2 bg-white border-t border-gray-200 safe-area-padding">
       {selectedImagePreview && (
         <div className="mb-2 flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
           <img
             src={selectedImagePreview}
             alt="Preview"
-            className="h-10 w-auto rounded border border-gray-300 object-cover flex-shrink-0"
+            className="h-8 sm:h-10 w-auto rounded border border-gray-300 object-cover flex-shrink-0"
           />
-          <div className="flex gap-1 flex-shrink-0">
+          <div className="flex gap-1 flex-shrink-0 ml-auto">
             <button
               type="button"
               onClick={sendSelectedImage}
-              className="px-3 py-1 bg-blue-500 text-white text-xs rounded-full hover:bg-blue-600 transition-colors"
+              className="px-2 sm:px-3 py-1 bg-blue-500 text-white text-xs rounded-full hover:bg-blue-600 transition-colors touch-manipulation min-w-[44px] h-[32px] flex items-center justify-center"
             >
               Send
             </button>
             <button
               type="button"
               onClick={cancelSelectedImage}
-              className="px-3 py-1 bg-gray-300 text-gray-700 text-xs rounded-full hover:bg-gray-400 transition-colors"
+              className="px-2 sm:px-3 py-1 bg-gray-300 text-gray-700 text-xs rounded-full hover:bg-gray-400 transition-colors touch-manipulation min-w-[44px] h-[32px] flex items-center justify-center"
             >
               Cancel
             </button>
@@ -172,15 +172,15 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="flex items-end gap-2">
+      <form onSubmit={handleSubmit} className="flex items-end gap-1 sm:gap-2">
         {/* Attachment Button */}
         <button
           type="button"
           onClick={() => imageInputRef.current?.click()}
-          className="flex-shrink-0 w-9 h-9 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors touch-manipulation"
+          className="flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px]"
           title="Add attachment"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
 
         <input
@@ -197,13 +197,13 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
         {/* Message Input OR Voice Bubble */}
         <div className="flex-1 relative min-w-0">
           {recordedAudioUrl ? (
-            <div className="flex items-center justify-between w-full border border-gray-300 bg-white px-3 py-2 rounded-full">
-              <VoiceMessageBubble src={recordedAudioUrl} className="flex-1 min-w-0" />
-              <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+            <div className="flex items-center justify-between w-full border border-gray-300 bg-white px-2 sm:px-3 py-2 rounded-full min-h-[44px]">
+              <VoiceMessageBubble src={recordedAudioUrl} className="flex-1 min-w-0 mr-2" />
+              <div className="flex items-center gap-1 flex-shrink-0">
                 <button
                   type="button"
                   onClick={sendRecordedAudio}
-                  className="w-8 h-8 flex items-center justify-center text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-full transition-colors touch-manipulation"
+                  className="w-8 h-8 flex items-center justify-center text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-full transition-colors touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-[32px] sm:min-h-[32px]"
                   title="Send voice message"
                 >
                   <Send className="w-4 h-4" />
@@ -211,7 +211,7 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
                 <button
                   type="button"
                   onClick={discardRecording}
-                  className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors text-lg touch-manipulation"
+                  className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors text-lg touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-[32px] sm:min-h-[32px]"
                   title="Discard"
                 >
                   ×
@@ -230,10 +230,10 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
                   }
                 }}
                 placeholder="Message..."
-                className="w-full resize-none rounded-full border border-gray-300 bg-white px-4 py-2.5 pr-12 text-base placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ios-fix"
+                className="w-full resize-none rounded-full border border-gray-300 bg-white px-3 sm:px-4 py-2.5 pr-12 sm:pr-14 text-base placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ios-fix"
                 rows={1}
                 style={{
-                  minHeight: "40px",
+                  minHeight: "44px",
                   maxHeight: "120px",
                   fontSize: "16px", // Prevents zoom on iOS
                   WebkitAppearance: "none", // Remove iOS styling
@@ -245,14 +245,14 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
                 {message.trim() ? (
                   <button
                     type="submit"
-                    className="w-8 h-8 flex items-center justify-center text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-full transition-colors touch-manipulation"
+                    className="w-8 h-8 flex items-center justify-center text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-full transition-colors touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-[32px] sm:min-h-[32px]"
                     title="Send message"
                   >
                     <Send className="w-4 h-4" />
                   </button>
                 ) : isRecording ? (
-                  <div className="flex items-center gap-2 pr-1">
-                    <span className="text-xs text-red-500 font-mono tabular-nums">
+                  <div className="flex items-center gap-1 sm:gap-2 pr-1">
+                    <span className="text-xs text-red-500 font-mono tabular-nums whitespace-nowrap">
                       {formatTime(recordingTime)}
                     </span>
                     <button
@@ -260,7 +260,7 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
                       onMouseUp={stopRecording}
                       onMouseLeave={stopRecording}
                       onTouchEnd={stopRecording}
-                      className="w-8 h-8 flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full transition-colors touch-manipulation"
+                      className="w-8 h-8 flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full transition-colors touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-[32px] sm:min-h-[32px]"
                       title="Release to stop recording"
                     >
                       <Mic className="w-4 h-4 animate-pulse" />
@@ -274,7 +274,7 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
                     onMouseLeave={stopRecording}
                     onTouchStart={startRecording}
                     onTouchEnd={stopRecording}
-                    className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors touch-manipulation"
+                    className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-[32px] sm:min-h-[32px]"
                     title="Hold to record voice message"
                   >
                     <Mic className="w-4 h-4" />
@@ -299,16 +299,53 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputPr
         
         .touch-manipulation {
           touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
         }
         
         .tabular-nums {
           font-variant-numeric: tabular-nums;
         }
         
-        @media (max-width: 480px) {
+        /* Mobile-first responsive design */
+        @media (max-width: 640px) {
           .ios-fix {
             font-size: 16px !important;
+            padding-left: 12px !important;
+            padding-right: 48px !important;
           }
+          
+          /* Ensure buttons are touch-friendly on mobile */
+          button {
+            min-width: 44px;
+            min-height: 44px;
+          }
+          
+          /* Adjust spacing for smaller screens */
+          .gap-2 {
+            gap: 4px;
+          }
+        }
+        
+        @media (min-width: 641px) {
+          /* Desktop styles */
+          button {
+            min-width: 32px;
+            min-height: 32px;
+          }
+        }
+        
+        /* Prevent text selection on buttons */
+        button {
+          -webkit-user-select: none;
+          -moz-user-select: none;
+          -ms-user-select: none;
+          user-select: none;
+        }
+        
+        /* Improve focus visibility for accessibility */
+        button:focus-visible {
+          outline: 2px solid #3b82f6;
+          outline-offset: 2px;
         }
       `}</style>
     </div>
