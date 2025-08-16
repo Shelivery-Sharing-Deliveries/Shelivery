@@ -21,16 +21,16 @@ import { TimeExtensionModal } from "@/components/chatroom/TimeExtensionModal";
 import LoadingBall from "@/components/ui/LoadingBall";
 import ChatroomPageTutorial from "@/components/chatroom/ChatroomPageTutorial";
 
+// Interface definitions...
 interface Chatroom {
     id: string;
     pool_id: string;
-    state: "waiting" | "active" | "ordered" | "resolved";
+    state: "waiting" | "active" | "ordered" | "delivered" | "resolved" | "canceled";
     admin_id: string;
     last_amount: number;
     created_at: string;
     updated_at: string;
     expire_at: string;
-    // NEW: Add extension-related columns to the interface
     extended_once_before_ordered: boolean;
     total_extension_days_ordered_state: number;
     pool: {
@@ -80,6 +80,7 @@ interface ChatMember extends User {
         chatroom_id: string | null;
         created_at: string;
         updated_at: string;
+        is_delivered_by_user: boolean | null;
     } | null;
 }
 
@@ -130,8 +131,8 @@ export default function ChatroomPage() {
             .select(
                 `
                 *,
-                extended_once_before_ordered, 
-                total_extension_days_ordered_state, 
+                extended_once_before_ordered,
+                total_extension_days_ordered_state,
                 pool:pool(
                     id,
                     shop_id,
@@ -152,9 +153,7 @@ export default function ChatroomPage() {
         } else {
             setChatroom(data);
             setIsAdmin(data.admin_id === user?.id);
-            console.log("Realtime: Chatroom data refreshed. New state:", data.state, "Admin ID:", data.admin_id); // DEBUG LOG
-            // After chatroom refresh, re-fetch members and their baskets to ensure latest status
-            // This is crucial for reflecting "resolved" baskets
+            console.log("Realtime: Chatroom data refreshed. New state:", data.state, "Admin ID:", data.admin_id);
             const { data: membershipsData, error: membershipsError } = await supabase
                 .from("chat_membership")
                 .select("user_id")
@@ -181,7 +180,7 @@ export default function ChatroomPage() {
                     .from("basket")
                     .select("*")
                     .in("user_id", userIds)
-                    .eq("chatroom_id", chatroomId); // *** MODIFIED: Removed .eq("status", "in_chat") ***
+                    .eq("chatroom_id", chatroomId);
                 if (basketsError) {
                     console.error("Realtime: Error fetching baskets for refresh:", basketsError);
                     return;
@@ -194,7 +193,7 @@ export default function ChatroomPage() {
                             basketsData?.find((basket) => basket.user_id === user.id) || null,
                     })) || [];
                 setMembers(processedMembers);
-                console.log("Realtime: Members data refreshed with updated basket statuses."); // DEBUG LOG
+                console.log("Realtime: Members data refreshed with updated basket statuses.");
             } else {
                 setMembers([]);
             }
@@ -205,7 +204,8 @@ export default function ChatroomPage() {
         uploadFileToStorage,
         sendMessage,
         markAsOrdered,
-        markAsDelivered,
+        markAsDeliveredByAdmin,
+        confirmDelivery,
         leaveGroup,
         makeAdmin,
         removeMember,
@@ -217,6 +217,7 @@ export default function ChatroomPage() {
         refreshChatroom,
         setNotification,
         setMembers,
+        members,
     });
 
     useEffect(() => {
@@ -255,14 +256,13 @@ export default function ChatroomPage() {
             setLoading(true);
 
             try {
-                // Fetch chatroom data including new extension columns
                 const { data: chatroomData, error: chatroomError } = await supabase
                     .from("chatroom")
                     .select(
                         `
                         *,
-                        extended_once_before_ordered, 
-                        total_extension_days_ordered_state, 
+                        extended_once_before_ordered,
+                        total_extension_days_ordered_state,
                         pool:pool(
                             id,
                             shop_id,
@@ -287,13 +287,12 @@ export default function ChatroomPage() {
                     setLoading(false);
                     return;
                 }
-                console.log("loadChatroomData: Chatroom data fetched:", chatroomData); // DEBUG LOG
-                console.log("loadChatroomData: Chatroom state is now:", chatroomData.state); // DEBUG LOG
-                console.log("loadChatroomData: Chatroom admin ID is:", chatroomData.admin_id); // DEBUG LOG
+                console.log("loadChatroomData: Chatroom data fetched:", chatroomData);
+                console.log("loadChatroomData: Chatroom state is now:", chatroomData.state);
+                console.log("loadChatroomData: Chatroom admin ID is:", chatroomData.admin_id);
                 setChatroom(chatroomData);
                 setIsAdmin(chatroomData.admin_id === currentUser.id);
 
-                // Fetch members data
                 const { data: membershipsData, error: membershipsError } = await supabase
                     .from("chat_membership")
                     .select("user_id")
@@ -314,8 +313,7 @@ export default function ChatroomPage() {
                         .from("basket")
                         .select("*")
                         .in("user_id", userIds)
-                        // .eq("status", "in_chat") // *** REMOVED THIS FILTER ***
-                        .eq("chatroom_id", chatroomId); // Ensure basket is linked to this chatroom
+                        .eq("chatroom_id", chatroomId);
                     if (basketsError) throw basketsError;
 
                     const processedMembers: ChatMember[] =
@@ -325,12 +323,11 @@ export default function ChatroomPage() {
                                 basketsData?.find((basket) => basket.user_id === user.id) || null,
                         })) || [];
                     setMembers(processedMembers);
-                    console.log("loadChatroomData: Members data fetched with all basket statuses."); // DEBUG LOG
+                    console.log("loadChatroomData: Members data fetched with all basket statuses.");
                 } else {
                     setMembers([]);
                 }
 
-                // Fetch messages data
                 const { data: messagesData, error: messagesError } = await supabase
                     .from("message")
                     .select(`*, user:user_id (id, email, image)`)
@@ -384,7 +381,6 @@ export default function ChatroomPage() {
         }
         console.log("Realtime: Setting up Supabase real-time subscriptions for chatroom:", chatroomId);
 
-        // Subscribe to messages
         const messagesSubscription = supabase
             .channel(`messages:${chatroomId}`)
             .on(
@@ -397,9 +393,6 @@ export default function ChatroomPage() {
                 },
                 async (payload) => {
                     console.log("Realtime: New message received:", payload.new);
-                    // Removed the condition: if (payload.new.user_id === currentUser?.id) return;
-                    // This ensures messages sent by the current user are also processed by the subscription
-
                     const { data: userData, error: userDataError } = await supabase
                         .from("user")
                         .select("*")
@@ -421,8 +414,6 @@ export default function ChatroomPage() {
                             read_at: payload.new.read_at, user: userData,
                         };
                         setMessages((prev) => {
-                            // Basic deduplication to prevent adding the same message twice
-                            // (e.g., if it's added locally by sendMessage AND via real-time)
                             const isDuplicate = prev.some(msg => msg.id === newMessage.id);
                             if (isDuplicate) {
                                 console.log("Realtime: Skipping duplicate message:", newMessage.id);
@@ -436,26 +427,37 @@ export default function ChatroomPage() {
             )
             .subscribe();
 
-        // Subscribe to chatroom updates
-        const chatroomSubscription = supabase
-            .channel(`chatroom:${chatroomId}`)
+        // 🌟 FIX: Updated to handle both chatroom and basket updates to trigger refresh
+        const mainChatroomSubscription = supabase
+            .channel(`chatroom_and_baskets:${chatroomId}`)
             .on(
                 "postgres_changes",
                 {
-                    event: "UPDATE",
+                    event: "*",
                     schema: "public",
                     table: "chatroom",
                     filter: `id=eq.${chatroomId}`,
                 },
                 async (payload) => {
-                    console.log("Realtime: Chatroom update received (payload):", payload); // DEBUG LOG: Full payload
-                    console.log("Realtime: Chatroom state changed to:", payload.new.state); // DEBUG LOG: New state
-                    refreshChatroom(); // Refresh chatroom data on update
+                    console.log("Realtime: Chatroom update received:", payload);
+                    refreshChatroom();
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "basket",
+                    filter: `chatroom_id=eq.${chatroomId}`,
+                },
+                async (payload) => {
+                    console.log("Realtime: Basket update received:", payload);
+                    refreshChatroom();
                 }
             )
             .subscribe();
 
-        // Subscribe to membership changes
         const membershipSubscription = supabase
             .channel(`membership:${chatroomId}`)
             .on(
@@ -483,7 +485,7 @@ export default function ChatroomPage() {
                             duration: 4000, dismissible: true,
                         });
                     }
-                    refreshChatroom(); // Refresh members list on new join
+                    refreshChatroom();
                 }
             )
             .subscribe();
@@ -491,7 +493,7 @@ export default function ChatroomPage() {
         return () => {
             console.log("Realtime: Unsubscribing from real-time channels.");
             messagesSubscription.unsubscribe();
-            chatroomSubscription.unsubscribe();
+            mainChatroomSubscription.unsubscribe(); // Changed this to the new subscription variable
             membershipSubscription.unsubscribe();
         };
     }, [chatroomId, authLoading, refreshChatroom, notify, currentUser]);
@@ -501,15 +503,12 @@ export default function ChatroomPage() {
         localStorage.setItem('hasSeenChatroomPageTutorial', 'true');
     }, []);
 
-    // Memoize dismiss handlers
     const handleDismissOrderPlaced = useCallback(() => setOrderPlaced(false), []);
     const handleDismissOrderDelivered = useCallback(() => setOrderDelivered(false), []);
     const handleDismissTimeRunningOut = useCallback(() => setTimeRunningOut(false), []);
     const handleDismissNewMember = useCallback(() => setNewMemberJoined(false), []);
     const handleDismissAdminAssigned = useCallback(() => setAdminAssigned(false), []);
 
-
-    // MODIFIED: handleExtendTime now accepts the number of days to extend
     const handleExtendTime = useCallback(async (days: number) => {
         if (!chatroomId) {
             console.error("Cannot extend time: chatroom ID is not available.");
@@ -517,33 +516,30 @@ export default function ChatroomPage() {
             return;
         }
 
-        setLoading(true); // Indicate a loading state for the extension operation
-        console.log(`handleExtendTime: Attempting to extend by ${days} days for chatroom: ${chatroomId}`); // DEBUG LOG
+        setLoading(true);
+        console.log(`handleExtendTime: Attempting to extend by ${days} days for chatroom: ${chatroomId}`);
         try {
-            // Pass p_days_to_extend to the RPC function
             const { data, error: rpcError } = await supabase.rpc('extend_chatroom_expire_at', { p_chatroom_id: chatroomId, p_days_to_extend: days });
 
             if (rpcError) {
-                console.error("handleExtendTime: Error extending chatroom time:", rpcError); // DEBUG LOG
+                console.error("handleExtendTime: Error extending chatroom time:", rpcError);
                 notify({ type: "warning", title: "Error", message: rpcError.message || "Failed to extend chatroom time." });
                 return;
             }
 
-            console.log("handleExtendTime: Chatroom extension RPC result:", data); // DEBUG LOG: Result from RPC
+            console.log("handleExtendTime: Chatroom extension RPC result:", data);
             notify({ type: "success", title: "Success!", message: data });
-            await refreshChatroom(); // Refresh chatroom data to show updated expire_at and extension flags
-
+            await refreshChatroom();
         } catch (err: any) {
-            console.error("handleExtendTime: Unexpected error during time extension:", err); // DEBUG LOG
+            console.error("handleExtendTime: Unexpected error during time extension:", err);
             notify({ type: "warning", title: "Error", message: err.message || "An unexpected error occurred." });
         } finally {
-            setLoading(false); // End loading state
-            setShowTimeExtension(false); // Close the modal after operation
+            setLoading(false);
+            setShowTimeExtension(false);
         }
     }, [chatroomId, notify, refreshChatroom]);
 
 
-    // Helper function to calculate time left
     const calculateTimeLeft = (expireAt: string) => {
         const expires = new Date(expireAt).getTime();
         const now = new Date().getTime();
@@ -558,7 +554,6 @@ export default function ChatroomPage() {
         return { hours, minutes };
     };
 
-    // Show loading spinner for initial data fetch
     if (authLoading || loading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
@@ -569,7 +564,6 @@ export default function ChatroomPage() {
         );
     }
 
-    // Show "Chatroom not found" if data fetch completes but chatroom is null
     if (!chatroom) {
         return (
             <div className="flex items-center justify-center min-h-screen">
@@ -578,14 +572,10 @@ export default function ChatroomPage() {
         );
     }
 
-    console.log("Render: Displaying Chatroom content. Current chatroom state:", chatroom.state); // DEBUG LOG
-
-    // Determine if the chatroom is in the 'ordered' state
+    console.log("Render: Displaying Chatroom content. Current chatroom state:", chatroom.state);
     const isOrderedState = chatroom.state === "ordered";
-    // Calculate time left for display in modal and banner
     const timeLeftDisplay = calculateTimeLeft(chatroom.expire_at);
 
-    // Render Order Details View
     if (currentView === "orderDetails") {
         return (
             <>
@@ -598,7 +588,8 @@ export default function ChatroomPage() {
                     timeLeft={chatroom.expire_at}
                     isAdmin={isAdmin}
                     onMarkOrdered={markAsOrdered}
-                    onMarkDelivered={markAsDelivered}
+                    onMarkDelivered={markAsDeliveredByAdmin}
+                    onConfirmDelivery={confirmDelivery}
                     members={members}
                     currentUser={currentUser}
                     adminId={chatroom.admin_id || ""}
@@ -615,7 +606,7 @@ export default function ChatroomPage() {
                     onDismissTimeRunningOut={handleDismissTimeRunningOut}
                     onDismissNewMember={handleDismissNewMember}
                     onDismissAdminAssigned={handleDismissAdminAssigned}
-                    onExtendTime={() => setShowTimeExtension(true)} // This triggers the modal
+                    onExtendTime={() => setShowTimeExtension(true)}
                     showTutorial={showTutorial}
                     tutorialStepIds={{
                         adminSection: "order-details-admin-section",
@@ -628,13 +619,12 @@ export default function ChatroomPage() {
                     }}
                 />
 
-                {/* Time Extension Modal - conditionally rendered */}
-                {showTimeExtension && chatroom && ( // Ensure chatroom data is available for modal props
+                {showTimeExtension && chatroom && (
                     <TimeExtensionModal
                         isOpen={showTimeExtension}
                         timeLeft={timeLeftDisplay}
                         onClose={() => setShowTimeExtension(false)}
-                        onExtend={handleExtendTime} // Pass the updated handler
+                        onExtend={handleExtendTime}
                         isOrderedState={isOrderedState}
                         hasExtendedOnceBeforeOrdered={chatroom.extended_once_before_ordered}
                         currentTotalExtendedDaysInOrderedState={chatroom.total_extension_days_ordered_state}
@@ -651,7 +641,6 @@ export default function ChatroomPage() {
         );
     }
 
-    // Render Chat View (default)
     return (
         <div className="fixed inset-0 flex flex-col bg-white">
             <div className="flex-shrink-0">
@@ -685,7 +674,7 @@ export default function ChatroomPage() {
             {timeRunningOut && (
                 <TimeRunningOutBanner
                     timeLeft={`${timeLeftDisplay.hours} hours ${timeLeftDisplay.minutes} minutes`}
-                    onExtend={() => setShowTimeExtension(true)} // This triggers the modal
+                    onExtend={() => setShowTimeExtension(true)}
                     onDismiss={handleDismissTimeRunningOut}
                 />
             )}
@@ -714,30 +703,29 @@ export default function ChatroomPage() {
                     <ChatInput
                         onSendMessage={sendMessage}
                         onUploadFile={uploadFileToStorage}
-                        disabled={chatroom.state === "resolved"}
+                        disabled={chatroom.state === "resolved" || chatroom.state === "canceled"}
                     />
                 </div>
             </div>
 
-            {/* Time Extension Modal - conditionally rendered */}
-            {showTimeExtension && chatroom && ( // Ensure chatroom data is available for modal props
+            {showTimeExtension && chatroom && (
                 <TimeExtensionModal
                     isOpen={showTimeExtension}
                     timeLeft={timeLeftDisplay}
                     onClose={() => setShowTimeExtension(false)}
-                    onExtend={handleExtendTime} // Pass the updated handler
+                    onExtend={handleExtendTime}
                     isOrderedState={isOrderedState}
                     hasExtendedOnceBeforeOrdered={chatroom.extended_once_before_ordered}
                     currentTotalExtendedDaysInOrderedState={chatroom.total_extension_days_ordered_state}
                 />
             )}
             {showTutorial && currentView === "chat" && (
-                <ChatroomPageTutorial
-                    onComplete={handleTutorialComplete}
-                    currentView={currentView}
-                    setCurrentView={setCurrentView}
-                />
-            )}
+                    <ChatroomPageTutorial
+                        onComplete={handleTutorialComplete}
+                        currentView={currentView}
+                        setCurrentView={setCurrentView}
+                    />
+                )}
         </div>
     );
 }
