@@ -218,21 +218,39 @@ export const useChatroomActions = ({
                 return;
             }
 
-            // Step 2: Mark the admin's own basket as delivered
-            const { error: basketUpdateError } = await supabase
-                .from("basket")
-                .update({ is_delivered_by_user: true })
-                .eq("user_id", currentUser.id)
-                .eq("chatroom_id", chatroomId);
-            
-            if (basketUpdateError) {
-                console.error("markAsDeliveredByAdmin: Error updating admin's basket status:", basketUpdateError);
-                setNotification('Failed to confirm admin delivery.');
-                // Note: The chatroom is already marked as delivered, but we should notify.
+            console.log("markAsDeliveredByAdmin: Chatroom marked as delivered, now confirming admin delivery...");
+
+            // Step 2: Use the confirm_user_delivery function to confirm admin's delivery and check if all confirmed
+            const { data, error } = await supabase.rpc('confirm_user_delivery', {
+                p_chatroom_id: chatroomId,
+                p_user_id: currentUser.id
+            });
+
+            if (error) {
+                console.error("markAsDeliveredByAdmin: Error calling confirm_user_delivery RPC:", error);
+                setNotification(`Failed to confirm admin delivery: ${error.message || 'Unknown error'}`);
                 return;
             }
 
-            setNotification('Order marked as delivered! Waiting for members to confirm receipt.');
+            // Handle the response from the backend
+            if (data && typeof data === 'object') {
+                if (data.success) {
+                    setNotification(data.message);
+                    console.log("markAsDeliveredByAdmin: Backend response:", data);
+                    
+                    if (data.chatroom_resolved) {
+                        console.log("markAsDeliveredByAdmin: Chatroom has been resolved by backend (all members confirmed).");
+                    }
+                } else {
+                    setNotification(data.message || 'Failed to confirm admin delivery.');
+                    console.warn("markAsDeliveredByAdmin: Backend returned success=false:", data);
+                }
+            } else {
+                // Fallback for non-JSON response
+                setNotification('Order marked as delivered! Waiting for members to confirm receipt.');
+                console.log("markAsDeliveredByAdmin: Non-JSON response from backend:", data);
+            }
+
             await refreshChatroom();
         } catch (error) {
             console.error("markAsDeliveredByAdmin: An unexpected error occurred:", error);
@@ -242,7 +260,7 @@ export const useChatroomActions = ({
 
     const confirmDelivery = useCallback(async () => {
         if (!currentUser || !chatroomId) {
-            console.error("Confirm Delivery: User or Chatroom ID not available.");
+            console.error("confirmDelivery: User or Chatroom ID not available.");
             setNotification('User or Chatroom ID not found.');
             return;
         }
@@ -250,68 +268,38 @@ export const useChatroomActions = ({
         console.log("confirmDelivery: Initiating delivery confirmation for user:", currentUser.id);
 
         try {
-            // Step 1: Update the current user's basket status
-            const { error: basketUpdateError } = await supabase
-                .from("basket")
-                .update({ is_delivered_by_user: true })
-                .eq("user_id", currentUser.id)
-                .eq("chatroom_id", chatroomId);
+            // Call the new backend function that handles all confirmation logic
+            const { data, error } = await supabase.rpc('confirm_user_delivery', {
+                p_chatroom_id: chatroomId,
+                p_user_id: currentUser.id
+            });
 
-            if (basketUpdateError) {
-                console.error("confirmDelivery: Error updating basket delivery status:", basketUpdateError);
-                setNotification('Failed to confirm delivery. Please try again.');
-                return;
-            }
-            
-            setNotification('Delivery confirmed! Waiting for others to confirm.');
-            
-            // Step 2: Query ALL baskets in the chatroom to check their delivery status.
-            const { data: basketsData, error: basketsFetchError } = await supabase
-                .from("basket")
-                .select(`user_id, is_delivered_by_user, status`) // 🌟 ADDED 'user_id' and 'status' for more comprehensive logging
-                .eq("chatroom_id", chatroomId);
-
-            if (basketsFetchError) {
-                console.error("confirmDelivery: Error fetching baskets:", basketsFetchError);
-                setNotification('Error fetching order statuses.');
+            if (error) {
+                console.error("confirmDelivery: Error calling confirm_user_delivery RPC:", error);
+                setNotification(`Failed to confirm delivery: ${error.message || 'Unknown error'}`);
                 return;
             }
 
-            // 🌟 LOG: Display the fetched baskets data to inspect their individual statuses
-            console.log("confirmDelivery: Fetched all baskets for chatroom:", basketsData);
-
-            // Check if all baskets in the chatroom have confirmed delivery
-            // We ensure that all baskets (regardless of their initial status)
-            // have their `is_delivered_by_user` flag set to true.
-            const allConfirmed = basketsData?.every(
-                (basket) => basket.is_delivered_by_user === true
-            );
-
-            // 🌟 LOG: Display the result of the allConfirmed check
-            console.log("confirmDelivery: Result of allConfirmed check:", allConfirmed);
-            
-            // Step 3: If all confirmed, resolve the chatroom
-            if (allConfirmed) {
-                console.log("All members have confirmed. Attempting to resolve chatroom and baskets...");
-                // 🏆 FIX: Changed RPC call to 'resolve_chatroom_baskets' based on user's clarification.
-                const { error: rpcError } = await supabase.rpc('resolve_chatroom_baskets', { // Corrected function name
-                    p_chatroom_id: chatroomId
-                });
-
-                if (rpcError) {
-                    // 🌟 LOG: Log any errors from the RPC call
-                    console.error("confirmDelivery: Error calling resolve_chatroom_baskets RPC:", rpcError); // Updated log message
-                    setNotification(`Failed to finalize chatroom: ${rpcError.message || 'Unknown error'}`);
-                    return;
+            // Handle the response from the backend
+            if (data && typeof data === 'object') {
+                if (data.success) {
+                    setNotification(data.message);
+                    console.log("confirmDelivery: Backend response:", data);
+                    
+                    if (data.chatroom_resolved) {
+                        console.log("confirmDelivery: Chatroom has been resolved by backend.");
+                    }
+                } else {
+                    setNotification(data.message || 'Failed to confirm delivery.');
+                    console.warn("confirmDelivery: Backend returned success=false:", data);
                 }
-                console.log("confirmDelivery: RPC 'resolve_chatroom_baskets' executed successfully."); // Updated log message
-                setNotification("All members have confirmed! The chatroom is now resolved.");
             } else {
-                console.log("confirmDelivery: Not all members have confirmed yet. Chatroom remains in 'delivered' state.");
+                // Fallback for non-JSON response
+                setNotification('Delivery confirmation processed.');
+                console.log("confirmDelivery: Non-JSON response from backend:", data);
             }
-            
-            // Step 4: Refresh chatroom data to reflect all changes
-            // This is crucial for the UI to update with the new state (e.g., 'resolved')
+
+            // Refresh chatroom data to reflect all changes
             await refreshChatroom();
 
         } catch (error) {
