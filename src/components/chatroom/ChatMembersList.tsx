@@ -2,7 +2,7 @@
 
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
-import { Crown, MoreVertical, X, ExternalLink, FileText } from "lucide-react";
+import { Crown, MoreVertical, X, ExternalLink, FileText, CheckCheck } from "lucide-react";
 import { useState } from "react";
 
 interface User {
@@ -18,6 +18,7 @@ interface User {
   image: string | null;
 }
 
+// UPDATED: ChatMember interface to include 'is_delivered_by_user'
 interface ChatMember extends User {
   basket: {
     id: string;
@@ -32,9 +33,11 @@ interface ChatMember extends User {
     chatroom_id: string | null;
     created_at: string;
     updated_at: string;
+    is_delivered_by_user: boolean | null; // NEW: Added
   } | null;
 }
 
+// UPDATED: ChatMembersListProps interface to include 'state'
 interface ChatMembersListProps {
   members: ChatMember[];
   currentUser: User | null;
@@ -42,6 +45,7 @@ interface ChatMembersListProps {
   isCurrentUserAdmin: boolean;
   onMakeAdmin: (userId: string) => void;
   onRemoveMember: (userId: string) => void;
+  state: "waiting" | "active" | "ordered" | "delivered" | "resolved" | "canceled"; // NEW: Add this prop
 }
 
 export function ChatMembersList({
@@ -51,9 +55,12 @@ export function ChatMembersList({
   isCurrentUserAdmin,
   onMakeAdmin,
   onRemoveMember,
+  state, // NEW: Destructure the state prop
 }: ChatMembersListProps) {
   const [showActions, setShowActions] = useState<string | null>(null);
   const [showOrderDetails, setShowOrderDetails] = useState<string | null>(null);
+
+  const isOrderDelivered = state === "delivered" || state === "resolved";
 
   const getMemberDisplayName = (member: ChatMember) => {
     if (member.first_name && member.last_name) {
@@ -67,6 +74,17 @@ export function ChatMembersList({
 
   const getMemberBasketAmount = (member: ChatMember) => {
     return member.basket?.amount || 0;
+  };
+
+  // NEW: Function to get the status text for a member
+  const getMemberStatus = (member: ChatMember) => {
+      if (isOrderDelivered && member.basket?.is_delivered_by_user) {
+          return "Confirmed delivery";
+      }
+      if (member.basket?.is_ready) {
+          return "Ready to order";
+      }
+      return `${getMemberBasketAmount(member)} CHF order`; // Fallback to existing display
   };
 
   return (
@@ -98,14 +116,19 @@ export function ChatMembersList({
               </div>
 
               <div>
-                <div className="font-medium text-gray-900 text-sm">
+                <div className="font-medium text-gray-900 text-sm flex items-center gap-1">
                   {getMemberDisplayName(member)}
                   {member.id === currentUser?.id && (
                     <span className="text-xs text-gray-500 ml-1">(You)</span>
                   )}
+                  {/* NEW: Delivery confirmation icon (no tooltip) */}
+                  {isOrderDelivered && member.basket?.is_delivered_by_user && (
+                    <CheckCheck className="h-4 w-4 text-green-500" />
+                  )}
                 </div>
+                {/* UPDATED: Use the new getMemberStatus function */}
                 <div className="text-xs text-gray-600">
-                  {getMemberBasketAmount(member)} CHF order
+                  {getMemberStatus(member)}
                 </div>
                 {/* Order details button - only visible to admin */}
                 {isCurrentUserAdmin && (member.basket?.link || member.basket?.note) && (
