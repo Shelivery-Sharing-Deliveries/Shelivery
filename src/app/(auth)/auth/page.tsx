@@ -42,7 +42,6 @@ function AuthPageContent() {
         loading: authLoading, // This is the loading state from useAuth, indicating initial session check
         signIn,
         signUp,
-        // signInWithOAuth, // Removed as it's not used in this component's logic
         checkUserExists,
     } = useAuth();
     const router = useRouter();
@@ -109,14 +108,29 @@ function AuthPageContent() {
         }
     }, [searchParams, router]);
 
-    // Check for invitation code in URL
+    // MODIFIED: Check for invitation code in URL and handle automatic transition
     useEffect(() => {
         const urlInviteCode = searchParams.get("invite");
+
         if (urlInviteCode) {
-            setInviteCode(urlInviteCode);
-            setStep("invite");
+            console.log("AuthPage: Detected invite code in URL:", urlInviteCode);
+            setInviteCode(urlInviteCode); // Set the invite code state
+
+            // If an invite code is present, still start at login to get the user's email.
+            // The handleEmailSubmit will then use the pre-filled inviteCode to skip the manual invite step.
+            setStep("login");
+            setMessage("Invitation code detected. Please enter your email to proceed with registration.");
+            console.log("AuthPage: Invite code found. User needs to enter email first.");
+
+            // Clear the invite parameter from the URL to prevent re-processing on refresh
+            // and keep the URL clean.
+            const newSearchParams = new URLSearchParams(searchParams.toString());
+            newSearchParams.delete("invite");
+            // Removed `shallow: true` as it's not directly supported by `useRouter` from `next/navigation`'s types.
+            router.replace(`/auth?${newSearchParams.toString()}`); 
         }
-    }, [searchParams]);
+    }, [searchParams, router]);
+
 
     // Countdown timer for resend
     useEffect(() => {
@@ -143,7 +157,13 @@ function AuthPageContent() {
             if (userExists) {
                 setStep("password");
             } else {
-                setStep("invite");
+                // If an invite code was already set from the URL, proceed to set password directly
+                if (inviteCode) {
+                    setStep("setPassword");
+                } else {
+                    // Otherwise, go to the invite code step for manual entry
+                    setStep("invite");
+                }
             }
         } catch (err: any) {
             console.error("Error in handleEmailSubmit:", err);
@@ -188,18 +208,21 @@ function AuthPageContent() {
         setMessage(null); // Clear messages
     };
 
+    // Modified to not automatically transition if inviteCode is already set from URL
     const handleInviteCodeSubmit = async (code: string) => {
         setLoading(true);
         setError(null);
         setMessage(null); // Clear messages on new submit
-        setInviteCode(code);
+        setInviteCode(code); // Always set the invite code state
 
         try {
-            if (code.length < 4) {
+            if (code.length < 4) { // Basic validation
                 setError("Please enter a valid invite code");
                 return;
             }
 
+            // If we reached this step, it means the code wasn't from the URL initially,
+            // or the user needs to manually re-enter. Proceed to setPassword.
             setStep("setPassword");
         } catch (err: any) {
             setError(err.message || "Invalid invite code");
@@ -219,7 +242,7 @@ function AuthPageContent() {
             const { error: signUpError } = await signUp(
                 email,
                 submittedPassword,
-                inviteCode
+                inviteCode // Ensure inviteCode is used here
             );
 
             if (signUpError) {
