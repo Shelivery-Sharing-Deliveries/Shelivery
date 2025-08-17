@@ -33,6 +33,8 @@ interface Chatroom {
     expire_at: string;
     extended_once_before_ordered: boolean;
     total_extension_days_ordered_state: number;
+    // CRUCIAL ADDITION: This property is needed for tracking extensions in the 'delivered' state.
+    total_extension_days_delivered_state: number;
     pool: {
         id: string;
         shop_id: number;
@@ -128,11 +130,12 @@ export default function ChatroomPage() {
         console.log("Realtime: Refreshing full chatroom data...");
         const { data, error } = await supabase
             .from("chatroom")
-            .select(
+            .select( // REQUIRED: Fetch total_extension_days_delivered_state for delivered state extension
                 `
                 *,
                 extended_once_before_ordered,
                 total_extension_days_ordered_state,
+                total_extension_days_delivered_state,
                 pool:pool(
                     id,
                     shop_id,
@@ -258,11 +261,12 @@ export default function ChatroomPage() {
             try {
                 const { data: chatroomData, error: chatroomError } = await supabase
                     .from("chatroom")
-                    .select(
+                    .select( // REQUIRED: Fetch total_extension_days_delivered_state on initial load
                         `
                         *,
                         extended_once_before_ordered,
                         total_extension_days_ordered_state,
+                        total_extension_days_delivered_state,
                         pool:pool(
                             id,
                             shop_id,
@@ -396,7 +400,7 @@ export default function ChatroomPage() {
                     const { data: userData, error: userDataError } = await supabase
                         .from("user")
                         .select("*")
-                        .eq("id", payload.new.user_id)
+                        .eq("id", payload.new.user_id) // Corrected from payload.new.user as per previous correction
                         .single();
 
                     if (userDataError) {
@@ -427,13 +431,13 @@ export default function ChatroomPage() {
             )
             .subscribe();
 
-        // 🌟 FIX: Updated to handle both chatroom and basket updates to trigger refresh
+        // Updated to handle both chatroom and basket updates to trigger refresh
         const mainChatroomSubscription = supabase
             .channel(`chatroom_and_baskets:${chatroomId}`)
             .on(
                 "postgres_changes",
                 {
-                    event: "*",
+                    event: "*", // Listen for all events (INSERT, UPDATE, DELETE)
                     schema: "public",
                     table: "chatroom",
                     filter: `id=eq.${chatroomId}`,
@@ -628,6 +632,9 @@ export default function ChatroomPage() {
                         isOrderedState={isOrderedState}
                         hasExtendedOnceBeforeOrdered={chatroom.extended_once_before_ordered}
                         currentTotalExtendedDaysInOrderedState={chatroom.total_extension_days_ordered_state}
+                        // CRUCIAL ADDITION: Pass these two props for the modal's internal logic
+                        currentTotalExtendedDaysInDeliveredState={chatroom.total_extension_days_delivered_state}
+                        chatroomState={chatroom.state}
                     />
                 )}
                 {showTutorial && currentView === "orderDetails" && (
@@ -717,6 +724,9 @@ export default function ChatroomPage() {
                     isOrderedState={isOrderedState}
                     hasExtendedOnceBeforeOrdered={chatroom.extended_once_before_ordered}
                     currentTotalExtendedDaysInOrderedState={chatroom.total_extension_days_ordered_state}
+                    // CRUCIAL ADDITION: Pass these two props for the modal's internal logic
+                    currentTotalExtendedDaysInDeliveredState={chatroom.total_extension_days_delivered_state}
+                    chatroomState={chatroom.state}
                 />
             )}
             {showTutorial && currentView === "chat" && (
