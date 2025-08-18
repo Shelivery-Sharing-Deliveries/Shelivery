@@ -35,10 +35,7 @@ export default function InviteFriendPage() {
     fetchCode();
   }, [user, authLoading, router]);
 
-  // handleCopyCode is no longer directly used by the InviteForm,
-  // as the ShareButton now handles copying/sharing.
-  // Keeping it here for now, as it might be referenced elsewhere or for future use.
-  const handleCopyCode = () => {
+  const handleCopyCode = () => { // Keep this for now, even though the direct 'copy' button is gone, in case onCopyCode is used elsewhere.
     if (!inviteCode) return;
     navigator.clipboard.writeText(inviteCode);
     console.log("Invite code copied!"); // Replaced alert
@@ -47,16 +44,15 @@ export default function InviteFriendPage() {
 
   const handleInviteFriend = () => {
     if (!inviteCode) return;
-    const fullUrl = `${window.location.origin}/auth?invite=${inviteCode}`;
-    // The ShareButton handles copying/sharing, so this might become redundant.
-    // For now, keeping it as it was part of the original onInviteFriend prop.
+    // MODIFIED: Generate link to the main page with invite code
+    const fullUrl = `${window.location.origin}/?invite=${inviteCode}`;
     navigator.clipboard.writeText(fullUrl);
     console.log("Invite link copied! Send it to your friend."); // Replaced alert
     // In a real app, you might show a toast notification here
   };
 
-  // Generate the full invitation link for the ShareButton
-  const fullInviteLink = inviteCode ? `${window.location.origin}/auth?invite=${inviteCode}` : "";
+  // MODIFIED: Generate the full invitation link for the ShareButton to the main page
+  const fullInviteLink = inviteCode ? `${window.location.origin}/?invite=${inviteCode}` : "";
 
   // Extract the Header component to be passed as the 'header' prop
   const headerContent = (
@@ -77,7 +73,6 @@ export default function InviteFriendPage() {
             <div className="w-full">
               <InviteForm
                 inviteCode={inviteCode || ""}
-                // REMOVED: onCopyCode prop as it's no longer expected by InviteForm
                 onInviteFriend={handleInviteFriend}
                 fullInviteLink={fullInviteLink} // Pass the full link to InviteForm for the ShareButton
               />

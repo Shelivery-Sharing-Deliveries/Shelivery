@@ -1,10 +1,29 @@
-// app/about/page.tsx
 "use client"; // This component is a client component for potential future interactivity
 
+import React, { useEffect, useState } from 'react'; // Added useState and useEffect
 import Image from 'next/image'; // For optimized images
-import Link from 'next/link';   // For navigation
+// import Link from 'next/link';   // Removed: No longer directly using Link for these buttons
+import { useSearchParams } from 'next/navigation'; // Added: Import useSearchParams
 
 export default function AboutPage() {
+  const [inviteCodeFromUrl, setInviteCodeFromUrl] = useState<string | null>(null); // Added: State to store invite code from URL
+  const searchParams = useSearchParams(); // Added: Initialize useSearchParams
+
+  // Added: New useEffect to read invite code from URL
+  useEffect(() => {
+    const invite = searchParams.get('invite');
+    if (invite) {
+      setInviteCodeFromUrl(invite);
+      console.log("AboutPage: Detected invite code in URL:", invite);
+    }
+  }, [searchParams]); // Depend on searchParams to re-run if URL changes
+
+  // Corrected: Construct the dynamic href as a STRING for "Get Started" links
+  // This ensures compatibility with standard <a> tags.
+  const authLinkHref = inviteCodeFromUrl
+    ? `/auth?invite=${inviteCodeFromUrl}`
+    : "/auth";
+
   return (
     // Main container for the entire page, applying the dominant background color
     // and ensuring content is centered and takes full height.
@@ -28,19 +47,17 @@ export default function AboutPage() {
           <p className="text-lg md:text-xl mb-8">
             Sustainable Progress Goals<br />Report June 2025
           </p>
-          {/* Get Started Button - Reusing styles from your landing page buttons */}
-          <Link href="/auth">
-            <button
-              className="rounded-lg px-6 py-3 text-base font-semibold shadow-sm hover:opacity-80 transition-opacity"
-              style={{
-                backgroundColor: '#FFD700', // Exact yellow from Canva
-                color: '#245b7b',            // Exact dark blue from Canva
-                border: 'none',
-              }}
-            >
-              GET STARTED
-            </button>
-          </Link>
+          {/* Get Started Button - Now using <a> tag with dynamic string href */}
+          <a href={authLinkHref}
+             className="rounded-lg px-6 py-3 text-base font-semibold shadow-sm hover:opacity-80 transition-opacity"
+             style={{
+               backgroundColor: '#FFD700', // Exact yellow from Canva
+               color: '#245b7b',            // Exact dark blue from Canva
+               border: 'none',
+             }}
+          >
+            GET STARTED
+          </a>
         </div>
 
         <div className="lg:w-1/2 flex justify-center items-center h-[40vh]">
@@ -187,18 +204,16 @@ export default function AboutPage() {
         <p className="text-lg md:text-xl mb-8 text-white">
           Join Shelivery today and revolutionize your dorm shopping experience.
         </p>
-        <Link href="/auth">
-            <button
-              className="rounded-lg px-6 py-3 text-base font-semibold shadow-sm hover:opacity-80 transition-opacity"
-              style={{
-                backgroundColor: '#FFD700', // Exact yellow from Canva
-                color: '#245b7b',            // Exact dark blue from Canva
-                border: 'none',
-              }}
-            >
-              GET STARTED
-            </button>
-          </Link>
+        {/* Now using <a> tag with dynamic string href */}
+        <a href={authLinkHref}
+           className="rounded-lg px-6 py-3 text-base font-semibold shadow-sm hover:opacity-80 transition-opacity"
+           style={{
+             backgroundColor: '#FFD700', // Exact yellow from Canva
+             color: '#245b7b',            // Exact dark blue from Canva
+             border: 'none',
+           }}>
+          GET STARTED
+        </a>
         <p className="text-sm mt-16 text-gray-400">
           © 2025 Shelivery. All rights reserved.
         </p>
