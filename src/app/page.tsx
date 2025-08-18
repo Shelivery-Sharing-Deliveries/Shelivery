@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation'; // Import useSearchParams
 import PWAInstallGuidePopup from '@/components/homepage/PWAInstallGuidePopup';
 
-export default function HomePage() {
+// Separate component that uses useSearchParams
+function HomePageContent() {
   const [showPwaPopup, setShowPwaPopup] = useState(false);
   const [checkingPwa, setCheckingPwa] = useState(true); // For loading state while detecting PWA
   const [inviteCodeFromUrl, setInviteCodeFromUrl] = useState<string | null>(null); // State to store invite code from URL
@@ -135,5 +136,14 @@ export default function HomePage() {
 
       <PWAInstallGuidePopup isOpen={showPwaPopup} onClose={() => setShowPwaPopup(false)} />
     </main>
+  );
+}
+
+// Main component wrapped with Suspense
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <HomePageContent />
+    </Suspense>
   );
 }
