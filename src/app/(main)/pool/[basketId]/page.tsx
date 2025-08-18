@@ -459,7 +459,7 @@ export default function PoolPage({ params }: PoolPageProps) {
         buttonColorClass = "bg-[#F04438] hover:bg-[#D92D20]"; // Red for Cancel
         buttonOnClick = handleToggleReady;
     } else {
-        buttonText = isButtonLoading ? "Setting Ready..." : "Ready To Order";
+        buttonText = isButtonLoading ? "Setting Ready..." : "Ready To Order & Join Pool";
         buttonColorClass = "bg-[#FFDB0D] hover:bg-[#F7C600]"; // Yellow for Ready
         buttonOnClick = handleToggleReady;
     }
