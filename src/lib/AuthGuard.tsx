@@ -102,11 +102,112 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     checkAuthAndDormitory();
   }, [user, authLoading, router]); // Dependencies: Re-run effect when user, authLoading, or router object changes
 
-  // Function to perform a hard refresh
-  const handleHardRefresh = () => {
-    console.log("AuthGuard: Performing hard refresh...");
-    window.location.reload(); // Removed `true` argument to resolve TypeScript error
+  // Auto-refresh functionality for stuck authentication
+  const [isStuck, setIsStuck] = useState(false);
+  const [autoRefreshState, setAutoRefreshState] = useState<'idle' | 'soft' | 'auth' | 'hard'>('idle');
+  const stuckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-detect if user is stuck in auth checking
+  useEffect(() => {
+    if (authLoading || isCheckingDormitory) {
+      // Start timeout to detect if user is stuck
+      stuckTimeoutRef.current = setTimeout(() => {
+        console.log("AuthGuard: User appears stuck in auth checking, starting auto-refresh...");
+        setIsStuck(true);
+        startAutoRefresh();
+      }, 10000); // 10 seconds timeout
+    } else {
+      // Clear timeout if auth completes normally
+      if (stuckTimeoutRef.current) {
+        clearTimeout(stuckTimeoutRef.current);
+        stuckTimeoutRef.current = null;
+      }
+      setIsStuck(false);
+      setAutoRefreshState('idle');
+    }
+
+    return () => {
+      if (stuckTimeoutRef.current) {
+        clearTimeout(stuckTimeoutRef.current);
+        stuckTimeoutRef.current = null;
+      }
+    };
+  }, [authLoading, isCheckingDormitory]);
+
+  const startAutoRefresh = async () => {
+    console.log("AuthGuard: Starting automatic progressive refresh...");
+    
+    // Step 1: Soft refresh (re-authenticate)
+    setAutoRefreshState('soft');
+    refreshTimeoutRef.current = setTimeout(async () => {
+      try {
+        console.log("AuthGuard: Attempting soft refresh - re-authentication...");
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        
+        if (data.session) {
+          console.log("AuthGuard: Soft refresh successful");
+          setAutoRefreshState('idle');
+          setIsStuck(false);
+          return;
+        }
+      } catch (error) {
+        console.error("AuthGuard: Soft refresh failed:", error);
+      }
+
+      // Step 2: Auth refresh
+      setAutoRefreshState('auth');
+      refreshTimeoutRef.current = setTimeout(async () => {
+        try {
+          console.log("AuthGuard: Attempting auth refresh...");
+          const { error } = await supabase.auth.refreshSession();
+          if (error) throw error;
+          
+          console.log("AuthGuard: Auth refresh successful");
+          setAutoRefreshState('idle');
+          setIsStuck(false);
+          return;
+        } catch (error) {
+          console.error("AuthGuard: Auth refresh failed:", error);
+        }
+
+        // Step 3: Hard refresh
+        setAutoRefreshState('hard');
+        refreshTimeoutRef.current = setTimeout(() => {
+          console.log("AuthGuard: Performing hard refresh...");
+          window.location.reload();
+        }, 2000);
+      }, 3000);
+    }, 3000);
   };
+
+  const handleEmergencyRefresh = () => {
+    console.log("AuthGuard: Emergency refresh triggered...");
+    if (stuckTimeoutRef.current) {
+      clearTimeout(stuckTimeoutRef.current);
+      stuckTimeoutRef.current = null;
+    }
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+      refreshTimeoutRef.current = null;
+    }
+    window.location.reload();
+  };
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (stuckTimeoutRef.current) {
+        clearTimeout(stuckTimeoutRef.current);
+        stuckTimeoutRef.current = null;
+      }
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // Render a loading spinner if authentication is in progress or if the dormitory check is ongoing.
   if (authLoading || isCheckingDormitory) {
@@ -115,20 +216,22 @@ export default function AuthGuard({ children }: AuthGuardProps) {
       <div className="min-h-screen flex flex-col items-center justify-center bg-white p-4">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-[#FFDB0D] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-[#A4A7AE] mb-6">Checking authentication...</p>
-          {/* Hard Refresh Button */}
-          <button
-            onClick={handleHardRefresh}
-            className="rounded-lg px-6 py-3 text-base font-semibold shadow-sm hover:opacity-80 transition-opacity"
-            style={{
-              backgroundColor: '#245b7b', // Dark blue from your app's theme
-              color: '#FFD700',            // Yellow from your app's theme
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            Hard Refresh
-          </button>
+          <p className="text-[#A4A7AE] mb-6">
+            {autoRefreshState === 'idle' ? 'Checking authentication...' :
+             autoRefreshState === 'soft' ? 'Reconnecting...' :
+             autoRefreshState === 'auth' ? 'Refreshing session...' :
+             'Reloading page...'}
+          </p>
+          
+          {/* Emergency refresh button - only show if stuck and auto-refresh is active */}
+          {isStuck && autoRefreshState !== 'idle' && (
+            <button
+              onClick={handleEmergencyRefresh}
+              className="text-sm text-[#245b7b] hover:text-[#1e4a63] underline transition-colors duration-200"
+            >
+              Refresh now
+            </button>
+          )}
         </div>
       </div>
     );
