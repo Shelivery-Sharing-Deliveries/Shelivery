@@ -1,11 +1,12 @@
 "use client"; // This component is a client component for potential future interactivity
 
-import React, { useEffect, useState } from 'react'; // Added useState and useEffect
+import React, { useEffect, useState, Suspense } from 'react'; // Added Suspense
 import Image from 'next/image'; // For optimized images
 // import Link from 'next/link';   // Removed: No longer directly using Link for these buttons
 import { useSearchParams } from 'next/navigation'; // Added: Import useSearchParams
 
-export default function AboutPage() {
+// NEW: Create a separate component for the page content that uses useSearchParams
+function AboutPageContent() {
   const [inviteCodeFromUrl, setInviteCodeFromUrl] = useState<string | null>(null); // Added: State to store invite code from URL
   const searchParams = useSearchParams(); // Added: Initialize useSearchParams
 
