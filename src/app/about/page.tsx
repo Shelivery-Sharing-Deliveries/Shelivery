@@ -1,11 +1,11 @@
 "use client"; // This component is a client component for potential future interactivity
 
-import React, { useEffect, useState, Suspense } from 'react'; // Added Suspense
+import React, { useEffect, useState, Suspense } from 'react'; // Added useState, useEffect, and Suspense
 import Image from 'next/image'; // For optimized images
 // import Link from 'next/link';   // Removed: No longer directly using Link for these buttons
 import { useSearchParams } from 'next/navigation'; // Added: Import useSearchParams
 
-// NEW: Create a separate component for the page content that uses useSearchParams
+// Separate component that uses useSearchParams
 function AboutPageContent() {
   const [inviteCodeFromUrl, setInviteCodeFromUrl] = useState<string | null>(null); // Added: State to store invite code from URL
   const searchParams = useSearchParams(); // Added: Initialize useSearchParams
@@ -220,5 +220,14 @@ function AboutPageContent() {
         </p>
       </footer>
     </div>
+  );
+}
+
+// Main component wrapped with Suspense
+export default function AboutPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AboutPageContent />
+    </Suspense>
   );
 }
