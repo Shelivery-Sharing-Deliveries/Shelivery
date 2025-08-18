@@ -478,7 +478,7 @@ export default function BasketCreationPage() {
                             placeholder="e.g., 25.50"
                             value={basketAmount}
                             onChange={(e) => setBasketAmount(e.target.value)}
-                            step="0.01"
+                            step="0.1"
                             min="0"
                             className="shelivery-input w-full"
                             required
