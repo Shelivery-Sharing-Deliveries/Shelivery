@@ -89,21 +89,21 @@ function AboutPageContent() {
               {/* Icon - Placeholder */}
               <Image src="/icons/wallet.svg" alt="High Fees" width={60} height={60} className="mb-4" />
               <h3 className="text-xl font-semibold mb-2" style={{ color: '#FFD700' }}>High Delivery Fees</h3>
-              <p className="text-base text-white">Individual orders often come with hefty delivery charges, making everyday essentials expensive for students.</p>
+              <p className="text-base text-white">Most delivery services charge full price even if you’re only ordering a few items. Paying high fees for small packages makes delivery feel expensive and unfair.</p>
             </div>
             {/* Problem 2 */}
             <div className="flex flex-col items-center text-center p-6 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
               {/* Icon - Placeholder */}
               <Image src="/icons/clock.svg" alt="Time-Consuming" width={60} height={60} className="mb-4" />
-              <h3 className="text-xl font-semibold mb-2" style={{ color: '#FFD700' }}>Time-Consuming Coordination</h3>
-              <p className="text-base text-white">Organizing group orders manually is a headache, involving endless messages and missed deadlines.</p>
+              <h3 className="text-xl font-semibold mb-2" style={{ color: '#FFD700' }}>Time Wasted Waiting</h3>
+              <p className="text-base text-white">Ordinary deliveries often mean long waiting windows. You might stay home hours just to receive one small package, or face delays because drivers take inefficient routes.</p>
             </div>
             {/* Problem 3 */}
             <div className="flex flex-col items-center text-center p-6 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
               {/* Icon - Placeholder */}
-              <Image src="/icons/group.svg" alt="Lack of Visibility" width={60} height={60} className="mb-4" />
-              <h3 className="text-xl font-semibold mb-2" style={{ color: '#FFD700' }}>Lack of Group Order Visibility</h3>
-              <p className="text-base text-white">It's hard to see who's ordering what, leading to duplicate orders or missed opportunities for shared savings.</p>
+              <Image src="/icons/group.svg" alt="Environmental Impact" width={60} height={60} className="mb-4" />
+              <h3 className="text-xl font-semibold mb-2" style={{ color: '#FFD700' }}>Environmental Impact</h3>
+              <p className="text-base text-white">With every person ordering separately, multiple couriers drive the same route to the same neighborhood. This not only clogs the streets but also increases emissions — a cost we all end up paying.</p>
             </div>
           </div>
         </div>
@@ -132,14 +132,14 @@ function AboutPageContent() {
               {/* Icon - Placeholder */}
               <Image src="/icons/chat.svg" alt="Effortless Coordination" width={60} height={60} className="mb-4" />
               <h3 className="text-xl font-semibold mb-2" style={{ color: '#FFD700' }}>Effortless Coordination</h3>
-              <p className="text-base text-white">Our intuitive platform simplifies communication, making group orders smooth and stress-free.</p>
+              <p className="text-base text-white">Our platform makes group deliveries simple. Instead of everyone waiting around, only one person needs to receive the order — saving time, reducing confusion, and making the whole process stress-free.</p>
             </div>
             {/* Solution 3 */}
             <div className="flex flex-col items-center text-center p-6 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
               {/* Icon - Placeholder */}
               <Image src="/icons/delivery.svg" alt="Streamlined Deliveries" width={60} height={60} className="mb-4" />
               <h3 className="text-xl font-semibold mb-2" style={{ color: '#FFD700' }}>Streamlined Deliveries</h3>
-              <p className="text-base text-white">Track orders, manage payments, and ensure everyone gets their share with ease, right to your dorm.</p>
+              <p className="text-base text-white">By grouping orders, we cut down on extra trips, lower costs and number of packages, and keep building entrances and concierges less crowded.</p>
             </div>
           </div>
         </div>
