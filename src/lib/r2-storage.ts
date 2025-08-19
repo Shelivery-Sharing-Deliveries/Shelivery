@@ -1,24 +1,34 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
 
-// R2 Configuration
-const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID
-const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY
-const R2_BUCKET = process.env.R2_BUCKET || 'shelivery'
-const R2_ENDPOINT = process.env.R2_ENDPOINT
+// R2 Configuration - lazy initialization
+let r2Client: S3Client | null = null
 
-if (!R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_ENDPOINT) {
-  throw new Error('Missing R2 configuration. Please check your environment variables.')
+function getR2Client(): S3Client {
+  if (!r2Client) {
+    const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID
+    const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY
+    const R2_ENDPOINT = process.env.R2_ENDPOINT
+
+    if (!R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_ENDPOINT) {
+      throw new Error('Missing R2 configuration. Please check your environment variables.')
+    }
+
+    r2Client = new S3Client({
+      region: 'auto',
+      endpoint: R2_ENDPOINT,
+      credentials: {
+        accessKeyId: R2_ACCESS_KEY_ID,
+        secretAccessKey: R2_SECRET_ACCESS_KEY,
+      },
+    })
+  }
+  
+  return r2Client
 }
 
-// Create R2 client (S3-compatible)
-const r2Client = new S3Client({
-  region: 'auto',
-  endpoint: R2_ENDPOINT,
-  credentials: {
-    accessKeyId: R2_ACCESS_KEY_ID,
-    secretAccessKey: R2_SECRET_ACCESS_KEY,
-  },
-})
+function getR2Bucket(): string {
+  return process.env.R2_BUCKET || 'shelivery'
+}
 
 export interface UploadResult {
   url: string | null
@@ -46,15 +56,18 @@ export async function uploadToR2(
       type = contentType || 'application/octet-stream'
     }
 
+    const client = getR2Client()
+    const bucket = getR2Bucket()
+
     const command = new PutObjectCommand({
-      Bucket: R2_BUCKET,
+      Bucket: bucket,
       Key: key,
       Body: body,
       ContentType: type,
       CacheControl: 'public, max-age=31536000', // 1 year cache
     })
 
-    await r2Client.send(command)
+    await client.send(command)
 
     // Generate proxy URL through our Next.js API route
     // This bypasses R2 public access requirements
@@ -73,12 +86,15 @@ export async function uploadToR2(
  */
 export async function deleteFromR2(key: string): Promise<{ success: boolean; error: string | null }> {
   try {
+    const client = getR2Client()
+    const bucket = getR2Bucket()
+
     const command = new DeleteObjectCommand({
-      Bucket: R2_BUCKET,
+      Bucket: bucket,
       Key: key,
     })
 
-    await r2Client.send(command)
+    await client.send(command)
     return { success: true, error: null }
   } catch (error) {
     console.error('R2 delete error:', error)
@@ -91,12 +107,15 @@ export async function deleteFromR2(key: string): Promise<{ success: boolean; err
  */
 async function cleanupOldFiles(prefix: string, keepLatest = 1): Promise<void> {
   try {
+    const client = getR2Client()
+    const bucket = getR2Bucket()
+
     const listCommand = new ListObjectsV2Command({
-      Bucket: R2_BUCKET,
+      Bucket: bucket,
       Prefix: prefix,
     })
 
-    const response = await r2Client.send(listCommand)
+    const response = await client.send(listCommand)
     
     if (!response.Contents || response.Contents.length <= keepLatest) {
       return // Nothing to clean up
@@ -126,16 +145,19 @@ async function cleanupOldFiles(prefix: string, keepLatest = 1): Promise<void> {
  * Generate a public URL for an R2 object
  */
 export function getR2PublicUrl(key: string): string {
+  const R2_ENDPOINT = process.env.R2_ENDPOINT
+  const bucket = getR2Bucket()
+  
   if (R2_ENDPOINT && R2_ENDPOINT.includes('r2.cloudflarestorage.com')) {
     // Extract account ID from endpoint
     const endpointParts = R2_ENDPOINT.split('//')[1]?.split('.')
     if (endpointParts && endpointParts[0]) {
       const accountId = endpointParts[0]
-      return `https://${R2_BUCKET}.${accountId}.r2.cloudflarestorage.com/${key}`
+      return `https://${bucket}.${accountId}.r2.cloudflarestorage.com/${key}`
     }
   }
   // Fallback to direct endpoint
-  return `${R2_ENDPOINT}/${R2_BUCKET}/${key}`
+  return `${R2_ENDPOINT}/${bucket}/${key}`
 }
 
 /**

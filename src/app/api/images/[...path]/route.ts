@@ -1,25 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
 
-// R2 Configuration
-const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID
-const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY
-const R2_BUCKET = process.env.R2_BUCKET || 'shelivery'
-const R2_ENDPOINT = process.env.R2_ENDPOINT
+// R2 Configuration - lazy initialization
+let r2Client: S3Client | null = null
 
-if (!R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_ENDPOINT) {
-  throw new Error('Missing R2 configuration. Please check your environment variables.')
+function getR2Client(): S3Client {
+  if (!r2Client) {
+    const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID
+    const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY
+    const R2_ENDPOINT = process.env.R2_ENDPOINT
+
+    if (!R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_ENDPOINT) {
+      throw new Error('Missing R2 configuration. Please check your environment variables.')
+    }
+
+    r2Client = new S3Client({
+      region: 'auto',
+      endpoint: R2_ENDPOINT,
+      credentials: {
+        accessKeyId: R2_ACCESS_KEY_ID,
+        secretAccessKey: R2_SECRET_ACCESS_KEY,
+      },
+    })
+  }
+  
+  return r2Client
 }
 
-// Create R2 client (S3-compatible)
-const r2Client = new S3Client({
-  region: 'auto',
-  endpoint: R2_ENDPOINT,
-  credentials: {
-    accessKeyId: R2_ACCESS_KEY_ID,
-    secretAccessKey: R2_SECRET_ACCESS_KEY,
-  },
-})
+function getR2Bucket(): string {
+  return process.env.R2_BUCKET || 'shelivery'
+}
 
 export async function GET(
   request: NextRequest,
@@ -33,12 +43,15 @@ export async function GET(
     }
 
     // Get the object from R2
+    const client = getR2Client()
+    const bucket = getR2Bucket()
+
     const command = new GetObjectCommand({
-      Bucket: R2_BUCKET,
+      Bucket: bucket,
       Key: imagePath,
     })
 
-    const response = await r2Client.send(command)
+    const response = await client.send(command)
     
     if (!response.Body) {
       return NextResponse.json({ error: 'Image not found' }, { status: 404 })
