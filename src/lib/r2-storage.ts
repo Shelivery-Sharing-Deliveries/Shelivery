@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
 
 // R2 Configuration
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID
@@ -56,9 +56,11 @@ export async function uploadToR2(
 
     await r2Client.send(command)
 
-    // Generate public URL
-    const publicUrl = `${R2_ENDPOINT}/${R2_BUCKET}/${key}`
+    // Generate proxy URL through our Next.js API route
+    // This bypasses R2 public access requirements
+    const publicUrl = `/api/images/${key}`
 
+    console.log('Generated R2 proxy URL:', publicUrl)
     return { url: publicUrl, error: null }
   } catch (error) {
     console.error('R2 upload error:', error)
@@ -85,9 +87,54 @@ export async function deleteFromR2(key: string): Promise<{ success: boolean; err
 }
 
 /**
+ * Clean up old files with the same prefix (for cache busting)
+ */
+async function cleanupOldFiles(prefix: string, keepLatest = 1): Promise<void> {
+  try {
+    const listCommand = new ListObjectsV2Command({
+      Bucket: R2_BUCKET,
+      Prefix: prefix,
+    })
+
+    const response = await r2Client.send(listCommand)
+    
+    if (!response.Contents || response.Contents.length <= keepLatest) {
+      return // Nothing to clean up
+    }
+
+    // Sort by LastModified date (newest first)
+    const sortedFiles = response.Contents
+      .filter(obj => obj.Key && obj.LastModified)
+      .sort((a, b) => (b.LastModified!.getTime() - a.LastModified!.getTime()))
+
+    // Delete all but the latest files
+    const filesToDelete = sortedFiles.slice(keepLatest)
+    
+    for (const file of filesToDelete) {
+      if (file.Key) {
+        await deleteFromR2(file.Key)
+        console.log(`Cleaned up old file: ${file.Key}`)
+      }
+    }
+  } catch (error) {
+    console.error('Error cleaning up old files:', error)
+    // Don't throw error - cleanup failure shouldn't break upload
+  }
+}
+
+/**
  * Generate a public URL for an R2 object
  */
 export function getR2PublicUrl(key: string): string {
+  if (R2_ENDPOINT && R2_ENDPOINT.includes('r2.cloudflarestorage.com')) {
+    // Extract account ID from endpoint
+    const endpointParts = R2_ENDPOINT.split('//')[1]?.split('.')
+    if (endpointParts && endpointParts[0]) {
+      const accountId = endpointParts[0]
+      return `https://${R2_BUCKET}.${accountId}.r2.cloudflarestorage.com/${key}`
+    }
+  }
+  // Fallback to direct endpoint
   return `${R2_ENDPOINT}/${R2_BUCKET}/${key}`
 }
 
@@ -104,11 +151,19 @@ export async function uploadAvatar(userId: string, file: File): Promise<UploadRe
     return { url: null, error: 'File size must be less than 5MB' }
   }
 
-  // Generate key
+  // Generate key with timestamp for cache busting
   const fileExt = file.name.split('.').pop() || 'jpg'
-  const key = `avatars/${userId}/avatar.${fileExt}`
+  const timestamp = Date.now()
+  const key = `avatars/${userId}/avatar-${timestamp}.${fileExt}`
 
-  return uploadToR2(key, file)
+  const result = await uploadToR2(key, file)
+  
+  // Clean up old avatar files after successful upload
+  if (result.url) {
+    await cleanupOldFiles(`avatars/${userId}/avatar-`, 1)
+  }
+
+  return result
 }
 
 /**
@@ -124,11 +179,19 @@ export async function uploadShopLogo(shopId: string, file: File): Promise<Upload
     return { url: null, error: 'File size must be less than 2MB' }
   }
 
-  // Generate key
+  // Generate key with timestamp for cache busting
   const fileExt = file.name.split('.').pop() || 'jpg'
-  const key = `shop-logos/${shopId}/logo.${fileExt}`
+  const timestamp = Date.now()
+  const key = `shop-logos/${shopId}/logo-${timestamp}.${fileExt}`
 
-  return uploadToR2(key, file)
+  const result = await uploadToR2(key, file)
+  
+  // Clean up old logo files after successful upload
+  if (result.url) {
+    await cleanupOldFiles(`shop-logos/${shopId}/logo-`, 1)
+  }
+
+  return result
 }
 
 /**
@@ -163,8 +226,9 @@ export async function uploadChatMedia(
       }
     }
 
-    // Generate key
-    const key = `chat-media/${chatroomId}/${messageId}.${fileExt}`
+    // Generate key with timestamp for cache busting
+    const timestamp = Date.now()
+    const key = `chat-media/${chatroomId}/${messageId}-${timestamp}.${fileExt}`
 
     // Convert Blob to Buffer
     const buffer = Buffer.from(await file.arrayBuffer())
@@ -180,13 +244,13 @@ export async function uploadChatMedia(
  * Helper functions for generating avatar and shop logo URLs
  */
 export const getAvatarUrl = (userId: string, filename = 'avatar.jpg') => {
-  return getR2PublicUrl(`avatars/${userId}/${filename}`)
+  return `/api/images/avatars/${userId}/${filename}`
 }
 
 export const getShopLogoUrl = (shopId: string, filename = 'logo.jpg') => {
-  return getR2PublicUrl(`shop-logos/${shopId}/${filename}`)
+  return `/api/images/shop-logos/${shopId}/${filename}`
 }
 
 export const getChatMediaUrl = (chatroomId: string, messageId: string, extension = 'jpg') => {
-  return getR2PublicUrl(`chat-media/${chatroomId}/${messageId}.${extension}`)
+  return `/api/images/chat-media/${chatroomId}/${messageId}.${extension}`
 }

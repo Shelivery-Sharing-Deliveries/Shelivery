@@ -2,7 +2,6 @@
 
 import { useState, useRef } from 'react'
 import { Avatar } from './Avatar'
-import { uploadAvatar } from '@/lib/r2-storage'
 import { supabase } from '@/lib/supabase'
 
 interface AvatarUploadProps {
@@ -29,24 +28,43 @@ export function AvatarUpload({
     setUploading(true)
     
     try {
-      const { url, error } = await uploadAvatar(userId, file)
-      
-      if (error) {
-        alert(`Upload failed: ${error}`)
-      } else if (url) {
-        setAvatarUrl(url)
-        onUploadComplete?.(url)
-        
-        // Update user profile with new avatar URL
-        const { error: updateError } = await supabase
-          .from('user')
-          .update({ image: url })
-          .eq('id', userId)
+      // Upload to R2 via API
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('userId', userId)
 
-        if (updateError) {
-          console.error('Failed to update user profile:', updateError)
-        }
+      const response = await fetch('/api/upload/avatar', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || result.error) {
+        alert(`Upload failed: ${result.error || 'Unknown error'}`)
+        return
       }
+
+      if (!result.url) {
+        alert('Upload failed: No URL returned')
+        return
+      }
+
+      // Update database with new avatar URL (client-side with RLS)
+      const { error: updateError } = await supabase
+        .from('user')
+        .update({ image: result.url })
+        .eq('id', userId)
+
+      if (updateError) {
+        console.error('Failed to update user profile in database:', updateError)
+        alert('Upload succeeded but failed to update profile. Please refresh the page.')
+        return
+      }
+
+      // Update UI
+      setAvatarUrl(result.url)
+      onUploadComplete?.(result.url)
     } catch (error) {
       console.error('Upload error:', error)
       alert('Upload failed. Please try again.')

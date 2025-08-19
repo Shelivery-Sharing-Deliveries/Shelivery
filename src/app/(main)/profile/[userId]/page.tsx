@@ -3,6 +3,7 @@
 import { PageLayout } from '@/components/ui/PageLayout'; // <--- IMPORTANT: Adjust this path to your actual PageLayout component location
 import { PushNotificationSettings } from '@/components/ui/PushNotificationSettings';
 import { usePushNotifications } from '@/hooks/usePushNotifications'; // <-- ADD THIS IMPORT
+import { AvatarUpload } from '@/components/ui/AvatarUpload';
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -121,43 +122,60 @@ export default function ProfileEditPage() {
         }));
     };
 
+    // Handle image upload
     const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file || !userId) return;
 
         try {
-            // Import uploadAvatar function dynamically to avoid SSR issues
-            const { uploadAvatar } = await import('@/lib/r2-storage');
-            
-            // Upload to R2
-            const { url, error: uploadError } = await uploadAvatar(userId, file);
+            // Upload to R2 via API
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('userId', userId);
+            // Add timestamp (e.g. milliseconds since epoch)
+            const timestamp = Date.now().toString();
+            formData.append('timestamp', timestamp);
 
-            if (uploadError) {
-                console.error("Upload Error:", uploadError);
+            const response = await fetch('/api/upload/avatar', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || result.error) {
+                console.error('Upload failed:', result.error || 'Unknown error');
                 return;
             }
 
-            if (!url) {
-                console.error("Failed to get URL for uploaded image.");
+            if (!result.url) {
+                console.error('Upload failed: No URL returned');
                 return;
             }
 
-            setProfileImage(url);
-
-            // Save URL to user table
+            // Update database with new avatar URL (client-side with RLS)
             const { error: updateError } = await supabase
-                .from("user")
-                .update({ image: url })
-                .eq("id", userId);
+                .from('user')
+                .update({ image: result.url })
+                .eq('id', userId);
 
             if (updateError) {
-                console.error("Failed to update image in user table:", updateError);
-            } else {
-                console.log("Profile image updated successfully!");
+                console.error('Failed to update user profile in database:', updateError);
+                return;
             }
+
+            // Update UI
+            setProfileImage(result.url);
+            console.log("Profile image updated successfully!");
         } catch (error) {
-            console.error("Error during image upload:", error);
+            console.error('Upload error:', error);
         }
+    };
+
+    // Handle avatar upload completion
+    const handleAvatarUploadComplete = (url: string) => {
+        setProfileImage(url);
+        console.log("Profile image updated successfully!");
     };
 
 
@@ -243,36 +261,36 @@ export default function ProfileEditPage() {
         <PageLayout header={profileEditHeader} showNavigation={false}>
             {/* The original outer divs are now managed by PageLayout */}
             <div className="flex flex-col justify-between items-center flex-1 gap-8 pb-8">
-                <div className="flex flex-col items-center gap-8 w-full">
-                    {/* Profile Picture Upload */}
-                    <button
-                        className="relative w-[126px] h-[126px] rounded-[16px] bg-cover bg-center"
-                        style={{
-                            backgroundImage: profileImage
-                                ? `url(${profileImage})`
-                                : "url('/images/default-avatar.svg')",
-                        }}
-                        onClick={() => document.getElementById("profile-upload")?.click()}
-                    >
-                        <input
-                            type="file"
-                            id="profile-upload"
-                            className="hidden"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                        />
-                        <div className="absolute bottom-0 left-0 w-[126px] h-[31px] bg-[#FFE65B] rounded-b-[16px] flex items-center justify-center gap-1 px-4 py-2">
-                            <Image
-                                src="/icons/upload-icon.svg"
-                                alt="Upload"
-                                width={16}
-                                height={16}
+                    <div className="flex flex-col items-center gap-8 w-full">
+                        {/* Profile Picture Upload */}
+                        <button
+                            className="relative w-[126px] h-[126px] rounded-[16px] bg-cover bg-center"
+                            style={{
+                                backgroundImage: profileImage
+                                    ? `url(${profileImage})`
+                                    : "url('/avatars/default-avatar.png')",
+                            }}
+                            onClick={() => document.getElementById("profile-upload")?.click()}
+                        >
+                            <input
+                                type="file"
+                                id="profile-upload"
+                                className="hidden"
+                                accept="image/*"
+                                onChange={handleImageUpload}
                             />
-                            <span className="text-black font-inter text-sm font-medium leading-5">
-                                Upload
-                            </span>
-                        </div>
-                    </button>
+                            <div className="absolute bottom-0 left-0 w-[126px] h-[31px] bg-[#FFE65B] rounded-b-[16px] flex items-center justify-center gap-1 px-4 py-2">
+                                <Image
+                                    src="/icons/upload-icon.svg"
+                                    alt="Upload"
+                                    width={16}
+                                    height={16}
+                                />
+                                <span className="text-black font-inter text-sm font-medium leading-5">
+                                    Upload
+                                </span>
+                            </div>
+                        </button>
 
                     {/* Form Fields */}
                     <div className="flex flex-col gap-4 w-full">

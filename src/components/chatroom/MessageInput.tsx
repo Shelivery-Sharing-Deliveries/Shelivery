@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { uploadChatMedia } from "@/lib/r2-storage";
+import { useAuth } from "@/hooks/useAuth";
 
 interface MessageInputProps {
   chatroomId: string;
@@ -9,6 +9,7 @@ interface MessageInputProps {
 }
 
 export function MessageInput({ chatroomId, onSendMessage }: MessageInputProps) {
+  const { user } = useAuth();
   const [message, setMessage] = useState("");
   const [recording, setRecording] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -28,6 +29,26 @@ export function MessageInput({ chatroomId, onSendMessage }: MessageInputProps) {
       e.preventDefault();
       handleSubmit(e);
     }
+  };
+
+  const uploadMediaToAPI = async (file: File | Blob, messageId: string, mediaType: "audio" | "image") => {
+    if (!user?.id) {
+      throw new Error('User not authenticated');
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('chatroomId', chatroomId);
+    formData.append('messageId', messageId);
+    formData.append('mediaType', mediaType);
+    formData.append('userId', user.id);
+
+    const response = await fetch('/api/upload/chat-media', {
+      method: 'POST',
+      body: formData,
+    });
+
+    return response.json();
   };
 
   const toggleRecording = async () => {
@@ -56,15 +77,15 @@ export function MessageInput({ chatroomId, onSendMessage }: MessageInputProps) {
           const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
           
           try {
-            const { url, error } = await uploadChatMedia(chatroomId, messageId, audioBlob, "audio");
+            const result = await uploadMediaToAPI(audioBlob, messageId, "audio");
             
-            if (error) {
-              console.error("Audio upload failed:", error);
+            if (result.error) {
+              console.error("Audio upload failed:", result.error);
               // Fallback to blob URL
               const audioURL = URL.createObjectURL(audioBlob);
               onSendMessage({ type: "audio", url: audioURL });
-            } else if (url) {
-              onSendMessage({ type: "audio", url, messageId });
+            } else if (result.url) {
+              onSendMessage({ type: "audio", url: result.url, messageId });
             }
           } catch (error) {
             console.error("Audio upload error:", error);
@@ -96,18 +117,18 @@ export function MessageInput({ chatroomId, onSendMessage }: MessageInputProps) {
       const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
       try {
-        const { url, error } = await uploadChatMedia(chatroomId, messageId, file, "image");
+        const result = await uploadMediaToAPI(file, messageId, "image");
         
-        if (error) {
-          console.error("Image upload failed:", error);
+        if (result.error) {
+          console.error("Image upload failed:", result.error);
           // Fallback to base64
           const reader = new FileReader();
           reader.onloadend = () => {
             onSendMessage({ type: "image", url: reader.result as string });
           };
           reader.readAsDataURL(file);
-        } else if (url) {
-          onSendMessage({ type: "image", url, messageId });
+        } else if (result.url) {
+          onSendMessage({ type: "image", url: result.url, messageId });
         }
       } catch (error) {
         console.error("Image upload error:", error);

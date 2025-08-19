@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Tables } from "@/lib/supabase";
 import { Avatar } from "@/components/ui/Avatar";
-import { supabase } from "@/lib/supabase"; // Make sure this import is correct for your project
 import VoiceMessageBubble from "@/components/chatroom/VoiceMessageBubble"; // adjust the path
 
 interface ChatMessagesProps {
@@ -17,8 +16,6 @@ interface ChatMessagesProps {
 
 export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [signedUrls, setSignedUrls] = useState<{ [key: string]: string }>({});
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -29,33 +26,6 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
       messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
     }
   }, []);
-
-  // Generate signed URLs for all media messages
-  useEffect(() => {
-    const fetchSignedUrls = async () => {
-      const newUrls: { [key: string]: string } = {};
-      const mediaMessages = messages.filter(
-        (msg) => (msg.type === "image" || msg.type === "audio") && msg.content
-      );
-      await Promise.all(
-        mediaMessages.map(async (msg) => {
-          if (!signedUrls[msg.id]) {
-            const { data, error } = await supabase.storage
-              .from("chat-uploads")
-              .createSignedUrl(msg.content, 60 * 60);
-            if (data?.signedUrl) {
-              newUrls[msg.id] = data.signedUrl;
-            }
-          }
-        })
-      );
-      if (Object.keys(newUrls).length > 0) {
-        setSignedUrls((prev) => ({ ...prev, ...newUrls }));
-      }
-    };
-    fetchSignedUrls();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages]);
 
   const isToday = (date: Date) => {
     const today = new Date();
@@ -216,15 +186,15 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
                           ${message.type === "image" || message.type === "audio" ? "w-full" : ""}
                         `}
                       >
-                        {message.type === "image" && signedUrls[message.id] ? (
+                        {message.type === "image" && message.content ? (
                           <img
-                            src={signedUrls[message.id]}
+                            src={message.content}
                             alt="Sent image"
                             className="rounded-xl w-full h-auto"
                           />
-                        ) : message.type === "audio" && signedUrls[message.id] ? (
+                        ) : message.type === "audio" && message.content ? (
                           <VoiceMessageBubble
-                            src={signedUrls[message.id]!}
+                            src={message.content}
                             className="w-full"
                           />
                         ) : (

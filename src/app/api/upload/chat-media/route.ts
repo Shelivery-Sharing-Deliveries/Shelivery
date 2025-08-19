@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { uploadChatMedia } from '@/lib/r2-storage'
-import { supabase } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
-    const file = formData.get('file') as File | Blob
+    const file = formData.get('file') as File
     const chatroomId = formData.get('chatroomId') as string
     const messageId = formData.get('messageId') as string
     const mediaType = formData.get('mediaType') as 'image' | 'audio'
@@ -13,6 +12,13 @@ export async function POST(request: NextRequest) {
     if (!file || !chatroomId || !messageId || !mediaType) {
       return NextResponse.json(
         { error: 'File, chatroomId, messageId, and mediaType are required' },
+        { status: 400 }
+      )
+    }
+
+    if (!['image', 'audio'].includes(mediaType)) {
+      return NextResponse.json(
+        { error: 'mediaType must be either "image" or "audio"' },
         { status: 400 }
       )
     }
@@ -34,10 +40,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Optionally, you could store the media URL in a messages table here
-    // For now, we'll just return the URL and let the client handle storing it
-    
-    return NextResponse.json({ url, messageId })
+    return NextResponse.json({ url })
   } catch (error) {
     console.error('Chat media upload API error:', error)
     return NextResponse.json(

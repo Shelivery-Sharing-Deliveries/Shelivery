@@ -17,10 +17,12 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled, chatroomId }:
 
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | null>(null);
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -34,11 +36,17 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled, chatroomId }:
   };
 
   const sendSelectedImage = async () => {
-    if (!selectedImageFile) return;
-    await handleFileUpload(selectedImageFile, "image");
-    URL.revokeObjectURL(selectedImagePreview!);
-    setSelectedImageFile(null);
-    setSelectedImagePreview(null);
+    if (!selectedImageFile || isUploadingImage) return;
+    
+    setIsUploadingImage(true);
+    try {
+      await handleFileUpload(selectedImageFile, "image");
+      URL.revokeObjectURL(selectedImagePreview!);
+      setSelectedImageFile(null);
+      setSelectedImagePreview(null);
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   const cancelSelectedImage = () => {
@@ -99,15 +107,21 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled, chatroomId }:
   };
 
   const sendRecordedAudio = async () => {
-    if (!recordedAudioUrl) return;
-    const response = await fetch(recordedAudioUrl);
-    const blob = await response.blob();
-    const file = new File([blob], "voice-message.webm", { type: "audio/webm" });
-    const url = await onUploadFile(file, "audio");
-    if (url) {
-      onSendMessage({ type: "audio", url });
+    if (!recordedAudioUrl || isUploadingAudio) return;
+    
+    setIsUploadingAudio(true);
+    try {
+      const response = await fetch(recordedAudioUrl);
+      const blob = await response.blob();
+      const file = new File([blob], "voice-message.webm", { type: "audio/webm" });
+      const url = await onUploadFile(file, "audio");
+      if (url) {
+        onSendMessage({ type: "audio", url });
+      }
+      discardRecording();
+    } finally {
+      setIsUploadingAudio(false);
     }
-    discardRecording();
   };
 
   const discardRecording = () => {
@@ -158,14 +172,31 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled, chatroomId }:
             <button
               type="button"
               onClick={sendSelectedImage}
-              className="px-2 sm:px-3 py-1 bg-blue-500 text-white text-xs rounded-full hover:bg-blue-600 transition-colors touch-manipulation min-w-[44px] h-[32px] flex items-center justify-center"
+              disabled={isUploadingImage}
+              className={`px-2 sm:px-3 py-1 text-xs rounded-full transition-colors touch-manipulation min-w-[44px] h-[32px] flex items-center justify-center ${
+                isUploadingImage 
+                  ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                  : 'bg-blue-500 text-white hover:bg-blue-600'
+              }`}
             >
-              Send
+              {isUploadingImage ? (
+                <>
+                  <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin mr-1" />
+                  Sending...
+                </>
+              ) : (
+                'Send'
+              )}
             </button>
             <button
               type="button"
               onClick={cancelSelectedImage}
-              className="px-2 sm:px-3 py-1 bg-gray-300 text-gray-700 text-xs rounded-full hover:bg-gray-400 transition-colors touch-manipulation min-w-[44px] h-[32px] flex items-center justify-center"
+              disabled={isUploadingImage}
+              className={`px-2 sm:px-3 py-1 text-xs rounded-full transition-colors touch-manipulation min-w-[44px] h-[32px] flex items-center justify-center ${
+                isUploadingImage
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+              }`}
             >
               Cancel
             </button>
@@ -204,15 +235,29 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled, chatroomId }:
                 <button
                   type="button"
                   onClick={sendRecordedAudio}
-                  className="w-8 h-8 flex items-center justify-center text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-full transition-colors touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-[32px] sm:min-h-[32px]"
-                  title="Send voice message"
+                  disabled={isUploadingAudio}
+                  className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-[32px] sm:min-h-[32px] ${
+                    isUploadingAudio
+                      ? 'text-gray-400 cursor-not-allowed'
+                      : 'text-blue-500 hover:text-blue-700 hover:bg-blue-100'
+                  }`}
+                  title={isUploadingAudio ? "Uploading..." : "Send voice message"}
                 >
-                  <Send className="w-4 h-4" />
+                  {isUploadingAudio ? (
+                    <div className="w-4 h-4 border border-gray-400 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
                 </button>
                 <button
                   type="button"
                   onClick={discardRecording}
-                  className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors text-lg touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-[32px] sm:min-h-[32px]"
+                  disabled={isUploadingAudio}
+                  className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors text-lg touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-[32px] sm:min-h-[32px] ${
+                    isUploadingAudio
+                      ? 'text-gray-300 cursor-not-allowed'
+                      : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
                   title="Discard"
                 >
                   ×

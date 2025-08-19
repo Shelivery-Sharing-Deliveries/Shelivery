@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { compressImage, canCompressImage, getCompressionOptions } from '@/lib/image-compression';
 
 // Interface definitions... (unchanged)
 interface User {
@@ -92,32 +93,65 @@ export const useChatroomActions = ({
         file: File,
         folder: "images" | "audio"
     ): Promise<string | null> => {
-        if (!chatroomId) {
-            console.error("uploadFileToStorage: chatroomId is missing.");
-            setNotification('Chatroom ID is missing. Cannot upload file.');
+        if (!chatroomId || !currentUser) {
+            console.error("uploadFileToStorage: chatroomId or currentUser is missing.");
+            setNotification('Chatroom ID or user information is missing. Cannot upload file.');
             return null;
         }
-        const randomSuffix = Math.random().toString(36).substring(2, 10);
-        const fileName = `${folder}/${chatroomId}_${Date.now()}_${randomSuffix}_${file.name}`;
 
-        const { error } = await supabase.storage
-            .from("chat-uploads")
-            .upload(fileName, file, {
-                cacheControl: "3600",
-                upsert: false,
+        try {
+            let fileToUpload = file;
+
+            // Compress image if it's an image file
+            if (folder === 'images' && canCompressImage(file)) {
+                console.log('Compressing image before upload...');
+                try {
+                    const compressionOptions = getCompressionOptions('chat');
+                    fileToUpload = await compressImage(file, compressionOptions);
+                } catch (compressionError) {
+                    console.warn('Image compression failed, uploading original:', compressionError);
+                    // Continue with original file if compression fails
+                    fileToUpload = file;
+                }
+            }
+
+            // Generate a unique message ID for this upload
+            const messageId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+            const mediaType = folder === 'images' ? 'image' : 'audio';
+
+            // Upload to R2 via API
+            const formData = new FormData();
+            formData.append('file', fileToUpload);
+            formData.append('chatroomId', chatroomId);
+            formData.append('messageId', messageId);
+            formData.append('mediaType', mediaType);
+
+            const response = await fetch('/api/upload/chat-media', {
+                method: 'POST',
+                body: formData,
             });
 
-        if (error) {
-            console.error("File upload failed:", error);
-            setNotification(`File upload failed: ${error.message}`);
+            const result = await response.json();
+
+            if (!response.ok || result.error) {
+                console.error('File upload failed:', result.error || 'Unknown error');
+                setNotification(`File upload failed: ${result.error || 'Unknown error'}`);
+                return null;
+            }
+
+            if (!result.url) {
+                console.error('File upload failed: No URL returned');
+                setNotification('File upload failed: No URL returned');
+                return null;
+            }
+
+            // Return the URL - the calling component will handle sending the message
+            return result.url;
+        } catch (error) {
+            console.error('File upload error:', error);
+            setNotification('File upload failed. Please try again.');
             return null;
         }
-
-        const { data } = supabase.storage.from('chat-uploads').getPublicUrl(fileName);
-        if (data?.publicUrl) {
-            sendMessage({ type: folder === 'images' ? 'image' : 'audio', url: data.publicUrl });
-        }
-        return data.publicUrl;
     };
 
     const sendMessage = async (

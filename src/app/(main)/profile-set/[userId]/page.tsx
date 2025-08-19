@@ -10,6 +10,7 @@ import { PushNotificationSettings } from "@/components/ui/PushNotificationSettin
 import { usePushNotifications } from '@/hooks/usePushNotifications'; // NEW: Import usePushNotifications hook
 import { useNotify } from "@/components/ui/NotificationsContext"; // NEW: Import useNotify for pop-up messages
 import PrivacyPopup from "@/components/ui/PrivacyPopup";
+import { AvatarUpload } from "@/components/ui/AvatarUpload";
 
 // Assuming AuthLayout is in components/auth/AuthLayout.tsx
 import AuthLayout from "@/components/auth/AuthLayout";
@@ -192,51 +193,64 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
         }));
     };
 
-    // MODIFIED: handleImageUpload to use R2 storage instead of Supabase
+    // Handle image upload
     const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file || !userId) return;
 
-        setLoading(true); // Start loading for image upload
-        setError(null);
-
+        setLoading(true);
+        
         try {
-            // Import uploadAvatar function dynamically to avoid SSR issues
-            const { uploadAvatar } = await import('@/lib/r2-storage');
-            
-            // Upload to R2
-            const { url, error: uploadError } = await uploadAvatar(userId, file);
+            // Upload to R2 via API
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('userId', userId);
 
-            if (uploadError) {
-                throw new Error(uploadError);
+            const response = await fetch('/api/upload/avatar', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || result.error) {
+                notify({ type: "warning", title: "Upload Failed", message: result.error || 'Unknown error' });
+                return;
             }
 
-            if (!url) {
-                throw new Error("Failed to get URL for uploaded image.");
+            if (!result.url) {
+                notify({ type: "warning", title: "Upload Failed", message: 'No URL returned' });
+                return;
             }
 
-            setProfileImage(url);
-
-            // Save URL to user table
+            // Update database with new avatar URL (client-side with RLS)
             const { error: updateError } = await supabase
-                .from("user")
-                .update({ image: url })
-                .eq("id", userId);
+                .from('user')
+                .update({ image: result.url })
+                .eq('id', userId);
 
             if (updateError) {
-                throw updateError;
+                console.error('Failed to update user profile in database:', updateError);
+                notify({ type: "warning", title: "Database Error", message: 'Upload succeeded but failed to update profile. Please refresh the page.' });
+                return;
             }
 
+            // Update UI
+            setProfileImage(result.url);
             notify({ type: "success", title: "Success!", message: "Profile image updated successfully." });
-        } catch (err: any) {
-            console.error("Error during image upload or update:", err);
-            setError(err.message || "Failed to upload profile image.");
-            notify({ type: "warning", title: "Upload Failed", message: err.message || "Failed to upload profile image." });
+        } catch (error) {
+            console.error('Upload error:', error);
+            notify({ type: "warning", title: "Upload Failed", message: 'Upload failed. Please try again.' });
         } finally {
-            setLoading(false); // End loading for image upload
+            setLoading(false);
         }
     };
-    // END MODIFIED
+
+    // Handle avatar upload completion
+    const handleAvatarUploadComplete = (url: string) => {
+        setProfileImage(url);
+        notify({ type: "success", title: "Success!", message: "Profile image updated successfully." });
+    };
 
     // Save updated profile data to Supabase
     const handleSave = async () => {
@@ -376,7 +390,7 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
                             style={{
                                 backgroundImage: profileImage
                                     ? `url(${profileImage})`
-                                    : "url('/images/default-avatar.svg')",
+                                    : "url('/avatars/default-avatar.png')",
                             }}
                             onClick={() => document.getElementById("profile-upload")?.click()}
                         >
