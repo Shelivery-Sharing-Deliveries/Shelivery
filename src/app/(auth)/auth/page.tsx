@@ -1,6 +1,6 @@
 "use client";
-import { supabase } from "@/lib/supabase";
-import { useState, useEffect, Suspense } from "react";
+
+import React, { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image"; // Make sure Image is imported for the back arrow
 import {
@@ -13,6 +13,8 @@ import SetPasswordForm from "@/components/auth/SetPasswordForm";
 import EmailConfirmationForm from "@/components/auth/EmailConfirmationForm";
 import ForgotPasswordForm from "@/components/auth/ForgotPasswordForm"; // NEW: Import ForgotPasswordForm
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/lib/supabase"; // Ensure supabase is imported for profile checks
+
 
 type AuthStep =
     | "login"
@@ -42,7 +44,6 @@ function AuthPageContent() {
         loading: authLoading, // This is the loading state from useAuth, indicating initial session check
         signIn,
         signUp,
-        // signInWithOAuth, // Removed as it's not used in this component's logic
         checkUserExists,
     } = useAuth();
     const router = useRouter();
@@ -57,8 +58,6 @@ function AuthPageContent() {
                 console.log("AuthPage: User logged in. Checking profile completeness...");
 
                 // FETCHING: Include all fields that define a "complete" profile
-                // Based on ProfileEditPage, first_name, last_name, and favorite_store are updated.
-                // Dormitory is read-only, so we won't strictly rely on it for completeness here.
                 const { data: userData, error: profileError } = await supabase
                     .from("user")
                     .select("first_name, last_name, favorite_store") // Added last_name and favorite_store
@@ -103,9 +102,9 @@ function AuthPageContent() {
             console.log("AuthPage: Detected confirmed=true parameter in URL.");
             setMessage("Your email has been successfully confirmed! You can now log in.");
             setStep("login"); // Ensure the login form is visible
-            // Clear the query parameter from the URL to prevent the message
-            // from re-appearing on subsequent refreshes.
-            router.replace('/auth');
+            // Removed: router.replace('/auth');
+            // This redirect is handled by the checkProfileAndRedirect effect if the user is logged in,
+            // or the user remains on the login form if they are not.
         }
     }, [searchParams, router]);
 
