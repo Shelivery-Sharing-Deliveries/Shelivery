@@ -125,43 +125,38 @@ export default function ProfileEditPage() {
         const file = event.target.files?.[0];
         if (!file || !userId) return;
 
-        const fileExt = file.name.split(".").pop();
-        const filePath = `${userId}.${fileExt}`;
+        try {
+            // Import uploadAvatar function dynamically to avoid SSR issues
+            const { uploadAvatar } = await import('@/lib/r2-storage');
+            
+            // Upload to R2
+            const { url, error: uploadError } = await uploadAvatar(userId, file);
 
-        // Attempt to remove existing file (ignore if not found)
-        const { error: removeError } = await supabase.storage.from("avatars").remove([filePath]);
-        if (removeError && !removeError.message.includes("not found")) {
-            console.error("Error removing old avatar:", removeError);
-            // alert("Failed to remove old profile image."); // User feedback - removed alert as per instructions
-            return;
-        }
+            if (uploadError) {
+                console.error("Upload Error:", uploadError);
+                return;
+            }
 
-        // Upload new file, using upsert to simplify overwrite logic
-        const { error: uploadError } = await supabase.storage
-            .from("avatars")
-            .upload(filePath, file, { upsert: true });
+            if (!url) {
+                console.error("Failed to get URL for uploaded image.");
+                return;
+            }
 
-        if (uploadError) {
-            console.error("Upload Error:", uploadError);
-            // alert("Failed to upload new profile image."); // User feedback - removed alert as per instructions
-            return;
-        }
+            setProfileImage(url);
 
-        // Get public URL and add timestamp to bust cache
-        const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
-        const publicUrl = `${urlData?.publicUrl}?t=${Date.now()}`;
+            // Save URL to user table
+            const { error: updateError } = await supabase
+                .from("user")
+                .update({ image: url })
+                .eq("id", userId);
 
-        setProfileImage(publicUrl);
-
-        // Save URL to user table
-        const { error: updateError } = await supabase
-            .from("user")
-            .update({ image: publicUrl })
-            .eq("id", userId);
-
-        if (updateError) {
-            console.error("Failed to update image in user table:", updateError);
-            // alert("Failed to save image URL to your profile."); // User feedback - removed alert as per instructions
+            if (updateError) {
+                console.error("Failed to update image in user table:", updateError);
+            } else {
+                console.log("Profile image updated successfully!");
+            }
+        } catch (error) {
+            console.error("Error during image upload:", error);
         }
     };
 

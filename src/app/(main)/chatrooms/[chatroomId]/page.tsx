@@ -711,6 +711,7 @@ export default function ChatroomPage() {
                         onSendMessage={sendMessage}
                         onUploadFile={uploadFileToStorage}
                         disabled={chatroom.state === "resolved" || chatroom.state === "canceled"}
+                        chatroomId={chatroomId}
                     />
                 </div>
             </div>

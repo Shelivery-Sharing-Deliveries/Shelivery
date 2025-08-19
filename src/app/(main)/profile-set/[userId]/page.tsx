@@ -192,7 +192,7 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
         }));
     };
 
-    // MODIFIED: handleImageUpload with friend's logic and improved error handling/loading
+    // MODIFIED: handleImageUpload to use R2 storage instead of Supabase
     const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file || !userId) return;
@@ -201,48 +201,37 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
         setError(null);
 
         try {
-            const fileExt = file.name.split(".").pop();
-            const filePath = `avatars/${userId}.${fileExt}`;
-
-            // Step 1: Delete existing file if it exists
-            // Supabase storage.remove doesn't throw if file doesn't exist, so this is safe.
-            const { error: removeError } = await supabase.storage.from("avatars").remove([filePath]);
-            if (removeError) {
-                console.error("Error removing old avatar:", removeError);
-                // Decide if you want to stop here or proceed with upload despite remove error
-                // For now, we'll proceed as upload with upsert might handle it anyway.
-            }
-
-            // Step 2: Upload new file
-            const { error: uploadError } = await supabase.storage
-                .from("avatars")
-                .upload(filePath, file);
+            // Import uploadAvatar function dynamically to avoid SSR issues
+            const { uploadAvatar } = await import('@/lib/r2-storage');
+            
+            // Upload to R2
+            const { url, error: uploadError } = await uploadAvatar(userId, file);
 
             if (uploadError) {
-                throw uploadError; // Throw to be caught by the outer try-catch
+                throw new Error(uploadError);
             }
 
-            // Step 3: Get public URL
-            const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
-            const publicUrl = urlData?.publicUrl;
-
-            if (!publicUrl) {
-                throw new Error("Failed to get public URL for uploaded image.");
+            if (!url) {
+                throw new Error("Failed to get URL for uploaded image.");
             }
-            setProfileImage(publicUrl);
 
-            // Step 4: Save URL to user table
+            setProfileImage(url);
+
+            // Save URL to user table
             const { error: updateError } = await supabase
                 .from("user")
-                .update({ image: publicUrl })
+                .update({ image: url })
                 .eq("id", userId);
 
             if (updateError) {
-                throw updateError; // Throw to be caught by the outer try-catch
+                throw updateError;
             }
+
+            notify({ type: "success", title: "Success!", message: "Profile image updated successfully." });
         } catch (err: any) {
             console.error("Error during image upload or update:", err);
             setError(err.message || "Failed to upload profile image.");
+            notify({ type: "warning", title: "Upload Failed", message: err.message || "Failed to upload profile image." });
         } finally {
             setLoading(false); // End loading for image upload
         }

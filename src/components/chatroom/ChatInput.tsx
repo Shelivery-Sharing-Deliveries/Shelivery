@@ -8,9 +8,10 @@ interface ChatInputProps {
   onSendMessage: (content: string | { type: "audio" | "image"; url: string }) => void;
   onUploadFile: (file: File, folder: "images" | "audio") => Promise<string | null>;
   disabled?: boolean;
+  chatroomId: string;
 }
 
-export function ChatInput({ onSendMessage, onUploadFile, disabled }: ChatInputProps) {
+export function ChatInput({ onSendMessage, onUploadFile, disabled, chatroomId }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const imageInputRef = useRef<HTMLInputElement>(null);
 

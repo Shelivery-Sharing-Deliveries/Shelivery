@@ -43,11 +43,22 @@ export function Avatar({ src, name, size = "md", className }: AvatarProps) {
   const colorIndex = name ? name.charCodeAt(0) % initialsColors.length : 0;
   const backgroundColor = initialsColors[colorIndex];
 
-  // Resize if backend supports (Supabase example)
-  const optimizedSrc =
-    src && src.includes("supabase")
-      ? `${src}?width=128&quality=70`
-      : src || "";
+  // Optimize image URLs based on storage provider
+  const optimizedSrc = (() => {
+    if (!src) return "";
+    
+    // Supabase storage optimization
+    if (src.includes("supabase")) {
+      return `${src}?width=128&quality=70`;
+    }
+    
+    // Cloudflare R2 storage - no built-in transformations, use as-is
+    if (src.includes("r2.cloudflarestorage.com")) {
+      return src;
+    }
+    
+    return src;
+  })();
 
   return (
     <div

@@ -1,14 +1,17 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { uploadChatMedia } from "@/lib/r2-storage";
 
 interface MessageInputProps {
-  onSendMessage: (message: string | { type: "audio" | "image"; url: string }) => void;
+  chatroomId: string;
+  onSendMessage: (message: string | { type: "audio" | "image"; url: string; messageId?: string }) => void;
 }
 
-export function MessageInput({ onSendMessage }: MessageInputProps) {
+export function MessageInput({ chatroomId, onSendMessage }: MessageInputProps) {
   const [message, setMessage] = useState("");
   const [recording, setRecording] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
@@ -44,11 +47,33 @@ export function MessageInput({ onSendMessage }: MessageInputProps) {
           }
         };
 
-        mediaRecorder.onstop = () => {
+        mediaRecorder.onstop = async () => {
           const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-          const audioURL = URL.createObjectURL(audioBlob);
-
-          onSendMessage({ type: "audio", url: audioURL });
+          
+          setUploading(true);
+          
+          // Generate a temporary message ID for the upload
+          const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          
+          try {
+            const { url, error } = await uploadChatMedia(chatroomId, messageId, audioBlob, "audio");
+            
+            if (error) {
+              console.error("Audio upload failed:", error);
+              // Fallback to blob URL
+              const audioURL = URL.createObjectURL(audioBlob);
+              onSendMessage({ type: "audio", url: audioURL });
+            } else if (url) {
+              onSendMessage({ type: "audio", url, messageId });
+            }
+          } catch (error) {
+            console.error("Audio upload error:", error);
+            // Fallback to blob URL
+            const audioURL = URL.createObjectURL(audioBlob);
+            onSendMessage({ type: "audio", url: audioURL });
+          } finally {
+            setUploading(false);
+          }
 
           stream.getTracks().forEach((track) => track.stop());
         };
@@ -62,14 +87,39 @@ export function MessageInput({ onSendMessage }: MessageInputProps) {
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        onSendMessage({ type: "image", url: reader.result as string });
-      };
-      reader.readAsDataURL(file);
+      setUploading(true);
+      
+      // Generate a temporary message ID for the upload
+      const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      try {
+        const { url, error } = await uploadChatMedia(chatroomId, messageId, file, "image");
+        
+        if (error) {
+          console.error("Image upload failed:", error);
+          // Fallback to base64
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            onSendMessage({ type: "image", url: reader.result as string });
+          };
+          reader.readAsDataURL(file);
+        } else if (url) {
+          onSendMessage({ type: "image", url, messageId });
+        }
+      } catch (error) {
+        console.error("Image upload error:", error);
+        // Fallback to base64
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          onSendMessage({ type: "image", url: reader.result as string });
+        };
+        reader.readAsDataURL(file);
+      } finally {
+        setUploading(false);
+      }
     }
   };
 
@@ -78,25 +128,32 @@ export function MessageInput({ onSendMessage }: MessageInputProps) {
       <div className="flex items-center gap-3 p-4">
 
         {/* Image Upload Button */}
-        <label className="flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-gray-600 cursor-pointer">
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-            />
-          </svg>
+        <label className={`flex items-center justify-center w-8 h-8 rounded-full cursor-pointer ${
+          uploading ? "text-blue-500" : "text-gray-400 hover:text-gray-600"
+        }`}>
+          {uploading ? (
+            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+              />
+            </svg>
+          )}
           <input
             type="file"
             accept="image/*"
             className="hidden"
             onChange={handleImageUpload}
+            disabled={uploading}
           />
         </label>
 
