@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation'; // Import useSearchParams
 import PWAInstallGuidePopup from '@/components/homepage/PWAInstallGuidePopup';
+import { incrementInviteCounter } from '@/lib/invites';
 
 // Separate component that uses useSearchParams
 function HomePageContent() {
   const [showPwaPopup, setShowPwaPopup] = useState(false);
   const [checkingPwa, setCheckingPwa] = useState(true); // For loading state while detecting PWA
   const [inviteCodeFromUrl, setInviteCodeFromUrl] = useState<string | null>(null); // State to store invite code from URL
+  const counterIncrementedRef = useRef<string | null>(null); // Track which invite code we've already incremented
 
   const router = useRouter();
   const searchParams = useSearchParams(); // Initialize useSearchParams
@@ -32,6 +34,20 @@ function HomePageContent() {
     if (invite) {
       setInviteCodeFromUrl(invite);
       console.log("HomePage: Detected invite code in URL:", invite);
+      
+      // Increment counter only if we haven't already done it for this invite code
+      if (counterIncrementedRef.current !== invite) {
+        counterIncrementedRef.current = invite;
+        incrementInviteCounter(invite).then((success) => {
+          if (success) {
+            console.log(`HomePage: Successfully incremented counter for invite code: ${invite}`);
+          } else {
+            console.log(`HomePage: Failed to increment counter for invite code: ${invite} (code may not exist in database)`);
+          }
+        }).catch((error) => {
+          console.error(`HomePage: Error incrementing counter for invite code ${invite}:`, error);
+        });
+      }
     }
   }, [searchParams]); // Depend on searchParams to re-run if URL changes
 

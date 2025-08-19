@@ -94,3 +94,57 @@ export async function markInviteAsUsed(code: string, userId: string) {
         console.error("Unexpected error in markInviteAsUsed:", err);
     }
 }
+
+/**
+ * Increments the counter for an invite code if it exists in the database.
+ * Only increments the counter for valid invite codes that exist in the invitation table.
+ * @param code The invite code to increment the counter for.
+ * @returns Promise<boolean> - true if counter was incremented, false otherwise.
+ */
+export async function incrementInviteCounter(code: string): Promise<boolean> {
+    try {
+        // First check if the invite code exists in the table (without .single() to avoid the error)
+        const { data: existingInvites, error: selectError } = await supabase
+            .from("invitation")
+            .select("id, counter")
+            .eq("code", code);
+
+        if (selectError) {
+            console.error("Failed to find invite code:", selectError.message);
+            return false;
+        }
+
+        if (!existingInvites || existingInvites.length === 0) {
+            console.log(`Invite code ${code} not found in database, skipping counter increment`);
+            return false;
+        }
+
+        // Take the first invite (there should only be one due to unique constraint)
+        const existingInvite = existingInvites[0];
+        
+        if (!existingInvite) {
+            console.log(`Invite code ${code} not found in database, skipping counter increment`);
+            return false;
+        }
+
+        // If invite exists, increment the counter
+        const newCounterValue = (existingInvite.counter || 0) + 1;
+        const { error: updateError } = await supabase
+            .from("invitation")
+            .update({
+                counter: newCounterValue
+            })
+            .eq("code", code);
+
+        if (updateError) {
+            console.error("Failed to increment invite counter:", updateError.message);
+            return false;
+        }
+
+        //console.log(`Successfully incremented counter for invite code ${code} to ${newCounterValue}`);
+        return true;
+    } catch (err) {
+        console.error("Unexpected error in incrementInviteCounter:", err);
+        return false;
+    }
+}

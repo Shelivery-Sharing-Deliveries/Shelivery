@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -51,18 +51,21 @@ export type Database = {
           date: string
           id: number
           image: string | null
+          link: string | null
           shop_id: number | null
         }
         Insert: {
           date?: string
           id?: number
           image?: string | null
+          link?: string | null
           shop_id?: number | null
         }
         Update: {
           date?: string
           id?: number
           image?: string | null
+          link?: string | null
           shop_id?: number | null
         }
         Relationships: []
@@ -73,8 +76,10 @@ export type Database = {
           chatroom_id: string | null
           created_at: string | null
           id: string
+          is_delivered_by_user: boolean | null
           is_ready: boolean | null
           link: string | null
+          note: string | null
           pool_id: string | null
           shop_id: string
           status: Database["public"]["Enums"]["basket_status"] | null
@@ -86,8 +91,10 @@ export type Database = {
           chatroom_id?: string | null
           created_at?: string | null
           id?: string
+          is_delivered_by_user?: boolean | null
           is_ready?: boolean | null
           link?: string | null
+          note?: string | null
           pool_id?: string | null
           shop_id?: string
           status?: Database["public"]["Enums"]["basket_status"] | null
@@ -99,8 +106,10 @@ export type Database = {
           chatroom_id?: string | null
           created_at?: string | null
           id?: string
+          is_delivered_by_user?: boolean | null
           is_ready?: boolean | null
           link?: string | null
+          note?: string | null
           pool_id?: string | null
           shop_id?: string
           status?: Database["public"]["Enums"]["basket_status"] | null
@@ -179,30 +188,39 @@ export type Database = {
           admin_id: string | null
           created_at: string | null
           expire_at: string | null
+          extended_once_before_ordered: boolean | null
           id: string
           last_amount: number | null
           pool_id: string
           state: Database["public"]["Enums"]["chatroom_state"] | null
+          total_extension_days_delivered_state: number | null
+          total_extension_days_ordered_state: number | null
           updated_at: string | null
         }
         Insert: {
           admin_id?: string | null
           created_at?: string | null
           expire_at?: string | null
+          extended_once_before_ordered?: boolean | null
           id?: string
           last_amount?: number | null
           pool_id: string
           state?: Database["public"]["Enums"]["chatroom_state"] | null
+          total_extension_days_delivered_state?: number | null
+          total_extension_days_ordered_state?: number | null
           updated_at?: string | null
         }
         Update: {
           admin_id?: string | null
           created_at?: string | null
           expire_at?: string | null
+          extended_once_before_ordered?: boolean | null
           id?: string
           last_amount?: number | null
           pool_id?: string
           state?: Database["public"]["Enums"]["chatroom_state"] | null
+          total_extension_days_delivered_state?: number | null
+          total_extension_days_ordered_state?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -267,6 +285,7 @@ export type Database = {
       invitation: {
         Row: {
           code: string
+          counter: number | null
           created_at: string | null
           expires_at: string
           id: string
@@ -276,6 +295,7 @@ export type Database = {
         }
         Insert: {
           code: string
+          counter?: number | null
           created_at?: string | null
           expires_at: string
           id?: string
@@ -285,6 +305,7 @@ export type Database = {
         }
         Update: {
           code?: string
+          counter?: number | null
           created_at?: string | null
           expires_at?: string
           id?: string
@@ -396,7 +417,7 @@ export type Database = {
           read: boolean | null
           title: string
           type: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           chatroom_id?: string | null
@@ -406,7 +427,7 @@ export type Database = {
           read?: boolean | null
           title: string
           type?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           chatroom_id?: string | null
@@ -416,7 +437,7 @@ export type Database = {
           read?: boolean | null
           title?: string
           type?: string | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -546,6 +567,68 @@ export type Database = {
           },
         ]
       }
+      privacy_policy: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: number
+          version: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: never
+          version: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: never
+          version?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string | null
+          endpoint: string
+          id: string
+          p256dh: string
+          updated_at: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string | null
+          endpoint: string
+          id?: string
+          p256dh: string
+          updated_at?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string | null
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          updated_at?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey1"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shop: {
         Row: {
           category: string | null
@@ -585,6 +668,27 @@ export type Database = {
           min_amount?: number | null
           minimum_order?: number | null
           name?: string
+        }
+        Relationships: []
+      }
+      terms_of_service: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: number
+          version: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: never
+          version: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: never
+          version?: string
         }
         Relationships: []
       }
@@ -635,6 +739,32 @@ export type Database = {
           },
         ]
       }
+      user_activity: {
+        Row: {
+          is_active: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          is_active?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          is_active?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_activity_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_feedback: {
         Row: {
           created_at: string | null
@@ -672,14 +802,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      bytea_to_text: {
+        Args: { data: string }
+        Returns: string
+      }
       check_user_exists: {
         Args: { p_email: string }
         Returns: boolean
       }
+      confirm_user_delivery: {
+        Args: { p_chatroom_id: string; p_user_id: string }
+        Returns: Json
+      }
       create_basket_and_join_pool: {
         Args:
+          | { amount_param: number; link_param?: string; shop_id_param: number }
           | { basket_data: Json }
-          | { shop_id_param: number; amount_param: number; link_param?: string }
         Returns: string
       }
       create_invitation: {
@@ -687,17 +825,19 @@ export type Database = {
         Returns: string
       }
       ensure_pool_for_shop_dorm: {
-        Args: { p_shop_id: string; p_dormitory_id: number }
+        Args: { p_dormitory_id: number; p_shop_id: string }
         Returns: string
       }
       ensure_user_pool: {
         Args:
-          | { p_user_id: string; p_shop_id: string }
-          | { user_id_param: string; shop_id_param: number }
+          | { p_shop_id: string; p_user_id: string }
+          | { shop_id_param: number; user_id_param: string }
         Returns: string
       }
       extend_chatroom_expire_at: {
-        Args: { p_chatroom_id: string }
+        Args:
+          | { p_chatroom_id: string }
+          | { p_chatroom_id: string; p_days_to_extend: number }
         Returns: string
       }
       get_dashboard_data: {
@@ -708,17 +848,84 @@ export type Database = {
         Args: { pool_id_param: string }
         Returns: Json
       }
+      http: {
+        Args: { request: Database["public"]["CompositeTypes"]["http_request"] }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+      }
+      http_delete: {
+        Args:
+          | { content: string; content_type: string; uri: string }
+          | { uri: string }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+      }
+      http_get: {
+        Args: { data: Json; uri: string } | { uri: string }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+      }
+      http_head: {
+        Args: { uri: string }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+      }
+      http_header: {
+        Args: { field: string; value: string }
+        Returns: Database["public"]["CompositeTypes"]["http_header"]
+      }
+      http_list_curlopt: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          curlopt: string
+          value: string
+        }[]
+      }
+      http_patch: {
+        Args: { content: string; content_type: string; uri: string }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+      }
+      http_post: {
+        Args:
+          | { content: string; content_type: string; uri: string }
+          | { data: Json; uri: string }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+      }
+      http_put: {
+        Args: { content: string; content_type: string; uri: string }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+      }
+      http_reset_curlopt: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      http_set_curlopt: {
+        Args: { curlopt: string; value: string }
+        Returns: boolean
+      }
       leave_chatroom: {
         Args: { chatroom_id_param: string }
         Returns: boolean
+      }
+      mark_basket_as_delivered: {
+        Args: { p_basket_id: string }
+        Returns: string
+      }
+      mark_chatroom_as_delivered_by_admin: {
+        Args: { p_chatroom_id: string }
+        Returns: string
       }
       resolve_chatroom: {
         Args: { chatroom_id_param: string }
         Returns: boolean
       }
+      resolve_chatroom_baskets: {
+        Args: { p_chatroom_id: string }
+        Returns: undefined
+      }
       seed_users_with_auth_no_delete: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      text_to_bytea: {
+        Args: { data: string }
+        Returns: string
       }
       toggle_basket_ready: {
         Args: { basket_id_param: string }
@@ -727,6 +934,10 @@ export type Database = {
       track_event: {
         Args: { event_type_param: string; metadata_param?: Json }
         Returns: undefined
+      }
+      urlencode: {
+        Args: { data: Json } | { string: string } | { string: string }
+        Returns: string
       }
       use_invitation_code: {
         Args: { invitation_code: string; user_id: string }
@@ -738,11 +949,33 @@ export type Database = {
       }
     }
     Enums: {
-      basket_status: "in_pool" | "in_chat" | "resolved"
-      chatroom_state: "waiting" | "active" | "ordered" | "resolved" | "canceled"
+      basket_status: "in_pool" | "in_chat" | "ordered" | "resolved"
+      chatroom_state:
+        | "waiting"
+        | "active"
+        | "ordered"
+        | "delivered"
+        | "resolved"
+        | "canceled"
     }
     CompositeTypes: {
-      [_ in never]: never
+      http_header: {
+        field: string | null
+        value: string | null
+      }
+      http_request: {
+        method: unknown | null
+        uri: string | null
+        headers: Database["public"]["CompositeTypes"]["http_header"][] | null
+        content_type: string | null
+        content: string | null
+      }
+      http_response: {
+        status: number | null
+        content_type: string | null
+        headers: Database["public"]["CompositeTypes"]["http_header"][] | null
+        content: string | null
+      }
     }
   }
 }
@@ -867,8 +1100,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      basket_status: ["in_pool", "in_chat", "resolved"],
-      chatroom_state: ["waiting", "active", "ordered", "resolved", "canceled"],
+      basket_status: ["in_pool", "in_chat", "ordered", "resolved"],
+      chatroom_state: [
+        "waiting",
+        "active",
+        "ordered",
+        "delivered",
+        "resolved",
+        "canceled",
+      ],
     },
   },
 } as const
