@@ -31,20 +31,12 @@ const tutorialSteps: TutorialStep[] = [
         borderRadius: '9999px', // Assuming a circular button
     },
     {
-        id: 'order-details-admin-section',
-        title: 'Group Admin',
-        text: 'This section shows who the current group administrator is. The admin can manage group settings and actions.',
+        id: 'order-details-ready-status',
+        title: 'Order Status & Progress',
+        text: 'This card shows the current status of your group order, including total amount and time remaining.',
         position: 'bottom',
         view: 'orderDetails',
-        borderRadius: '1.5rem', // Assuming a card-like section
-    },
-    {
-        id: 'change-admin-button',
-        title: 'Change Admin',
-        text: 'If you are the current admin, you can transfer admin rights to another member here.',
-        position: 'top',
-        view: 'orderDetails',
-        borderRadius: '1rem', // Assuming a common button border-radius
+        borderRadius: '1.5rem',
     },
     {
         id: 'order-details-members-list',
@@ -55,16 +47,8 @@ const tutorialSteps: TutorialStep[] = [
         borderRadius: '1.5rem', // Assuming a list/card-like section
     },
     {
-        id: 'order-details-ready-status', // Assuming an ID for the "Ready to Order" status or similar text
-        title: 'Ready to Order Status',
-        text: 'Each member\'s "Ready to Order" status is shown here. Once everyone is ready and the minimum amount is met, the order can be placed.',
-        position: 'bottom',
-        view: 'orderDetails',
-        borderRadius: '0.75rem', // Assuming a badge or small card
-    },
-    {
         id: 'mark-as-ordered-button',
-        title: 'Order Placed',
+        title: 'Mark Order as Placed',
         text: 'Once the group has decided, the admin can mark the order as placed. This will move the chatroom to the next stage.',
         position: 'top',
         view: 'orderDetails',
@@ -72,14 +56,14 @@ const tutorialSteps: TutorialStep[] = [
     },
     {
         id: 'mark-as-delivered-button',
-        title: 'Order Delivered',
+        title: 'Mark Order as Delivered',
         text: 'After the order has been delivered, the admin can mark it as delivered here, resolving the chatroom.',
         position: 'top',
         view: 'orderDetails',
         borderRadius: '1rem', // Assuming a common button border-radius
     },
     {
-        id: 'extend-time-button', // Added new tutorial step for Extend Time button
+        id: 'extend-time-button',
         title: 'Extend Order Time',
         text: 'As the administrator, you can extend the deadline for this order, giving members more time to join or finalize their baskets.',
         position: 'top',
@@ -97,12 +81,21 @@ const tutorialSteps: TutorialStep[] = [
 ];
 
 export default function ChatroomPageTutorial({ onComplete, currentView, setCurrentView }: ChatroomPageTutorialProps) {
-    const [currentStepIndex, setCurrentStepIndex] = useState(0);
+    const [currentStepIndex, setCurrentStepIndex] = useState(() => {
+        // Initialize step index based on starting view
+        if (currentView === 'orderDetails') {
+            const firstOrderDetailsStepIndex = tutorialSteps.findIndex(step => step.view === 'orderDetails');
+            console.log("Tutorial: Initializing in orderDetails view, starting at step", firstOrderDetailsStepIndex);
+            return firstOrderDetailsStepIndex !== -1 ? firstOrderDetailsStepIndex : 0;
+        }
+        return 0;
+    });
     const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
     const [highlightGlowStyle, setHighlightGlowStyle] = useState<React.CSSProperties>({});
     // This style will be applied to the div that creates the dark overlay with the transparent hole
     const [spotlightOverlayStyle, setSpotlightOverlayStyle] = useState<React.CSSProperties>({});
     const tooltipRef = useRef<HTMLDivElement>(null);
+    const [isProcessingViewChange, setIsProcessingViewChange] = useState(false);
 
     // This useEffect handles the highlight and tooltip positioning
     const updateHighlightAndTooltip = useCallback(() => {
@@ -121,6 +114,17 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
         // Crucial check: if the current step is not meant for the current view, don't try to highlight
         if (currentStep.view !== currentView) {
             console.log(`Tutorial: Current step (${currentStep.id}, view: ${currentStep.view}) does not match currentView (${currentView}). Not highlighting.`);
+            
+            // If we're in orderDetails view but the tutorial expects chat view, skip to the first orderDetails step
+            if (currentView === 'orderDetails' && currentStep.view === 'chat') {
+                console.log("Tutorial: Skipping to first orderDetails step since we're already in orderDetails view.");
+                const firstOrderDetailsStepIndex = tutorialSteps.findIndex(step => step.view === 'orderDetails');
+                if (firstOrderDetailsStepIndex !== -1) {
+                    setCurrentStepIndex(firstOrderDetailsStepIndex);
+                    return;
+                }
+            }
+            
             // Do NOT increment step here. Wait for the view to change.
             return;
         }
@@ -144,9 +148,6 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
             console.log(`Tutorial: Element with ID "${currentStep.id}" FOUND. Highlighting.`);
         }
 
-        // Find the scrollable container (PageLayout's content area)
-        const scrollableContainer = targetElement.closest('.overflow-y-auto') as HTMLElement;
-        
         const rect = targetElement.getBoundingClientRect();
 
         // Check if the element has a valid position
@@ -169,27 +170,28 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
         // This padding now matches the border thickness (2px) on each side.
         const padding = 2;
 
-        // Style for the spotlight hole using fixed positioning
+        // Style for the transparent div that creates the "hole" with its box-shadow
         setSpotlightOverlayStyle({
-            position: 'fixed',
-            top: rect.top,
-            left: rect.left,
-            width: rect.width,
-            height: rect.height,
-            borderRadius: currentStep.borderRadius || '1rem',
-            boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.7)',
-            zIndex: 999,
+            position: 'absolute',
+            top: rect.top + window.scrollY - padding, // Apply padding
+            left: rect.left + window.scrollX - padding, // Apply padding
+            width: rect.width + (padding * 2), // Adjust width for padding
+            height: rect.height + (padding * 2), // Adjust height for padding
+            borderRadius: currentStep.borderRadius || '1rem', // Apply rounded corners to the hole
+            backgroundColor: 'transparent', // Crucial: makes the div itself transparent
+            pointerEvents: 'none', // Allows clicks to pass through to the actual element underneath
             transition: 'all 0.3s ease-in-out',
         });
 
-        // Calculate highlight glow style using fixed positioning
+        // Calculate highlight glow style (a glow/border around the element)
         setHighlightGlowStyle({
-            position: 'fixed',
-            top: rect.top - padding,
-            left: rect.left - padding,
+            position: 'absolute',
+            top: rect.top + window.scrollY - padding,
+            left: rect.left + window.scrollX - padding,
             width: rect.width + (padding * 2),
             height: rect.height + (padding * 2),
-            borderRadius: currentStep.borderRadius || '1rem',
+            borderRadius: currentStep.borderRadius || '1rem', // Use step's borderRadius
+            boxShadow: '0 0 0 rgba(255, 219, 13, 0.7)', // Removed spread radius; border class handles thickness
             zIndex: 1000,
             transition: 'all 0.3s ease-in-out',
             pointerEvents: 'none',
@@ -224,18 +226,13 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
         left = Math.max(buffer, Math.min(left, window.innerWidth - tooltipWidth - buffer));
 
         setTooltipStyle({
-            position: 'fixed',
-            top: top,
-            left: left,
+            position: 'absolute',
+            top: top + window.scrollY,
+            left: left + window.scrollX,
             zIndex: 1002,
         });
 
-        // Scroll the element into view within its container
-        if (scrollableContainer) {
-            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
-        } else {
-            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
     }, [currentStepIndex, onComplete, currentView]);
 
@@ -243,40 +240,18 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
         console.log("Tutorial: Main useEffect triggered. currentStepIndex:", currentStepIndex, "currentView:", currentView);
         const timer = setTimeout(updateHighlightAndTooltip, 50); // Small delay to ensure DOM is ready
 
-        // Find the scrollable container to listen for its scroll events
-        const currentStepId = tutorialSteps[currentStepIndex]?.id;
-        const targetElement = currentStepId ? document.getElementById(currentStepId) : null;
-        const scrollableContainer = targetElement?.closest('.overflow-y-auto') as HTMLElement;
-
-        // Event handlers
-        const handleUpdate = () => {
-            // Small delay to ensure DOM has updated
-            setTimeout(updateHighlightAndTooltip, 10);
+        const handleResizeOrScroll = () => {
+            updateHighlightAndTooltip();
         };
 
-        // Add event listeners
-        window.addEventListener('resize', handleUpdate);
-        window.addEventListener('scroll', handleUpdate, true); // Use capture to catch all scroll events
-        
-        // Listen specifically to the scrollable container if found
-        if (scrollableContainer) {
-            scrollableContainer.addEventListener('scroll', handleUpdate);
-        }
-        
-        // Added a click event listener to handle cases where an element's position might change after a user interaction.
-        window.addEventListener('click', handleUpdate);
+        window.addEventListener('resize', handleResizeOrScroll);
+        window.addEventListener('scroll', handleResizeOrScroll);
 
         return () => {
             console.log("Tutorial: Cleaning up event listeners and z-index.");
             clearTimeout(timer); // Clear the timeout on unmount
-            window.removeEventListener('resize', handleUpdate);
-            window.removeEventListener('scroll', handleUpdate, true);
-            window.removeEventListener('click', handleUpdate);
-            
-            if (scrollableContainer) {
-                scrollableContainer.removeEventListener('scroll', handleUpdate);
-            }
-            
+            window.removeEventListener('resize', handleResizeOrScroll);
+            window.removeEventListener('scroll', handleResizeOrScroll);
             document.querySelectorAll('[data-tutorial-highlighted="true"]').forEach(el => {
                 (el as HTMLElement).style.zIndex = '';
                 el.removeAttribute('data-tutorial-highlighted');
@@ -284,29 +259,39 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
         };
     }, [currentStepIndex, updateHighlightAndTooltip, currentView]);
 
-    // NEW useEffect: Handles step advancement after view changes for specific actions
+    // Handle view changes for specific actions - only when user actually clicks the menu button
     useEffect(() => {
         const currentStep = tutorialSteps[currentStepIndex];
-        // This condition checks if we are on the 'chat-menu-button' step,
-        // and the view has successfully transitioned to 'orderDetails'.
-        if (currentStep?.action === 'clickMenuButton' && currentView === 'orderDetails') {
-            console.log("Tutorial: View changed to orderDetails, advancing step for clickMenuButton action.");
-            setCurrentStepIndex(prev => prev + 1);
+        
+        // Only advance step if we're processing a view change from the menu button click
+        // and we're actually on the chat-menu-button step (not already in orderDetails)
+        if (isProcessingViewChange && 
+            currentStep?.action === 'clickMenuButton' && 
+            currentStep.id === 'chat-menu-button' && 
+            currentView === 'orderDetails') {
+            console.log("Tutorial: View changed to orderDetails after menu button click, advancing step.");
+            setTimeout(() => {
+                setCurrentStepIndex(prev => prev + 1);
+                setIsProcessingViewChange(false); // Reset the flag
+            }, 100);
         }
-    }, [currentView, currentStepIndex]); // Only re-run when view or step index changes
+    }, [currentView, currentStepIndex, isProcessingViewChange]);
 
     const handleNext = () => {
         const currentStep = tutorialSteps[currentStepIndex];
         console.log("Tutorial: Next button clicked. Current step index:", currentStepIndex);
 
         if (currentStep?.action === 'clickMenuButton') {
+            // Set flag to indicate we're processing a view change
+            setIsProcessingViewChange(true);
+            
             // Trigger the click on the menu button
             const menuButton = document.getElementById('chat-menu-button');
             if (menuButton) {
                 menuButton.click(); // Simulate click to change view in parent
                 console.log("Tutorial: Simulating click on chat menu button. Waiting for view change to advance step.");
             }
-            // Do NOT increment step here. The new useEffect will handle it once view changes.
+            // Do NOT increment step here. The view change useEffect will handle it once view changes.
         } else if (currentStepIndex < tutorialSteps!.length - 1) { // Non-null assertion for tutorialSteps.length
             setCurrentStepIndex(prev => prev + 1);
         } else {
