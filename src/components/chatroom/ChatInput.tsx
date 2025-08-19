@@ -74,13 +74,7 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled, chatroomId }:
 
   // Audio Recording
   const startRecording = async () => {
-    // Prevent starting new recording if already recording or uploading
-    if (isRecording || isUploadingAudio) return;
-    
-    // Clean up any existing resources before starting new recording
-    releaseAudioResources();
     setRecordedAudioUrl(null);
-    
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
@@ -121,8 +115,6 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled, chatroomId }:
     } catch (error) {
       console.error('Error accessing microphone', error);
       alert('Microphone access failed. Ensure your browser has permission and supports audio recording.');
-      // Clean up on error
-      releaseAudioResources();
     }
   };
 
@@ -149,19 +141,6 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled, chatroomId }:
     }
   };
 
-  const cleanupRecording = () => {
-    // Clean up the blob URL to prevent memory leaks
-    if (recordedAudioUrl) {
-      URL.revokeObjectURL(recordedAudioUrl);
-    }
-    
-    setRecordedAudioUrl(null);
-    setRecordingTime(0);
-    
-    // Release audio resources
-    releaseAudioResources();
-  };
-
   const sendRecordedAudio = async () => {
     if (!recordedAudioUrl || isUploadingAudio) return;
     
@@ -174,17 +153,25 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled, chatroomId }:
       if (url) {
         onSendMessage({ type: "audio", url });
       }
-      // Clean up after successful send
-      cleanupRecording();
-    } catch (error) {
-      console.error('Error sending audio:', error);
+      discardRecording();
     } finally {
       setIsUploadingAudio(false);
+      // Release audio resources after sending
+      releaseAudioResources();
     }
   };
 
   const discardRecording = () => {
-    cleanupRecording();
+    // Clean up the blob URL to prevent memory leaks
+    if (recordedAudioUrl) {
+      URL.revokeObjectURL(recordedAudioUrl);
+    }
+    
+    setRecordedAudioUrl(null);
+    setRecordingTime(0);
+    
+    // Release audio resources when discarding
+    releaseAudioResources();
   };
 
   const formatTime = (seconds: number) => {
