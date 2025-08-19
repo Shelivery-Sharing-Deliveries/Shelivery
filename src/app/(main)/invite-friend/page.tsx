@@ -7,7 +7,9 @@ import Header from "@/components/invite-friend/Header";
 import InviteCard from "@/components/invite-friend/InviteCard";
 import InviteForm from "@/components/invite-friend/InviteForm";
 import { generateInvite } from "@/lib/invites";
-import { PageLayout } from "@/components/ui/PageLayout"; // Corrected import path for PageLayout
+import { PageLayout } from "@/components/ui/PageLayout"; 
+// ShareButton is now imported and used within InviteForm.tsx
+// No need to import it directly here anymore.
 
 export default function InviteFriendPage() {
   const { user, loading: authLoading } = useAuth();
@@ -33,7 +35,7 @@ export default function InviteFriendPage() {
     fetchCode();
   }, [user, authLoading, router]);
 
-  const handleCopyCode = () => {
+  const handleCopyCode = () => { // Keep this for now, even though the direct 'copy' button is gone, in case onCopyCode is used elsewhere.
     if (!inviteCode) return;
     navigator.clipboard.writeText(inviteCode);
     console.log("Invite code copied!"); // Replaced alert
@@ -42,11 +44,15 @@ export default function InviteFriendPage() {
 
   const handleInviteFriend = () => {
     if (!inviteCode) return;
-    const fullUrl = `${window.location.origin}/auth?invite=${inviteCode}`;
+    // MODIFIED: Generate link to the main page with invite code
+    const fullUrl = `${window.location.origin}/?invite=${inviteCode}`;
     navigator.clipboard.writeText(fullUrl);
     console.log("Invite link copied! Send it to your friend."); // Replaced alert
     // In a real app, you might show a toast notification here
   };
+
+  // MODIFIED: Generate the full invitation link for the ShareButton to the main page
+  const fullInviteLink = inviteCode ? `${window.location.origin}/?invite=${inviteCode}` : "";
 
   // Extract the Header component to be passed as the 'header' prop
   const headerContent = (
@@ -54,15 +60,8 @@ export default function InviteFriendPage() {
   );
 
   return (
-    // Wrap the entire page content with PageLayout
-    // The headerContent will be rendered in the fixed header area.
-    // showNavigation is true by default, but you can set it to false if this page doesn't need it.
     <PageLayout header={headerContent}> 
-      {/*
-        The main content area. PageLayout already provides horizontal padding (px-4)
-        and manages overall layout, so removed redundant padding and flex-1 from here.
-      */}
-      <div className="flex flex-col items-center gap-6 py-6 w-full"> {/* Added w-full for full width within PageLayout's content area */}
+      <div className="flex flex-col items-center gap-6 py-6 w-full">
         {loading ? (
           <p className="text-gray-600">Loading your invite code...</p>
         ) : (
@@ -74,8 +73,8 @@ export default function InviteFriendPage() {
             <div className="w-full">
               <InviteForm
                 inviteCode={inviteCode || ""}
-                onCopyCode={handleCopyCode}
                 onInviteFriend={handleInviteFriend}
+                fullInviteLink={fullInviteLink} // Pass the full link to InviteForm for the ShareButton
               />
             </div>
           </>

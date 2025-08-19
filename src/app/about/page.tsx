@@ -1,10 +1,30 @@
-// app/about/page.tsx
 "use client"; // This component is a client component for potential future interactivity
 
+import React, { useEffect, useState, Suspense } from 'react'; // Added useState, useEffect, and Suspense
 import Image from 'next/image'; // For optimized images
-import Link from 'next/link';   // For navigation
+// import Link from 'next/link';   // Removed: No longer directly using Link for these buttons
+import { useSearchParams } from 'next/navigation'; // Added: Import useSearchParams
 
-export default function AboutPage() {
+// Separate component that uses useSearchParams
+function AboutPageContent() {
+  const [inviteCodeFromUrl, setInviteCodeFromUrl] = useState<string | null>(null); // Added: State to store invite code from URL
+  const searchParams = useSearchParams(); // Added: Initialize useSearchParams
+
+  // Added: New useEffect to read invite code from URL
+  useEffect(() => {
+    const invite = searchParams.get('invite');
+    if (invite) {
+      setInviteCodeFromUrl(invite);
+      console.log("AboutPage: Detected invite code in URL:", invite);
+    }
+  }, [searchParams]); // Depend on searchParams to re-run if URL changes
+
+  // Corrected: Construct the dynamic href as a STRING for "Get Started" links
+  // This ensures compatibility with standard <a> tags.
+  const authLinkHref = inviteCodeFromUrl
+    ? `/auth?invite=${inviteCodeFromUrl}`
+    : "/auth";
+
   return (
     // Main container for the entire page, applying the dominant background color
     // and ensuring content is centered and takes full height.
@@ -28,19 +48,17 @@ export default function AboutPage() {
           <p className="text-lg md:text-xl mb-8">
             Sustainable Progress Goals<br />Report June 2025
           </p>
-          {/* Get Started Button - Reusing styles from your landing page buttons */}
-          <Link href="/auth">
-            <button
-              className="rounded-lg px-6 py-3 text-base font-semibold shadow-sm hover:opacity-80 transition-opacity"
-              style={{
-                backgroundColor: '#FFD700', // Exact yellow from Canva
-                color: '#245b7b',            // Exact dark blue from Canva
-                border: 'none',
-              }}
-            >
-              GET STARTED
-            </button>
-          </Link>
+          {/* Get Started Button - Now using <a> tag with dynamic string href */}
+          <a href={authLinkHref}
+             className="rounded-lg px-6 py-3 text-base font-semibold shadow-sm hover:opacity-80 transition-opacity"
+             style={{
+               backgroundColor: '#FFD700', // Exact yellow from Canva
+               color: '#245b7b',            // Exact dark blue from Canva
+               border: 'none',
+             }}
+          >
+            GET STARTED
+          </a>
         </div>
 
         <div className="lg:w-1/2 flex justify-center items-center h-[40vh]">
@@ -71,21 +89,21 @@ export default function AboutPage() {
               {/* Icon - Placeholder */}
               <Image src="/icons/wallet.svg" alt="High Fees" width={60} height={60} className="mb-4" />
               <h3 className="text-xl font-semibold mb-2" style={{ color: '#FFD700' }}>High Delivery Fees</h3>
-              <p className="text-base text-white">Individual orders often come with hefty delivery charges, making everyday essentials expensive for students.</p>
+              <p className="text-base text-white">Most delivery services charge full price even if you’re only ordering a few items. Paying high fees for small packages makes delivery feel expensive and unfair.</p>
             </div>
             {/* Problem 2 */}
             <div className="flex flex-col items-center text-center p-6 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
               {/* Icon - Placeholder */}
               <Image src="/icons/clock.svg" alt="Time-Consuming" width={60} height={60} className="mb-4" />
-              <h3 className="text-xl font-semibold mb-2" style={{ color: '#FFD700' }}>Time-Consuming Coordination</h3>
-              <p className="text-base text-white">Organizing group orders manually is a headache, involving endless messages and missed deadlines.</p>
+              <h3 className="text-xl font-semibold mb-2" style={{ color: '#FFD700' }}>Time Wasted Waiting</h3>
+              <p className="text-base text-white">Ordinary deliveries often mean long waiting windows. You might stay home hours just to receive one small package, or face delays because drivers take inefficient routes.</p>
             </div>
             {/* Problem 3 */}
             <div className="flex flex-col items-center text-center p-6 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
               {/* Icon - Placeholder */}
-              <Image src="/icons/group.svg" alt="Lack of Visibility" width={60} height={60} className="mb-4" />
-              <h3 className="text-xl font-semibold mb-2" style={{ color: '#FFD700' }}>Lack of Group Order Visibility</h3>
-              <p className="text-base text-white">It's hard to see who's ordering what, leading to duplicate orders or missed opportunities for shared savings.</p>
+              <Image src="/icons/group.svg" alt="Environmental Impact" width={60} height={60} className="mb-4" />
+              <h3 className="text-xl font-semibold mb-2" style={{ color: '#FFD700' }}>Environmental Impact</h3>
+              <p className="text-base text-white">With every person ordering separately, multiple couriers drive the same route to the same neighborhood. This not only clogs the streets but also increases emissions — a cost we all end up paying.</p>
             </div>
           </div>
         </div>
@@ -114,14 +132,14 @@ export default function AboutPage() {
               {/* Icon - Placeholder */}
               <Image src="/icons/chat.svg" alt="Effortless Coordination" width={60} height={60} className="mb-4" />
               <h3 className="text-xl font-semibold mb-2" style={{ color: '#FFD700' }}>Effortless Coordination</h3>
-              <p className="text-base text-white">Our intuitive platform simplifies communication, making group orders smooth and stress-free.</p>
+              <p className="text-base text-white">Our platform makes group deliveries simple. Instead of everyone waiting around, only one person needs to receive the order — saving time, reducing confusion, and making the whole process stress-free.</p>
             </div>
             {/* Solution 3 */}
             <div className="flex flex-col items-center text-center p-6 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
               {/* Icon - Placeholder */}
               <Image src="/icons/delivery.svg" alt="Streamlined Deliveries" width={60} height={60} className="mb-4" />
               <h3 className="text-xl font-semibold mb-2" style={{ color: '#FFD700' }}>Streamlined Deliveries</h3>
-              <p className="text-base text-white">Track orders, manage payments, and ensure everyone gets their share with ease, right to your dorm.</p>
+              <p className="text-base text-white">By grouping orders, we cut down on extra trips, lower costs and number of packages, and keep building entrances and concierges less crowded.</p>
             </div>
           </div>
         </div>
@@ -142,35 +160,37 @@ export default function AboutPage() {
             <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-16">
               <div className="lg:w-1/2 text-center lg:text-left">
                 <h3 className="text-2xl font-bold mb-4" style={{ color: '#FFD700' }}>1. Create a Basket</h3>
-                <p className="text-base text-white">Start a new group order by creating a basket for your desired shop. Set a minimum amount or a time limit.</p>
+                <p className="text-base text-white">Navigate through the dashboard to create your a Shelivery basket.</p>
               </div>
               <div className="lg:w-1/2 flex justify-center">
                 {/* Placeholder image. Replace with your actual step 1 image. */}
-                <Image src="/images/how-it-works-step1.png" alt="Create Basket" width={500} height={300} className="rounded-lg shadow-xl" />
+                <Image src="/images/dashboard.png" alt="Create Basket" width={300} height={100} className="rounded-lg " />
               </div>
             </div>
 
             {/* Step 2 */}
             <div className="flex flex-col lg:flex-row-reverse items-center gap-8 lg:gap-16">
               <div className="lg:w-1/2 text-center lg:text-right">
-                <h3 className="text-2xl font-bold mb-4" style={{ color: '#FFD700' }}>2. Share with Dormmates</h3>
-                <p className="text-base text-white">Invite your dormmates to join your basket. They can add their items, and you can track the total amount together.</p>
+                <h3 className="text-2xl font-bold mb-4" style={{ color: '#FFD700' }}>2. Choose a shop and provide your items detail</h3>
+                <p className="text-base text-white">Select your preferred shop and enter the product link, a short note about the item (e.g., color, size, special instructions), and the order price. This will help processing your request accurately and quickly.</p>
               </div>
               <div className="lg:w-1/2 flex justify-center">
                 {/* Placeholder image. Replace with your actual step 2 image. */}
-                <Image src="/images/how-it-works-step2.png" alt="Share with Dormmates" width={500} height={300} className="rounded-lg shadow-xl" />
+                <Image src="/images/shop.png" alt="Share with Dormmates" width={300} height={100} className="rounded-lg" />
               </div>
             </div>
 
             {/* Step 3 */}
             <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-16">
               <div className="lg:w-1/2 text-center lg:text-left">
-                <h3 className="text-2xl font-bold mb-4" style={{ color: '#FFD700' }}>3. Place Order & Enjoy!</h3>
-                <p className="text-base text-white">Once the minimum amount is reached or time is up, the admin places the order. Enjoy shared savings and convenient delivery!</p>
+                <h3 className="text-2xl font-bold mb-4" style={{ color: '#FFD700' }}>3. Wait for others to join!</h3>
+                <p className="text-base text-white">Invite your dormmates to join your basket or wait for others to join. Others can add their items, and you can track the total amount together.</p>
+                <p className="text-base text-white">Once the minimum amount is reached or time is up, you will be directed to a chatroom. You can finlaize the order submission together! </p>
+                <p className="text-base text-white">Enjoy shared savings and convenient delivery!</p>
               </div>
               <div className="lg:w-1/2 flex justify-center">
                 {/* Placeholder image. Replace with your actual step 3 image. */}
-                <Image src="/images/how-it-works-step3.png" alt="Place Order" width={500} height={300} className="rounded-lg shadow-xl" />
+                <Image src="/images/pool.png" alt="Place Order" width={300} height={100} className="rounded-lg " />
               </div>
             </div>
           </div>
@@ -185,22 +205,29 @@ export default function AboutPage() {
         <p className="text-lg md:text-xl mb-8 text-white">
           Join Shelivery today and revolutionize your dorm shopping experience.
         </p>
-        <Link href="/auth">
-            <button
-              className="rounded-lg px-6 py-3 text-base font-semibold shadow-sm hover:opacity-80 transition-opacity"
-              style={{
-                backgroundColor: '#FFD700', // Exact yellow from Canva
-                color: '#245b7b',            // Exact dark blue from Canva
-                border: 'none',
-              }}
-            >
-              GET STARTED
-            </button>
-          </Link>
+        {/* Now using <a> tag with dynamic string href */}
+        <a href={authLinkHref}
+           className="rounded-lg px-6 py-3 text-base font-semibold shadow-sm hover:opacity-80 transition-opacity"
+           style={{
+             backgroundColor: '#FFD700', // Exact yellow from Canva
+             color: '#245b7b',            // Exact dark blue from Canva
+             border: 'none',
+           }}>
+          GET STARTED
+        </a>
         <p className="text-sm mt-16 text-gray-400">
           © 2025 Shelivery. All rights reserved.
         </p>
       </footer>
     </div>
+  );
+}
+
+// Main component wrapped with Suspense
+export default function AboutPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AboutPageContent />
+    </Suspense>
   );
 }

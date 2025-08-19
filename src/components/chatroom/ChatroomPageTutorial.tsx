@@ -79,6 +79,14 @@ const tutorialSteps: TutorialStep[] = [
         borderRadius: '1rem', // Assuming a common button border-radius
     },
     {
+        id: 'extend-time-button', // Added new tutorial step for Extend Time button
+        title: 'Extend Order Time',
+        text: 'As the administrator, you can extend the deadline for this order, giving members more time to join or finalize their baskets.',
+        position: 'top',
+        view: 'orderDetails',
+        borderRadius: '1rem',
+    },
+    {
         id: 'leave-group-button',
         title: 'Leave Group',
         text: 'You can leave the group at any time, but be aware of the impact on the group\'s minimum order amount.',
@@ -274,6 +282,7 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
     const handlePrevious = () => {
         let prevIndex = currentStepIndex - 1;
         while (prevIndex >= 0) {
+            // Find the first previous step that exists in the DOM and belongs to the current view
             if (document.getElementById(tutorialSteps[prevIndex]!.id) && tutorialSteps[prevIndex]!.view === currentView) {
                 setCurrentStepIndex(prevIndex);
                 return;
@@ -281,7 +290,10 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
             prevIndex--;
         }
         // If no previous step found in the current view, and we were on orderDetails, try going back to chat view
-        if (currentView === 'orderDetails' && currentStepIndex > 0 && tutorialSteps[currentStepIndex - 1]?.view === 'chat') { // Check if previous step was in chat view
+        if (currentView === 'orderDetails' && currentStepIndex > 0 && tutorialSteps.slice(0, currentStepIndex).every(step => step.view === 'orderDetails')) {
+            // This condition is true if all previous steps (from index 0 up to currentStepIndex-1) were in 'orderDetails' view.
+            // In this specific tutorial flow, it means we've just entered 'orderDetails' and there's no prior 'orderDetails' step.
+            // So, if we are at the first 'orderDetails' step, go back to 'chat' view's first step.
             setCurrentView('chat');
             setCurrentStepIndex(0); // Go back to the chat menu button step (which is index 0)
         }

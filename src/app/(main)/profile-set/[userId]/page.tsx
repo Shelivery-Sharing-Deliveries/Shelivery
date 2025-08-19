@@ -9,6 +9,8 @@ import { useAuth } from "@/hooks/useAuth"; // Assuming useAuth hook is available
 import { PushNotificationSettings } from "@/components/ui/PushNotificationSettings"; // NEW: Import PushNotificationSettings
 import { usePushNotifications } from '@/hooks/usePushNotifications'; // NEW: Import usePushNotifications hook
 import { useNotify } from "@/components/ui/NotificationsContext"; // NEW: Import useNotify for pop-up messages
+import PrivacyPopup from "@/components/ui/PrivacyPopup";
+import { AvatarUpload } from "@/components/ui/AvatarUpload";
 
 // Assuming AuthLayout is in components/auth/AuthLayout.tsx
 import AuthLayout from "@/components/auth/AuthLayout";
@@ -57,6 +59,10 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
     const [error, setError] = useState<string | null>(null);
     const [initialDataLoaded, setInitialDataLoaded] = useState(false);
     const [showPushNotificationOptIn, setShowPushNotificationOptIn] = useState(false); // NEW: State for push notification opt-in prompt
+
+    const [showPrivacyPopup, setShowPrivacyPopup] = useState(false);
+    const [termsAccepted, setTermsAccepted] = useState(false);
+    const [privacyAccepted, setPrivacyAccepted] = useState(false);
 
     const currentUrlUserId = params?.userId as string;
 
@@ -187,65 +193,72 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
         }));
     };
 
-    // MODIFIED: handleImageUpload with friend's logic and improved error handling/loading
+    // Handle image upload
     const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file || !userId) return;
 
-        setLoading(true); // Start loading for image upload
-        setError(null);
-
+        setLoading(true);
+        
         try {
-            const fileExt = file.name.split(".").pop();
-            const filePath = `avatars/${userId}.${fileExt}`;
+            // Upload to R2 via API
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('userId', userId);
 
-            // Step 1: Delete existing file if it exists
-            // Supabase storage.remove doesn't throw if file doesn't exist, so this is safe.
-            const { error: removeError } = await supabase.storage.from("avatars").remove([filePath]);
-            if (removeError) {
-                console.error("Error removing old avatar:", removeError);
-                // Decide if you want to stop here or proceed with upload despite remove error
-                // For now, we'll proceed as upload with upsert might handle it anyway.
+            const response = await fetch('/api/upload/avatar', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || result.error) {
+                notify({ type: "warning", title: "Upload Failed", message: result.error || 'Unknown error' });
+                return;
             }
 
-            // Step 2: Upload new file
-            const { error: uploadError } = await supabase.storage
-                .from("avatars")
-                .upload(filePath, file);
-
-            if (uploadError) {
-                throw uploadError; // Throw to be caught by the outer try-catch
+            if (!result.url) {
+                notify({ type: "warning", title: "Upload Failed", message: 'No URL returned' });
+                return;
             }
 
-            // Step 3: Get public URL
-            const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
-            const publicUrl = urlData?.publicUrl;
-
-            if (!publicUrl) {
-                throw new Error("Failed to get public URL for uploaded image.");
-            }
-            setProfileImage(publicUrl);
-
-            // Step 4: Save URL to user table
+            // Update database with new avatar URL (client-side with RLS)
             const { error: updateError } = await supabase
-                .from("user")
-                .update({ image: publicUrl })
-                .eq("id", userId);
+                .from('user')
+                .update({ image: result.url })
+                .eq('id', userId);
 
             if (updateError) {
-                throw updateError; // Throw to be caught by the outer try-catch
+                console.error('Failed to update user profile in database:', updateError);
+                notify({ type: "warning", title: "Database Error", message: 'Upload succeeded but failed to update profile. Please refresh the page.' });
+                return;
             }
-        } catch (err: any) {
-            console.error("Error during image upload or update:", err);
-            setError(err.message || "Failed to upload profile image.");
+
+            // Update UI
+            setProfileImage(result.url);
+            notify({ type: "success", title: "Success!", message: "Profile image updated successfully." });
+        } catch (error) {
+            console.error('Upload error:', error);
+            notify({ type: "warning", title: "Upload Failed", message: 'Upload failed. Please try again.' });
         } finally {
-            setLoading(false); // End loading for image upload
+            setLoading(false);
         }
     };
-    // END MODIFIED
+
+    // Handle avatar upload completion
+    const handleAvatarUploadComplete = (url: string) => {
+        setProfileImage(url);
+        notify({ type: "success", title: "Success!", message: "Profile image updated successfully." });
+    };
 
     // Save updated profile data to Supabase
     const handleSave = async () => {
+        if (!termsAccepted || !privacyAccepted) {
+            setShowPrivacyPopup(true);
+            notify({ type: "warning", title: "Action Required", message: "Please accept both Terms of Service and Privacy Policy before saving your profile." });
+            return;
+        }
         if (!userId) {
             setError("User not authenticated.");
             return;
@@ -337,6 +350,21 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
     }
 
     return (
+        <>
+        {showPrivacyPopup && (
+            <PrivacyPopup 
+                onAccept={(termsAccepted, privacyAccepted) => {
+                    setTermsAccepted(termsAccepted);
+                    setPrivacyAccepted(privacyAccepted);
+                    setShowPrivacyPopup(false);
+                    notify({ type: "success", title: "Accepted", message: "Terms of Service and Privacy Policy accepted. You can now save your profile." });
+                }}
+                onBack={() => {
+                    setShowPrivacyPopup(false);
+                }}
+            />
+        )}
+
         <AuthLayout className="gap-8"> {/* Using AuthLayout for consistent styling */}
             <div className="w-full flex flex-col gap-6 flex-1">
                 {/* Header */}
@@ -362,7 +390,7 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
                             style={{
                                 backgroundImage: profileImage
                                     ? `url(${profileImage})`
-                                    : "url('/images/default-avatar.svg')",
+                                    : "url('/avatars/default-avatar.png')",
                             }}
                             onClick={() => document.getElementById("profile-upload")?.click()}
                         >
@@ -497,11 +525,7 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
                         </div>
                     )}
 
-                    {/* Existing Push Notification Settings */}
-                    <div className="w-full mt-4">
-                        <h2 className="text-xl font-bold text-gray-800 mb-4">Notification Settings</h2>
-                        <PushNotificationSettings />
-                    </div>
+                    
 
                     {/* Save Button */}
                     <button
@@ -516,5 +540,6 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
                 </div>
             </div>
         </AuthLayout>
+        </>
     );
 }

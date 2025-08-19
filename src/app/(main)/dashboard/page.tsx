@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/solid'; // Import icons for collapsible section
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
+import { TicketIcon } from '@heroicons/react/24/outline';
 
 // Define the interface for the Shop data as it exists in the 'shop' table
 interface ShopData {
@@ -193,14 +194,30 @@ export default function DashboardPage() {
                 </div>
             ) : (
                 <>  
-                    <div className="flex justify-between items-center" id="dashboard-header"> {/* ADDED ID */}
-                        <h1 className="text-[16px] font-bold leading-8 text-black">
-                            Dashboard
-                        </h1>
-                        <Button onClick={handleInviteFriend} className="bg-[#245B7B] text-white px-4 py-2 rounded-lg text-[12px] font-semibold" id="invite-friends-button"> {/* ADDED ID */}
+                    <div className="py-1 flex justify-between items-center" id="dashboard-header">
+                    <h1 className="text-[20px] font-bold leading-8 text-black">
+                        Dashboard
+                    </h1>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            onClick={handleInviteFriend}
+                            className="bg-[#245B7B] text-white px-2 py-2 rounded-lg text-[12px] font-semibold"
+                            id="invite-friends-button"
+                        >
                             Invite Friends
                         </Button>
+                        <a
+                            onClick={() => router.push("/feedback")}
+                            className="flex items-center justify-center px-2 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                            title="Support Ticket"
+                        >
+                            <div className="flex items-center gap-1">
+                                <TicketIcon className="w-5 h-5" />
+                                <span className="text-[12px] font-semibold">Support</span>
+                            </div>
+                        </a>
                     </div>
+                </div>
                     {userProfile ? (
                         <ProfileCard
                             userName={userProfile.userName}

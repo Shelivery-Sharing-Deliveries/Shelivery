@@ -1,13 +1,17 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation'; // Import useSearchParams
 import PWAInstallGuidePopup from '@/components/homepage/PWAInstallGuidePopup';
 
-export default function HomePage() {
+// Separate component that uses useSearchParams
+function HomePageContent() {
   const [showPwaPopup, setShowPwaPopup] = useState(false);
   const [checkingPwa, setCheckingPwa] = useState(true); // For loading state while detecting PWA
+  const [inviteCodeFromUrl, setInviteCodeFromUrl] = useState<string | null>(null); // State to store invite code from URL
+
   const router = useRouter();
+  const searchParams = useSearchParams(); // Initialize useSearchParams
 
   // Detect PWA and redirect
   useEffect(() => {
@@ -21,6 +25,27 @@ export default function HomePage() {
       setCheckingPwa(false); // Not PWA, show normal page
     }
   }, []);
+
+  // New useEffect to read invite code from URL (for HomePage itself)
+  useEffect(() => {
+    const invite = searchParams.get('invite');
+    if (invite) {
+      setInviteCodeFromUrl(invite);
+      console.log("HomePage: Detected invite code in URL:", invite);
+    }
+  }, [searchParams]); // Depend on searchParams to re-run if URL changes
+
+  // Construct the dynamic href for the "Get Started" button (to Auth page)
+  // Now always a string, converting the object format if necessary.
+  const getStartedHref = inviteCodeFromUrl 
+    ? `/auth?invite=${inviteCodeFromUrl}` 
+    : "/auth";
+
+  // Construct the dynamic href for the "Learn more" button (to About page)
+  // Now always a string, converting the object format if necessary.
+  const learnMoreHref = inviteCodeFromUrl
+    ? `/about?invite=${inviteCodeFromUrl}`
+    : "/about";
 
   if (checkingPwa) {
     // Show spinner while checking
@@ -70,7 +95,7 @@ export default function HomePage() {
         <div className="mt-10 flex flex-col items-center gap-y-4">
           <div className="flex gap-x-6">
             <a
-              href="/auth"
+              href={getStartedHref} // Dynamically set the href here (now a string)
               className="rounded-lg px-4 py-2 text-sm font-semibold shadow-sm hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-shelivery-primary-yellow"
               style={{
                 backgroundColor: '#FFD700',
@@ -81,7 +106,7 @@ export default function HomePage() {
             </a>
 
             <a
-              href="/about"
+              href={learnMoreHref} // Dynamically set the href for Learn more (now a string)
               className="rounded-lg px-4 py-2 text-sm font-semibold shadow-sm hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
               style={{
                 backgroundColor: 'transparent',
@@ -111,5 +136,14 @@ export default function HomePage() {
 
       <PWAInstallGuidePopup isOpen={showPwaPopup} onClose={() => setShowPwaPopup(false)} />
     </main>
+  );
+}
+
+// Main component wrapped with Suspense
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <HomePageContent />
+    </Suspense>
   );
 }

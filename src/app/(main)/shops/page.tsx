@@ -137,6 +137,9 @@ export default function ShopsPage() {
       </div>
     );
   }
+  const handleAddStoreClick = () => {
+    router.push("/feedback");
+  };
 
   const headerContent = (
     <div className="text-center mb-8">
@@ -182,7 +185,7 @@ export default function ShopsPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 py-2">
             {filteredShops.map((shop) => (
               <div
                 key={shop.id}
@@ -301,6 +304,16 @@ export default function ShopsPage() {
             ))}
           </div>
         )}
+        {/* New section for adding a store */}
+      <div className="mt-8 p-6 bg-shelivery-primary-blue text-white rounded-shelivery-lg shadow-xl text-center">
+        <h3 className="text-xl font-bold mb-2">Want to add a store?</h3>
+        <p className="text-sm mb-4">
+          Please open a ticket with some information and we'll add it to Shelivery shortly.
+        </p>
+        <Button onClick={handleAddStoreClick} variant="primary" className="text-sm font-semibold">
+          Open a Ticket
+        </Button>
+      </div>
       
 
      </PageLayout>

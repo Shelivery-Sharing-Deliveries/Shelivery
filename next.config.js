@@ -16,7 +16,19 @@ const nextConfig = {
     typedRoutes: true,
   },
   images: {
-    domains: ['localhost', 'zsqagqzztvzogyktgjph.supabase.co'],
+    domains: [
+      'localhost', 
+      'zsqagqzztvzogyktgjph.supabase.co',
+      'ced8e612d38d5f65bc961d40147e34bc.r2.cloudflarestorage.com'
+    ],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.r2.cloudflarestorage.com',
+        port: '',
+        pathname: '/**',
+      },
+    ],
     formats: ['image/webp', 'image/avif'],
   },
   async headers() {

@@ -3,10 +3,10 @@
 import { Clock, Users, DollarSign, CheckCircle, Package } from "lucide-react";
 import { TimeLeft } from "@/components/chatroom/TimeLeft";
 
-
+// UPDATED: Add 'delivered' and 'canceled' to the state type
 interface SimpleOrderStatusCardProps {
-  id?: string; // Add id prop
-  state: "waiting" | "active" | "ordered" | "resolved";
+  id?: string;
+  state: "waiting" | "active" | "ordered" | "delivered" | "resolved" | "canceled";
   poolTotal: number;
   orderCount: number;
   timeLeft: string;
@@ -16,7 +16,7 @@ interface SimpleOrderStatusCardProps {
 }
 
 export function SimpleOrderStatusCard({
-  id, // Destructure id prop
+  id,
   state,
   poolTotal,
   orderCount,
@@ -44,13 +44,29 @@ export function SimpleOrderStatusCard({
           title: "Order Placed",
           description: "Waiting for delivery confirmation",
         };
+      case "delivered":
+        return {
+          color: "bg-green-50 border-green-200",
+          icon: Package,
+          iconColor: "text-green-600",
+          title: "Order Delivered",
+          description: "Waiting for members to confirm receipt",
+        };
       case "resolved":
         return {
           color: "bg-green-50 border-green-200",
           icon: CheckCircle,
           iconColor: "text-green-600",
-          title: "Order Delivered",
+          title: "Order Complete",
           description: "All items have been delivered successfully",
+        };
+      case "canceled":
+        return {
+          color: "bg-gray-50 border-gray-200",
+          icon: Package, // Or a different icon for canceled
+          iconColor: "text-gray-600",
+          title: "Order Canceled",
+          description: "This order has been canceled.",
         };
       default:
         return {
@@ -103,12 +119,10 @@ export function SimpleOrderStatusCard({
           </div>
           <div className="font-bold text-lg text-gray-900">
             <TimeLeft expireAt={timeLeft} />
-            </div>
+          </div>
           <div className="text-xs text-gray-600">Left</div>
         </div>
       </div>
-
-      
     </div>
   );
 }
