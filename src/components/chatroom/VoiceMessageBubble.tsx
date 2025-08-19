@@ -75,15 +75,15 @@ useEffect(() => {
   };
 
   return (
-    <div className={`flex items-center gap-3 max-w-xs ${className || ""}`}>
+    <div className={`flex items-center gap-3 min-w-0 ${className || ""}`}>
       <button
         onClick={togglePlayback}
-        className="p-2 text-white rounded-full"
+        className="flex-shrink-0 p-2 text-white rounded-full shadow-sm"
         style={{ backgroundColor: "#ffdb0b" }}
       >
-        {isPlaying ? <Pause size={20} color="gray" /> : <Play size={20} color="gray" />}
+        {isPlaying ? <Pause size={16} color="#374151" /> : <Play size={16} color="#374151" />}
       </button>
-      <div ref={containerRef} className="flex-1" />
+      <div ref={containerRef} className="flex-1 min-w-0" style={{ minWidth: "120px" }} />
     </div>
   );
 }

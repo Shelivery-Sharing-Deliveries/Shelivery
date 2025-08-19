@@ -193,10 +193,12 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
                             className="rounded-xl w-full h-auto"
                           />
                         ) : message.type === "audio" && message.content ? (
-                          <VoiceMessageBubble
-                            src={message.content}
-                            className="w-full"
-                          />
+                          <div className="p-1">
+                            <VoiceMessageBubble
+                              src={message.content}
+                              className="w-full"
+                            />
+                          </div>
                         ) : (
                           <span className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                             {message.content}
