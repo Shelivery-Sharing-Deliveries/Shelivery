@@ -1,5 +1,4 @@
-﻿// components/dashboard/DashboardTutorial.tsx
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui'; // Assuming you have a general Button component
@@ -29,17 +28,17 @@ const tutorialSteps: TutorialStep[] = [
         title: 'Your Profile',
         text: 'Here you can see your profile information and manage push notifications.',
         position: 'bottom',
-        borderRadius: '1.5rem', // For rounded cards
+        borderRadius: '1.5rem',
     },
     {
         id: 'add-basket-button',
         title: 'Create a New Basket',
         text: 'Click here to start a new group order and add what you want to order online!',
         position: 'right',
-        borderRadius: '0.75rem', // For standard buttons
+        borderRadius: '0.75rem',
     },
     {
-        id: 'active-baskets-list', // This ID will only exist if there are active baskets
+        id: 'active-baskets-list',
         title: 'Your Active Baskets',
         text: 'These are your ongoing group orders. Click any basket to view its details or chat with your group.',
         position: 'top',
@@ -53,7 +52,7 @@ const tutorialSteps: TutorialStep[] = [
         borderRadius: '1.5rem',
     },
     {
-        id: 'old-orders-section', // This ID will only exist if there are resolved baskets
+        id: 'old-orders-section',
         title: 'Order Archive',
         text: 'Your completed orders are stored here. You can review past deliveries and chats.',
         position: 'top',
@@ -64,7 +63,14 @@ const tutorialSteps: TutorialStep[] = [
         title: 'Invite Friends',
         text: 'Shelivery is more fun with friends! Invite your dormmates to join your groups.',
         position: 'left',
-        borderRadius: '9999px', // For pill-shaped or circular buttons
+        borderRadius: '9999px',
+    },
+    {
+        id: 'no-active-baskets-message',
+        title: 'No Active Baskets Yet!',
+        text: 'This is where your active baskets will appear. Click "Add Basket" to create your first one!',
+        position: 'bottom',
+        borderRadius: '1rem',
     },
 ];
 
@@ -72,8 +78,7 @@ export default function DashboardTutorial({ onComplete }: DashboardTutorialProps
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
     const [highlightGlowStyle, setHighlightGlowStyle] = useState<React.CSSProperties>({});
-    // This style will be applied to the div that creates the dark overlay with the transparent hole
-    const [spotlightOverlayStyle, setSpotlightOverlayStyle] = useState<React.CSSProperties>({});
+    const [spotlightHoleStyle, setSpotlightHoleStyle] = useState<React.CSSProperties>({}); // Changed from spotlightOverlayStyle for clarity
     const tooltipRef = useRef<HTMLDivElement>(null);
 
     const updateSpotlightAndTooltip = useCallback(() => {
@@ -85,6 +90,7 @@ export default function DashboardTutorial({ onComplete }: DashboardTutorialProps
 
         const targetElement = document.getElementById(currentStep.id);
 
+        // If element not found, automatically skip to the next available one
         if (!targetElement) {
             const nextAvailableIndex = tutorialSteps.findIndex((step, index) =>
                 index > currentStepIndex && document.getElementById(step.id)
@@ -97,51 +103,48 @@ export default function DashboardTutorial({ onComplete }: DashboardTutorialProps
             return;
         }
 
-        const rect = targetElement.getBoundingClientRect();
+        const rect = targetElement.getBoundingClientRect(); // Position relative to viewport
 
-        // Reset z-index for all elements that were previously highlighted
+        // Cleanup z-index from previously highlighted elements
         document.querySelectorAll('[data-tutorial-highlighted="true"]').forEach(el => {
-            (el as HTMLElement).style.zIndex = ''; // Reset z-index
-            el.removeAttribute('data-tutorial-highlighted'); // Remove marker
+            (el as HTMLElement).style.zIndex = '';
+            el.removeAttribute('data-tutorial-highlighted');
         });
 
-        // Apply a high z-index to the target element itself so it appears above the dark overlay
+        // Elevate the target element above the overlay
         targetElement.style.zIndex = '1001';
-        targetElement.setAttribute('data-tutorial-highlighted', 'true'); // Mark it for cleanup
+        targetElement.setAttribute('data-tutorial-highlighted', 'true');
 
-        // Define the padding for both the spotlight hole and the glow.
-        // This padding now matches the border thickness (2px) on each side.
-        const padding = 2;
+        const padding = 2; // Padding for the glow effect
 
-        // Style for the transparent div that creates the "hole" with its box-shadow
-        setSpotlightOverlayStyle({
-            position: 'absolute',
-            top: rect.top + window.scrollY - padding, // Apply padding
-            left: rect.left + window.scrollX - padding, // Apply padding
-            width: rect.width + (padding * 2), // Adjust width for padding
-            height: rect.height + (padding * 2), // Adjust height for padding
-            borderRadius: currentStep.borderRadius || '1rem', // Apply rounded corners to the hole
-            backgroundColor: 'transparent', // Crucial: makes the div itself transparent
-            pointerEvents: 'none', // Allows clicks to pass through to the actual element underneath
-            // zIndex for this div will come from the global CSS class .spotlight-overlay (should be 999)
+        // ✨ KEY CHANGE: Create the overlay using a "hole" div with a massive box-shadow
+        // This allows for rounded corners while using robust fixed positioning.
+        setSpotlightHoleStyle({
+            position: 'fixed',
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+            borderRadius: currentStep.borderRadius || '1rem',
+            // This shadow creates the dark overlay around the transparent hole
+            boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.7)',
+            zIndex: 999,
             transition: 'all 0.3s ease-in-out',
         });
 
-        // Calculate highlight glow style (a glow/border around the element)
+        // Glow effect style (positioned relative to the viewport)
         setHighlightGlowStyle({
-            position: 'absolute',
-            top: rect.top + window.scrollY - padding, // Padding for the glow
-            left: rect.left + window.scrollX - padding, // Padding for the glow
-            width: rect.width + (padding * 2), // Adjust width for padding
-            height: rect.height + (padding * 2), // Adjust height for padding
-            borderRadius: currentStep.borderRadius || '1rem', // Use step's borderRadius
-            boxShadow: '0 0 0 rgba(255, 219, 13, 0.7)', // Removed spread radius; border class handles thickness
-            zIndex: 1000, // This is above the spotlight-overlay (999) but below the targetElement (1001)
-            transition: 'all 0.3s ease-in-out',
-            pointerEvents: 'none', // Allow clicks to pass through to the actual element if needed
+            position: 'fixed',
+            top: rect.top - padding,
+            left: rect.left - padding,
+            width: rect.width + (padding * 2),
+            height: rect.height + (padding * 2),
+            borderRadius: currentStep.borderRadius || '1rem',
+            zIndex: 1000,
+            pointerEvents: 'none', // Allows clicks to pass through to the element underneath
         });
 
-        // Calculate tooltip position
+        // Calculate tooltip position (remains fixed relative to the viewport)
         let top = 0, left = 0;
         const tooltipWidth = tooltipRef.current?.offsetWidth || 250;
         const tooltipHeight = tooltipRef.current?.offsetHeight || 150;
@@ -166,18 +169,18 @@ export default function DashboardTutorial({ onComplete }: DashboardTutorialProps
                 break;
         }
 
-        // Adjust for viewport boundaries
+        // Keep tooltip within viewport boundaries
         top = Math.max(buffer, Math.min(top, window.innerHeight - tooltipHeight - buffer));
         left = Math.max(buffer, Math.min(left, window.innerWidth - tooltipWidth - buffer));
 
         setTooltipStyle({
-            position: 'absolute',
-            top: top + window.scrollY,
-            left: left + window.scrollX,
-            zIndex: 1002, // Always on top
+            position: 'fixed',
+            top: top,
+            left: left,
+            zIndex: 1002,
         });
 
-        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
     }, [currentStepIndex, onComplete]);
 
@@ -190,29 +193,35 @@ export default function DashboardTutorial({ onComplete }: DashboardTutorialProps
             clearTimeout(timer);
             window.removeEventListener('resize', updateSpotlightAndTooltip);
             window.removeEventListener('scroll', updateSpotlightAndTooltip);
-            // Clean up z-index and attribute on unmount
             document.querySelectorAll('[data-tutorial-highlighted="true"]').forEach(el => {
                 (el as HTMLElement).style.zIndex = '';
                 el.removeAttribute('data-tutorial-highlighted');
             });
         };
     }, [currentStepIndex, updateSpotlightAndTooltip]);
-
+    
+    // More robust navigation that skips over elements that aren't rendered
     const handleNext = () => {
-        const nextStep = currentStepIndex + 1;
-        if (nextStep < tutorialSteps!.length) {
-            setCurrentStepIndex(nextStep);
+        const nextAvailableIndex = tutorialSteps.findIndex((step, index) =>
+            index > currentStepIndex && document.getElementById(step.id)
+        );
+
+        if (nextAvailableIndex !== -1) {
+            setCurrentStepIndex(nextAvailableIndex);
         } else {
-            onComplete(); // End tutorial
+            onComplete();
         }
     };
 
     const handlePrevious = () => {
         let prevIndex = currentStepIndex - 1;
         while (prevIndex >= 0) {
-            if (document.getElementById(tutorialSteps[prevIndex]!.id)) {
+            // Safely get the step to prevent "undefined" errors
+            const step = tutorialSteps[prevIndex];
+            // Check if the step and its corresponding DOM element exist
+            if (step && document.getElementById(step.id)) {
                 setCurrentStepIndex(prevIndex);
-                return;
+                return; // Exit after finding the valid previous step
             }
             prevIndex--;
         }
@@ -221,18 +230,19 @@ export default function DashboardTutorial({ onComplete }: DashboardTutorialProps
     const handleSkip = () => onComplete();
 
     const currentStep = tutorialSteps[currentStepIndex];
-    if (!currentStep) return null;
+    if (!currentStep || !document.getElementById(currentStep.id)) return null;
+
+    const isLastStep = !tutorialSteps.some((step, index) => index > currentStepIndex && document.getElementById(step.id));
 
     return (
         <>
-            {/* The div that creates the dark overlay with a transparent hole via box-shadow */}
-            <div className="spotlight-overlay" style={spotlightOverlayStyle} />
+            {/* The element that creates the dark overlay and the rounded hole */}
+            <div style={spotlightHoleStyle} />
 
-            {/* Highlight Glow - This creates the border/glow effect around the bright area */}
+            {/* The separate glow effect element */}
             <div
                 style={highlightGlowStyle}
-                // Changed to border-2 for a 2px border
-                className="rounded-2xl border-2 border-[#FFDB0D] animate-pulse-once"
+                className="border-2 border-[#FFDB0D] animate-pulse-once"
             />
 
             {/* Tooltip */}
@@ -250,7 +260,7 @@ export default function DashboardTutorial({ onComplete }: DashboardTutorialProps
                             <Button onClick={handlePrevious} variant="secondary" className="px-3 py-1 text-xs">Back</Button>
                         )}
                         <Button onClick={handleNext} className="px-3 py-1 text-xs">
-                            {currentStepIndex >= tutorialSteps!.length - 1 ? 'Finish' : 'Next'}
+                            {isLastStep ? 'Finish' : 'Next'}
                         </Button>
                     </div>
                 </div>
