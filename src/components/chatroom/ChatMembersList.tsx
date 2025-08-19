@@ -59,12 +59,14 @@ export function ChatMembersList({
 }: ChatMembersListProps) {
   const [showActions, setShowActions] = useState<string | null>(null);
   const [showOrderDetails, setShowOrderDetails] = useState<string | null>(null);
+  const capitalize = (str: string) =>
+    str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
 
   const isOrderDelivered = state === "delivered" || state === "resolved";
 
   const getMemberDisplayName = (member: ChatMember) => {
     if (member.first_name && member.last_name) {
-      return `${member.first_name} ${member.last_name}`;
+      return `${capitalize(member.first_name)} ${capitalize(member.last_name)}`;
     }
     if (member.first_name) {
       return member.first_name;
@@ -79,7 +81,7 @@ export function ChatMembersList({
   // NEW: Function to get the status text for a member
   const getMemberStatus = (member: ChatMember) => {
       if (isOrderDelivered && member.basket?.is_delivered_by_user) {
-          return "Confirmed delivery";
+          return "Delivery Confirmed";
       }
       if (member.basket?.is_ready) {
           return "Ready to order";
@@ -281,7 +283,7 @@ export function ChatMembersList({
                   <div className="p-4 border-t border-gray-200">
                     <Button
                       onClick={() => setShowOrderDetails(null)}
-                      variant="secondary"
+                      variant="primary"
                       size="sm"
                       className="w-full"
                     >
