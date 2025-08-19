@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Send, Plus, Smile, Mic } from "lucide-react";
 import VoiceMessageBubble from "@/components/chatroom/VoiceMessageBubble"; // adjust the path
 
@@ -25,8 +25,25 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled, chatroomId }:
   const [isUploadingAudio, setIsUploadingAudio] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      // Clean up resources when component unmounts
+      releaseAudioResources();
+      
+      // Clean up any remaining blob URLs
+      if (recordedAudioUrl) {
+        URL.revokeObjectURL(recordedAudioUrl);
+      }
+      if (selectedImagePreview) {
+        URL.revokeObjectURL(selectedImagePreview);
+      }
+    };
+  }, [recordedAudioUrl, selectedImagePreview]);
 
   // Image Handling
   const handleImageSelection = (file: File) => {
@@ -60,6 +77,7 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled, chatroomId }:
     setRecordedAudioUrl(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
   
       let mimeType = '';
       if (MediaRecorder.isTypeSupported('audio/webm')) {
@@ -106,6 +124,23 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled, chatroomId }:
     if (timerRef.current) clearInterval(timerRef.current);
   };
 
+  const releaseAudioResources = () => {
+    // Stop all tracks in the MediaStream to release microphone
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
+    }
+    
+    // Clear MediaRecorder reference
+    mediaRecorderRef.current = null;
+    
+    // Clear timer if running
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
   const sendRecordedAudio = async () => {
     if (!recordedAudioUrl || isUploadingAudio) return;
     
@@ -121,12 +156,22 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled, chatroomId }:
       discardRecording();
     } finally {
       setIsUploadingAudio(false);
+      // Release audio resources after sending
+      releaseAudioResources();
     }
   };
 
   const discardRecording = () => {
+    // Clean up the blob URL to prevent memory leaks
+    if (recordedAudioUrl) {
+      URL.revokeObjectURL(recordedAudioUrl);
+    }
+    
     setRecordedAudioUrl(null);
     setRecordingTime(0);
+    
+    // Release audio resources when discarding
+    releaseAudioResources();
   };
 
   const formatTime = (seconds: number) => {
