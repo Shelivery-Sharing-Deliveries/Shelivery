@@ -107,7 +107,7 @@ export default function ShopsPage() {
         if (hasActiveBasketForShop) {
             // If an active basket exists, show a warning message
             setWarningMessage(
-                `You already have an active basket for ${shop.name}. Please resolve it before creating a new one.`
+                `You already have an active basket for ${shop.name}.\n \n Please resolve it before creating a new one.`
             );
             // Optional: You might want to redirect them to that existing basket
             // const existingBasket = activeBaskets.find(basket => basket.shop_id === shop.id);
@@ -194,7 +194,7 @@ export default function ShopsPage() {
             {warningMessage && (
                 <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4 rounded-md shadow-sm" role="alert">
                     <p className="font-bold">Warning!</p>
-                    <p>{warningMessage}</p>
+                    <p style={{ whiteSpace: "pre-line" }}>{warningMessage}</p>
                     <button
                         onClick={() => setWarningMessage(null)}
                         className="mt-2 text-sm text-yellow-600 hover:text-yellow-800 underline"
