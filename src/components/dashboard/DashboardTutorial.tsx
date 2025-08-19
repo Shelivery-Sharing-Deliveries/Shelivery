@@ -103,7 +103,16 @@ export default function DashboardTutorial({ onComplete }: DashboardTutorialProps
             return;
         }
 
+        // Find the scrollable container (PageLayout's content area)
+        const scrollableContainer = targetElement.closest('.overflow-y-auto') as HTMLElement;
+        
         const rect = targetElement.getBoundingClientRect(); // Position relative to viewport
+
+        // Check if the element has a valid position
+        if (rect.width === 0 || rect.height === 0) {
+             setTimeout(updateSpotlightAndTooltip, 100);
+             return;
+        }
 
         // Cleanup z-index from previously highlighted elements
         document.querySelectorAll('[data-tutorial-highlighted="true"]').forEach(el => {
@@ -180,19 +189,51 @@ export default function DashboardTutorial({ onComplete }: DashboardTutorialProps
             zIndex: 1002,
         });
 
-        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Scroll the element into view within its container
+        if (scrollableContainer) {
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+        } else {
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
 
     }, [currentStepIndex, onComplete]);
 
     useEffect(() => {
         const timer = setTimeout(updateSpotlightAndTooltip, 50);
-        window.addEventListener('resize', updateSpotlightAndTooltip);
-        window.addEventListener('scroll', updateSpotlightAndTooltip);
+        
+        // Find the scrollable container to listen for its scroll events
+        const currentStepId = tutorialSteps[currentStepIndex]?.id;
+        const targetElement = currentStepId ? document.getElementById(currentStepId) : null;
+        const scrollableContainer = targetElement?.closest('.overflow-y-auto') as HTMLElement;
+        
+        // Event handlers
+        const handleUpdate = () => {
+            // Small delay to ensure DOM has updated
+            setTimeout(updateSpotlightAndTooltip, 10);
+        };
+
+        // Add event listeners
+        window.addEventListener('resize', handleUpdate);
+        window.addEventListener('scroll', handleUpdate, true); // Use capture to catch all scroll events
+        
+        // Listen specifically to the scrollable container if found
+        if (scrollableContainer) {
+            scrollableContainer.addEventListener('scroll', handleUpdate);
+        }
+        
+        // Added a click event listener to handle cases where an element's position might change after a user interaction.
+        window.addEventListener('click', handleUpdate);
 
         return () => {
             clearTimeout(timer);
-            window.removeEventListener('resize', updateSpotlightAndTooltip);
-            window.removeEventListener('scroll', updateSpotlightAndTooltip);
+            window.removeEventListener('resize', handleUpdate);
+            window.removeEventListener('scroll', handleUpdate, true);
+            window.removeEventListener('click', handleUpdate);
+            
+            if (scrollableContainer) {
+                scrollableContainer.removeEventListener('scroll', handleUpdate);
+            }
+            
             document.querySelectorAll('[data-tutorial-highlighted="true"]').forEach(el => {
                 (el as HTMLElement).style.zIndex = '';
                 el.removeAttribute('data-tutorial-highlighted');

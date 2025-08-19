@@ -144,7 +144,16 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
             console.log(`Tutorial: Element with ID "${currentStep.id}" FOUND. Highlighting.`);
         }
 
+        // Find the scrollable container (PageLayout's content area)
+        const scrollableContainer = targetElement.closest('.overflow-y-auto') as HTMLElement;
+        
         const rect = targetElement.getBoundingClientRect();
+
+        // Check if the element has a valid position
+        if (rect.width === 0 || rect.height === 0) {
+             setTimeout(updateHighlightAndTooltip, 100);
+             return;
+        }
 
         // Reset z-index for all elements that were previously highlighted
         document.querySelectorAll('[data-tutorial-highlighted="true"]').forEach(el => {
@@ -160,28 +169,27 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
         // This padding now matches the border thickness (2px) on each side.
         const padding = 2;
 
-        // Style for the transparent div that creates the "hole" with its box-shadow
+        // Style for the spotlight hole using fixed positioning
         setSpotlightOverlayStyle({
-            position: 'absolute',
-            top: rect.top + window.scrollY - padding, // Apply padding
-            left: rect.left + window.scrollX - padding, // Apply padding
-            width: rect.width + (padding * 2), // Adjust width for padding
-            height: rect.height + (padding * 2), // Adjust height for padding
-            borderRadius: currentStep.borderRadius || '1rem', // Apply rounded corners to the hole
-            backgroundColor: 'transparent', // Crucial: makes the div itself transparent
-            pointerEvents: 'none', // Allows clicks to pass through to the actual element underneath
+            position: 'fixed',
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+            borderRadius: currentStep.borderRadius || '1rem',
+            boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.7)',
+            zIndex: 999,
             transition: 'all 0.3s ease-in-out',
         });
 
-        // Calculate highlight glow style (a glow/border around the element)
+        // Calculate highlight glow style using fixed positioning
         setHighlightGlowStyle({
-            position: 'absolute',
-            top: rect.top + window.scrollY - padding,
-            left: rect.left + window.scrollX - padding,
+            position: 'fixed',
+            top: rect.top - padding,
+            left: rect.left - padding,
             width: rect.width + (padding * 2),
             height: rect.height + (padding * 2),
-            borderRadius: currentStep.borderRadius || '1rem', // Use step's borderRadius
-            boxShadow: '0 0 0 rgba(255, 219, 13, 0.7)', // Removed spread radius; border class handles thickness
+            borderRadius: currentStep.borderRadius || '1rem',
             zIndex: 1000,
             transition: 'all 0.3s ease-in-out',
             pointerEvents: 'none',
@@ -216,13 +224,18 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
         left = Math.max(buffer, Math.min(left, window.innerWidth - tooltipWidth - buffer));
 
         setTooltipStyle({
-            position: 'absolute',
-            top: top + window.scrollY,
-            left: left + window.scrollX,
+            position: 'fixed',
+            top: top,
+            left: left,
             zIndex: 1002,
         });
 
-        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Scroll the element into view within its container
+        if (scrollableContainer) {
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+        } else {
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
 
     }, [currentStepIndex, onComplete, currentView]);
 
@@ -230,18 +243,40 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
         console.log("Tutorial: Main useEffect triggered. currentStepIndex:", currentStepIndex, "currentView:", currentView);
         const timer = setTimeout(updateHighlightAndTooltip, 50); // Small delay to ensure DOM is ready
 
-        const handleResizeOrScroll = () => {
-            updateHighlightAndTooltip();
+        // Find the scrollable container to listen for its scroll events
+        const currentStepId = tutorialSteps[currentStepIndex]?.id;
+        const targetElement = currentStepId ? document.getElementById(currentStepId) : null;
+        const scrollableContainer = targetElement?.closest('.overflow-y-auto') as HTMLElement;
+
+        // Event handlers
+        const handleUpdate = () => {
+            // Small delay to ensure DOM has updated
+            setTimeout(updateHighlightAndTooltip, 10);
         };
 
-        window.addEventListener('resize', handleResizeOrScroll);
-        window.addEventListener('scroll', handleResizeOrScroll);
+        // Add event listeners
+        window.addEventListener('resize', handleUpdate);
+        window.addEventListener('scroll', handleUpdate, true); // Use capture to catch all scroll events
+        
+        // Listen specifically to the scrollable container if found
+        if (scrollableContainer) {
+            scrollableContainer.addEventListener('scroll', handleUpdate);
+        }
+        
+        // Added a click event listener to handle cases where an element's position might change after a user interaction.
+        window.addEventListener('click', handleUpdate);
 
         return () => {
             console.log("Tutorial: Cleaning up event listeners and z-index.");
             clearTimeout(timer); // Clear the timeout on unmount
-            window.removeEventListener('resize', handleResizeOrScroll);
-            window.removeEventListener('scroll', handleResizeOrScroll);
+            window.removeEventListener('resize', handleUpdate);
+            window.removeEventListener('scroll', handleUpdate, true);
+            window.removeEventListener('click', handleUpdate);
+            
+            if (scrollableContainer) {
+                scrollableContainer.removeEventListener('scroll', handleUpdate);
+            }
+            
             document.querySelectorAll('[data-tutorial-highlighted="true"]').forEach(el => {
                 (el as HTMLElement).style.zIndex = '';
                 el.removeAttribute('data-tutorial-highlighted');
