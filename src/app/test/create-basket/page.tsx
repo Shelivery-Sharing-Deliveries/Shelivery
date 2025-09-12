@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Header, OrderForm } from "@/components/create-basket";
 
 interface OrderFormData {
@@ -10,15 +10,49 @@ interface OrderFormData {
   currency: string;
 }
 
-interface CreateBasketPageProps {
-  params: { shopId: string };
-}
+// Mock shops data (same as in choose-shop page)
+const mockShops = [
+  {
+    id: "1",
+    name: "Denner",
+    logo: "/shop-logos/Denner Logo.png",
+  },
+  {
+    id: "2",
+    name: "Coop",
+    logo: "/shop-logos/Coop Logo.png",
+  },
+  {
+    id: "3",
+    name: "Aldi",
+    logo: "/shop-logos/Aldi Logo.png",
+  },
+  {
+    id: "4",
+    name: "Migros",
+    logo: "/shop-logos/Migros Logo.png",
+  },
+  {
+    id: "5",
+    name: "Lidl",
+    logo: "/shop-logos/Lidl Logo.png",
+  },
+];
 
-export default function CreateBasketPage({ params }: CreateBasketPageProps) {
-  const { shopId } = params;
+export default function TestCreateBasketPage() {
   const [isFormValid, setIsFormValid] = useState(false);
   const [formData, setFormData] = useState<OrderFormData | null>(null);
+  const [shop, setShop] = useState(null); // State to hold selected shop
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const shopId = searchParams.get("shopId"); // Get shopId from URL
+
+  useEffect(() => {
+    if (shopId) {
+      const selectedShop = mockShops.find((s) => s.id === shopId);
+      setShop(selectedShop);
+    }
+  }, [shopId]);
 
   const handleFormChange = (data: OrderFormData) => {
     setFormData(data);
@@ -28,10 +62,9 @@ export default function CreateBasketPage({ params }: CreateBasketPageProps) {
   };
 
   const handleSubmit = (data: OrderFormData) => {
-    console.log("Creating basket for shopId:", shopId, "with data:", data);
-    // Here you would typically make an API call to create the basket
-    // For now, let's redirect to dashboard
-    router.push("/dashboard");
+    console.log("Creating basket with:", data);
+    // For the test, redirect to test dashboard
+    router.push("/test/dashboard");
   };
 
   const handleCreateBasket = () => {
@@ -41,9 +74,10 @@ export default function CreateBasketPage({ params }: CreateBasketPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAFB] w-full max-w-[375px] mx-auto flex flex-col">
-      {/* Header */}
-      <Header />
+    // Removed outer div with bg-[#FAFAFB] etc.
+    <div className="flex flex-col min-h-screen"> {/* This div is needed for flex-1 on content */}
+      {/* Header - now passes shop prop */}
+      <Header shop={shop} />
 
       {/* Content Section */}
       <div className="flex-1 px-4 py-6 flex flex-col justify-between min-h-0">

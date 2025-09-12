@@ -1,14 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+
+interface Shop {
+  id: string;
+  name: string;
+  logo: string;
+}
 
 interface HeaderProps {
   className?: string;
+  shop?: Shop | null;
 }
 
-export default function Header({ className = "" }: HeaderProps) {
-  const router = useRouter();
-
+export default function Header({ className = "", shop }: HeaderProps) {
   const handleBack = () => {
     router.back();
   };
@@ -33,10 +39,19 @@ export default function Header({ className = "" }: HeaderProps) {
             />
           </button>
 
-          {/* Title */}
-          <h1 className="text-[16px] font-bold text-black leading-[24px] flex-1 truncate">
-            Enter Order Details
-          </h1>
+          {/* Title or Shop Info */}
+          {shop ? (
+            <div className="flex items-center gap-2">
+              <Image src={shop.logo} alt={shop.name} width={24} height={24} className="rounded-full" />
+              <h1 className="text-[16px] font-bold text-black leading-[24px] flex-1 truncate">
+                {shop.name}
+              </h1>
+            </div>
+          ) : (
+            <h1 className="text-[16px] font-bold text-black leading-[24px] flex-1 truncate">
+              Enter Order Details
+            </h1>
+          )}
         </div>
       </div>
     </div>

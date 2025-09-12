@@ -14,7 +14,7 @@ interface CreateBasketPageProps {
   params: { shopId: string };
 }
 
-export default function CreateBasketPage({ params }: CreateBasketPageProps) {
+export default function TestCreateBasketPage({ params }: CreateBasketPageProps) {
   const { shopId } = params;
   const [isFormValid, setIsFormValid] = useState(false);
   const [formData, setFormData] = useState<OrderFormData | null>(null);
@@ -22,16 +22,36 @@ export default function CreateBasketPage({ params }: CreateBasketPageProps) {
 
   const handleFormChange = (data: OrderFormData) => {
     setFormData(data);
-    // Validate form - both fields should be filled
     const isValid = data.orderLink.trim() !== "" && data.total.trim() !== "";
     setIsFormValid(isValid);
   };
 
   const handleSubmit = (data: OrderFormData) => {
-    console.log("Creating basket for shopId:", shopId, "with data:", data);
-    // Here you would typically make an API call to create the basket
-    // For now, let's redirect to dashboard
-    router.push("/dashboard");
+    console.log("Test: Creating basket for shopId:", shopId, "with data:", data);
+
+    // Retrieve existing baskets from localStorage
+    const existingBasketsString = localStorage.getItem("testBaskets");
+    const existingBaskets = existingBasketsString ? JSON.parse(existingBasketsString) : [];
+
+    // Create a new basket object
+    const newBasket = {
+      id: `test-basket-${Date.now()}`,
+      shopId: shopId,
+      ...data,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Add the new basket to the array
+    const updatedBaskets = [...existingBaskets, newBasket];
+
+    // Save the updated array back to localStorage
+    localStorage.setItem("testBaskets", JSON.stringify(updatedBaskets));
+
+    console.log("Test: Basket saved locally:", newBasket);
+    alert("Test: Basket saved locally! Check console and localStorage.");
+
+    // Redirect to a test dashboard or back to test shops page
+    router.push("/test/dashboard"); // Assuming a test dashboard exists or will be created
   };
 
   const handleCreateBasket = () => {
@@ -64,7 +84,7 @@ export default function CreateBasketPage({ params }: CreateBasketPageProps) {
             }`}
           >
             <span className="text-[#000000] text-[18px] font-semibold leading-[26px]">
-              Create Basket
+              Create Basket (Test)
             </span>
           </button>
         </div>
