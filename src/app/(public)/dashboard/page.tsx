@@ -3,6 +3,7 @@
 
 import { Button, PageLayout } from "@/components/ui";
 import ProfileCard from "@/components/dashboard/ProfileCard";
+import SignInCard from "@/components/dashboard/SignInCard";
 import AddBasket from "@/components/dashboard/AddBasket";
 import Baskets from "@/components/dashboard/Baskets";
 import Banner from "@/components/dashboard/Banner";
@@ -200,31 +201,7 @@ export default function DashboardPage() {
                         </h1>
                     </div>
 
-                    {/* Sign In Card - Exact same shape as ProfileCard */}
-                    <button
-                        id="sign-in-card"
-                        onClick={() => router.push('/auth')}
-                        className="flex items-center gap-[18px] mb-[18px] w-full text-left hover:opacity-80 transition-opacity cursor-pointer"
-                    >
-                        {/* Avatar with default profile picture - same styling as ProfileCard */}
-                        <div className="relative w-[54px] h-[54px] rounded-full border-2 border-[#FFDB0D] overflow-hidden">
-                            <img
-                                src="/avatars/default-avatar.png"
-                                alt="Default Avatar"
-                                className="w-full h-full object-cover"
-                            />
-                        </div>
-
-                        {/* Greeting with same styling as ProfileCard */}
-                        <div className="flex flex-col gap-1">
-                            <span className="text-[20px] font-normal leading-[28px] text-[#111827]">
-                                Welcome to Shelivery!
-                            </span>
-                            <span className="text-[14px] font-normal leading-[20px] text-[#6B7280]">
-                                Sign in to track your baskets
-                            </span>
-                        </div>
-                    </button>
+                    <SignInCard id="sign-in-card" />
 
                     <AddBasket onClick={handleAddBasket} id="add-basket-button" />
 
