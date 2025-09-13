@@ -24,7 +24,8 @@ function HomePageContent() {
     if (isInStandaloneMode) {
       router.replace('/dashboard');
     } else {
-      setCheckingPwa(false); // Not PWA, show normal page
+      // For web users, also redirect to dashboard to let them explore
+      router.replace('/dashboard');
     }
   }, []);
 

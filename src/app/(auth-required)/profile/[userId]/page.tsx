@@ -70,10 +70,8 @@ export default function ProfileEditPage() {
                 data: { user },
             } = await supabase.auth.getUser();
 
-            // If no user is found, redirect to the first page
             if (!user) {
-                console.log("No user found, redirecting to the first page from ProfileEditPage.");
-                router.push("/"); // CHANGED: Redirect to the first page
+                // Unauthenticated - AuthGuard will handle redirect to /auth
                 return;
             }
 
@@ -257,7 +255,6 @@ export default function ProfileEditPage() {
     );
 
     return (
-        // Wrap the entire content with PageLayout
         <PageLayout header={profileEditHeader} showNavigation={false}>
             {/* The original outer divs are now managed by PageLayout */}
             <div className="flex flex-col justify-between items-center flex-1 gap-8 pb-8">

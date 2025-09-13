@@ -35,28 +35,18 @@ export default function ShopsPage() {
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
 
-    // Redirect if not authenticated
-    useEffect(() => {
-        if (!authLoading && !user) {
-            router.push("/auth");
-        }
-    }, [user, authLoading, router]);
+    // No longer redirect if not authenticated - allow anonymous shop browsing
+    // Authentication will be handled at basket submission time
 
     // Fetch shops and user's active baskets from Supabase
     useEffect(() => {
         const fetchData = async () => {
-            // Don't fetch if user is not available or auth is still loading
-            if (!user) {
-                setLoading(false);
-                return;
-            }
-
             setLoading(true);
             setError(null);
             setWarningMessage(null); // Clear any old warnings
 
             try {
-                // --- 1. Fetch Shops ---
+                // --- 1. Fetch Shops (always fetch, regardless of auth status) ---
                 const { data: shopsData, error: shopsError } = await supabase
                     .from("shop")
                     .select("id, name, min_amount, logo_url, is_active")
@@ -68,31 +58,38 @@ export default function ShopsPage() {
                 }
                 setShops(shopsData || []);
 
-                // --- 2. Fetch User's Active Baskets ---
-                // Updated to check for multiple "unresolved" statuses: in_pool, in_chat, ordered
-                const { data: basketsData, error: basketsError } = await supabase
-                    .from("basket")
-                    .select("id, shop_id, status")
-                    .eq("user_id", user.id)
-                    .in("status", ["in_pool", "in_chat", "ordered"]); // Check for any of these active statuses
+                // --- 2. Fetch User's Active Baskets (only if authenticated) ---
+                if (user) {
+                    const { data: basketsData, error: basketsError } = await supabase
+                        .from("basket")
+                        .select("id, shop_id, status")
+                        .eq("user_id", user.id)
+                        .in("status", ["in_pool", "in_chat", "ordered"]); // Check for any of these active statuses
 
-                if (basketsError) {
-                    console.error("Error fetching active baskets:", basketsError.message);
-                    setActiveBaskets([]); // Ensure activeBaskets is empty on error
+                    if (basketsError) {
+                        console.error("Error fetching active baskets:", basketsError.message);
+                        setActiveBaskets([]); // Ensure activeBaskets is empty on error
+                    } else {
+                        setActiveBaskets(basketsData || []);
+                    }
                 } else {
-                    setActiveBaskets(basketsData || []);
+                    // For anonymous users, no active baskets
+                    setActiveBaskets([]);
                 }
 
             } catch (err: any) {
                 console.error("Error fetching data:", err);
-                setError(err.message || "Failed to load shops or user baskets.");
+                setError(err.message || "Failed to load shops.");
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchData();
-    }, [user]); // Re-run when user changes (e.g., on initial load after login)
+        // Fetch data when auth loading is complete (regardless of user state)
+        if (!authLoading) {
+            fetchData();
+        }
+    }, [user, authLoading]); // Re-run when user or authLoading changes
 
     // Filtered shops (no category filter implemented currently)
     const filteredShops = shops;
@@ -139,10 +136,7 @@ export default function ShopsPage() {
         );
     }
 
-    // If user is null after loading, return null (should be redirected by useEffect)
-    if (!user) {
-        return null;
-    }
+    // Allow both authenticated and anonymous users to see the shops page
 
     // Display a full-screen error message if fetching failed
     if (error) {

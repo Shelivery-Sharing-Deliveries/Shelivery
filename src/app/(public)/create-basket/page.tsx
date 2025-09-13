@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Header, OrderForm } from "@/components/create-basket";
 
 interface OrderFormData {
@@ -13,7 +13,22 @@ interface OrderFormData {
 export default function CreateBasketPage() {
   const [isFormValid, setIsFormValid] = useState(false);
   const [formData, setFormData] = useState<OrderFormData | null>(null);
+  const [shopData, setShopData] = useState<{ id: string; name: string } | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    // Get shop data from URL params or localStorage
+    const shopId = searchParams.get('shopId');
+    const shopName = searchParams.get('shopName');
+    
+    if (shopId && shopName) {
+      setShopData({ id: shopId, name: shopName });
+    } else {
+      // If no shop data, redirect back to shops
+      router.push('/shops');
+    }
+  }, [searchParams, router]);
 
   const handleFormChange = (data: OrderFormData) => {
     setFormData(data);
@@ -23,10 +38,23 @@ export default function CreateBasketPage() {
   };
 
   const handleSubmit = (data: OrderFormData) => {
-    console.log("Creating basket with:", data);
-    // Here you would typically make an API call to create the basket
-    // For now, let's redirect to dashboard
-    router.push("/dashboard");
+    if (!shopData) return;
+
+    console.log("Preparing basket with:", data);
+    
+    // Store basket data in localStorage for the submit-basket page
+    const basketData = {
+      shopId: shopData.id,
+      shopName: shopData.name,
+      amount: parseFloat(data.total) || 0,
+      link: data.orderLink,
+      currency: data.currency
+    };
+
+    localStorage.setItem('pendingBasket', JSON.stringify(basketData));
+    
+    // Redirect to submit-basket page where authentication will be handled
+    router.push("/submit-basket");
   };
 
   const handleCreateBasket = () => {

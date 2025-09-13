@@ -187,11 +187,65 @@ export default function DashboardPage() {
     
     return (
         <PageLayout >
-            {authLoading || !user ? (
+            {authLoading ? (
                 <div className="flex items-center justify-center py-8">
                     <div className="w-8 h-8 border-4 border-[#FFDB0D] border-t-transparent rounded-full animate-spin mr-2" />
-                    <p className="text-gray-600">Loading user data...</p>
+                    <p className="text-gray-600">Loading...</p>
                 </div>
+            ) : !user ? (
+                <>
+                    <div className="py-1 flex justify-between items-center" id="dashboard-header">
+                        <h1 className="text-[20px] font-bold leading-8 text-black">
+                            Dashboard
+                        </h1>
+                    </div>
+
+                    {/* Sign In Card - Exact same shape as ProfileCard */}
+                    <button
+                        id="sign-in-card"
+                        onClick={() => router.push('/auth')}
+                        className="flex items-center gap-[18px] mb-[18px] w-full text-left hover:opacity-80 transition-opacity cursor-pointer"
+                    >
+                        {/* Avatar with default profile picture - same styling as ProfileCard */}
+                        <div className="relative w-[54px] h-[54px] rounded-full border-2 border-[#FFDB0D] overflow-hidden">
+                            <img
+                                src="/avatars/default-avatar.png"
+                                alt="Default Avatar"
+                                className="w-full h-full object-cover"
+                            />
+                        </div>
+
+                        {/* Greeting with same styling as ProfileCard */}
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[20px] font-normal leading-[28px] text-[#111827]">
+                                Welcome to Shelivery!
+                            </span>
+                            <span className="text-[14px] font-normal leading-[20px] text-[#6B7280]">
+                                Sign in to track your baskets
+                            </span>
+                        </div>
+                    </button>
+
+                    <AddBasket onClick={handleAddBasket} id="add-basket-button" />
+
+                    <div className="text-center py-8 text-gray-500" id="visitor-dashboard-message">
+                        <img
+                            src="/graphics/empty-basket.svg"
+                            alt="No active baskets"
+                            className="mx-auto w-40 h-40"
+                        />
+                        <p className="mt-4 text-lg font-semibold">Start your first basket</p>
+                        <p>Browse shops and build a basket. You'll sign in when you submit.</p>
+                        <button
+                            onClick={handleAddBasket}
+                            className="mt-4 bg-[#245B7B] text-white px-4 py-2 rounded-lg text-[12px] font-semibold"
+                        >
+                            Choose a Shop
+                        </button>
+                    </div>
+
+                    <Banner id="dashboard-banner" />
+                </>
             ) : (
                 <>  
                     <div className="py-1 flex justify-between items-center" id="dashboard-header">

@@ -5,7 +5,7 @@ import AuthGuard from '@/lib/AuthGuard';
 import { useUserActivity } from '@/hooks/useActivity';
 import { useAuth } from "@/hooks/useAuth";
 
-export default function MainLayout({
+export default function AuthRequiredLayout({
   children,
 }: {
   children: React.ReactNode;

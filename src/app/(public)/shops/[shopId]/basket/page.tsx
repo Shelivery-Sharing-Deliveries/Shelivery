@@ -39,18 +39,45 @@ export default function BasketCreationPage() {
     const searchParams = useSearchParams(); // Get search params
     const shopId = params?.shopId as string;
 
-    // Redirect if not authenticated
-    useEffect(() => {
-        if (!authLoading && !user) {
-            router.push("/auth");
-        }
-    }, [user, authLoading, router]);
+    // No longer redirect if not authenticated - allow anonymous basket creation
+    // Authentication will be handled at submission time
 
     // Fetch shop details and handle edit mode pre-population
     useEffect(() => {
         const fetchShopAndBasket = async () => {
-            if (!shopId || !user) {
+            if (!shopId) {
                 setLoading(false);
+                return;
+            }
+
+            // For anonymous users, only fetch shop data (no basket editing)
+            if (!user) {
+                setLoading(true);
+                setError(null);
+
+                try {
+                    const { data: shopData, error: fetchShopError } = await supabase
+                        .from("shop")
+                        .select("id, name, min_amount, logo_url, is_active")
+                        .eq("id", shopId)
+                        .eq("is_active", true)
+                        .single();
+
+                    if (fetchShopError) {
+                        throw fetchShopError;
+                    }
+
+                    if (!shopData) {
+                        throw new Error("Shop not found or not active.");
+                    }
+                    setShop(shopData);
+                } catch (err: any) {
+                    console.error("Error fetching shop details:", err);
+                    setError(err.message || "Failed to load shop details.");
+                    setShop(null);
+                } finally {
+                    setLoading(false);
+                }
                 return;
             }
 
@@ -205,7 +232,7 @@ export default function BasketCreationPage() {
     };
 
     const handleSubmitBasket = async () => {
-        if (!canSubmitBasket() || !user || !shop) {
+        if (!canSubmitBasket() || !shop) {
             const hasLink = basketLink.trim() !== "";
             const hasNote = basketNote.trim() !== "";
             const isLinkValid = isValidUrl(basketLink);
@@ -217,6 +244,21 @@ export default function BasketCreationPage() {
             } else {
                 setError("Please fill in the amount field.");
             }
+            return;
+        }
+
+        // If user is not authenticated, store basket data and redirect to submit-basket
+        if (!user) {
+            const basketData = {
+                shopId: shop.id,
+                shopName: shop.name,
+                amount: calculateTotalAmount(),
+                link: basketLink.trim() ? normalizeUrl(basketLink) : "",
+                note: basketNote.trim() || ""
+            };
+
+            localStorage.setItem('pendingBasket', JSON.stringify(basketData));
+            router.push("/submit-basket");
             return;
         }
 
@@ -312,9 +354,8 @@ export default function BasketCreationPage() {
         );
     }
 
-    if (!user) {
-        return null;
-    }
+    // Allow both authenticated and anonymous users to see the page
+    // Anonymous users will be redirected to auth at submission time
 
     if (error && !shop) { // Only show shop not found error if shop data is missing
         return (

@@ -57,6 +57,9 @@ function AuthPageContent() {
                 setIsProfileCheckLoading(true); // Start loading for profile check
                 console.log("AuthPage: User logged in. Checking profile completeness...");
 
+                // Check for redirect parameter first
+                const redirectTo = searchParams.get("redirect");
+
                 // FETCHING: Include all fields that define a "complete" profile
                 const { data: userData, error: profileError } = await supabase
                     .from("user")
@@ -79,10 +82,21 @@ function AuthPageContent() {
                     userData?.favorite_store; // Checks for non-null/non-empty string
 
                 if (isProfileComplete) {
-                    console.log("AuthPage: Profile is complete. Redirecting to dashboard.");
-                    router.replace("/dashboard");
+                    console.log("AuthPage: Profile is complete.");
+                    // If there's a redirect parameter, use it; otherwise go to dashboard
+                    if (redirectTo) {
+                        console.log("AuthPage: Redirecting to:", redirectTo);
+                        router.replace(redirectTo as any);
+                    } else {
+                        console.log("AuthPage: Redirecting to dashboard.");
+                        router.replace("/dashboard");
+                    }
                 } else {
                     console.log("AuthPage: Profile is NOT complete. Redirecting to profile setup.");
+                    // Store redirect parameter for after profile setup
+                    if (redirectTo) {
+                        localStorage.setItem('postProfileRedirect', redirectTo);
+                    }
                     router.replace(`/profile-set/${user.id}`);
                 }
                 setIsProfileCheckLoading(false); // End loading for profile check
@@ -93,7 +107,7 @@ function AuthPageContent() {
         };
 
         checkProfileAndRedirect();
-    }, [user, authLoading, router]); // Re-run when user or authLoading state changes
+    }, [user, authLoading, router, searchParams]); // Re-run when user or authLoading state changes
 
     // NEW: Handle email confirmation success from URL query parameters
     useEffect(() => {
