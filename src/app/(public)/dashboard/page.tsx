@@ -209,7 +209,7 @@ export default function DashboardPage() {
                         <img
                             src="/graphics/empty-basket.svg"
                             alt="No active baskets"
-                            className="mx-auto w-40 h-40"
+                            className="w-full h-auto"
                         />
                         <p className="mt-4 text-lg font-semibold">Start your first basket</p>
                         <p>Browse shops and build a basket. You'll sign in when you submit.</p>
@@ -285,14 +285,14 @@ export default function DashboardPage() {
                     ) : (
                         <>
                             {activeBaskets.length === 0 ? (
-                                <div className="text-center py-8 text-gray-500" id="no-active-baskets-message"> {/* ADDED ID */}
+                                <div className="text-center text-gray-500" id="no-active-baskets-message"> {/* ADDED ID */}
                                     <img
                                         src="/graphics/empty-basket.svg"  // Replace with your actual image path
                                         alt="No active baskets"
-                                        className="mx-auto w-40 h-40"  // Adjust sizing as needed
+                                        className="w-full h-auto"  // Adjust sizing as needed
                                     />
-                                    
-                                    <p className="mt-4 text-lg font-semibold">No active baskets</p>
+
+                                    <p className="mt-4 py-2 text-lg font-semibold">No active baskets</p>
                                     <p>Create a basket and have shared shopping experience!</p>
                                 </div>
                             ) : (
