@@ -4,6 +4,7 @@ import React, { useEffect, useState, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation'; // Import useSearchParams
 import PWAInstallGuidePopup from '@/components/homepage/PWAInstallGuidePopup';
 import { incrementInviteCounter } from '@/lib/invites';
+import { getInviteCodeFromUrlOrStorage } from '@/lib/invite-storage';
 
 // Separate component that uses useSearchParams
 function HomePageContent() {
@@ -25,16 +26,19 @@ function HomePageContent() {
       router.replace('/dashboard');
     } else {
       // For web users, also redirect to dashboard to let them explore
-      router.replace('/dashboard');
+      //router.replace('/dashboard');
+      setCheckingPwa(false);
     }
   }, []);
 
-  // New useEffect to read invite code from URL (for HomePage itself)
+  // New useEffect to read invite code from URL or localStorage
   useEffect(() => {
-    const invite = searchParams.get('invite');
+    // Get invite code from URL or localStorage (URL takes priority)
+    const invite = getInviteCodeFromUrlOrStorage(searchParams);
+    
     if (invite) {
       setInviteCodeFromUrl(invite);
-      console.log("HomePage: Detected invite code in URL:", invite);
+      console.log("HomePage: Using invite code:", invite);
       
       // Increment counter only if we haven't already done it for this invite code
       if (counterIncrementedRef.current !== invite) {

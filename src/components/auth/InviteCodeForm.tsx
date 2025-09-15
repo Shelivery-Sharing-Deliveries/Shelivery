@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AuthLayout from "./AuthLayout";
 import TextField from "./TextField";
 import AuthButton from "./AuthButton";
+import { getStoredInviteCode, clearStoredInviteCode } from "@/lib/invite-storage";
 
 interface InviteCodeFormProps {
   onCodeSubmit: (code: string) => void;
@@ -18,9 +19,20 @@ export default function InviteCodeForm({
 }: InviteCodeFormProps) {
   const [inviteCode, setInviteCode] = useState("");
 
+  // Auto-populate invite code from localStorage on component mount
+  useEffect(() => {
+    const storedCode = getStoredInviteCode();
+    if (storedCode) {
+      setInviteCode(storedCode);
+      console.log("InviteCodeForm: Auto-populated invite code from localStorage:", storedCode);
+    }
+  }, []);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inviteCode.trim()) {
+      // Clear stored invite code after successful submission
+      clearStoredInviteCode();
       onCodeSubmit(inviteCode);
     }
   };

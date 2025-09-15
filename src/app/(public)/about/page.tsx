@@ -4,18 +4,21 @@ import React, { useEffect, useState, Suspense } from 'react'; // Added useState,
 import Image from 'next/image'; // For optimized images
 // import Link from 'next/link';   // Removed: No longer directly using Link for these buttons
 import { useSearchParams } from 'next/navigation'; // Added: Import useSearchParams
+import { getInviteCodeFromUrlOrStorage } from '@/lib/invite-storage';
 
 // Separate component that uses useSearchParams
 function AboutPageContent() {
   const [inviteCodeFromUrl, setInviteCodeFromUrl] = useState<string | null>(null); // Added: State to store invite code from URL
   const searchParams = useSearchParams(); // Added: Initialize useSearchParams
 
-  // Added: New useEffect to read invite code from URL
+  // Added: New useEffect to read invite code from URL or localStorage
   useEffect(() => {
-    const invite = searchParams.get('invite');
+    // Get invite code from URL or localStorage (URL takes priority)
+    const invite = getInviteCodeFromUrlOrStorage(searchParams);
+    
     if (invite) {
       setInviteCodeFromUrl(invite);
-      console.log("AboutPage: Detected invite code in URL:", invite);
+      console.log("AboutPage: Using invite code:", invite);
     }
   }, [searchParams]); // Depend on searchParams to re-run if URL changes
 
@@ -46,19 +49,33 @@ function AboutPageContent() {
             Shelivery Project
           </h1>
           <p className="text-lg md:text-xl mb-8">
-            Sustainable Progress Goals<br />Report June 2025
+            Sustainable Delivery Experiment <br />
           </p>
-          {/* Get Started Button - Now using <a> tag with dynamic string href */}
-          <a href={authLinkHref}
-             className="rounded-lg px-6 py-3 text-base font-semibold shadow-sm hover:opacity-80 transition-opacity"
-             style={{
-               backgroundColor: '#FFD700', // Exact yellow from Canva
-               color: '#245b7b',            // Exact dark blue from Canva
-               border: 'none',
-             }}
-          >
-            GET STARTED
-          </a>
+          {/* Button Container */}
+          <div className="flex flex-col sm:flex-row gap-4 mt-8">
+            {/* Get Started Button - Now directs to dashboard */}
+            <a href="/dashboard"
+               className="rounded-lg px-8 py-3 text-base font-semibold shadow-sm hover:opacity-80 transition-opacity text-center"
+               style={{
+                 backgroundColor: '#FFD700', // Exact yellow from Canva
+                 color: '#245b7b',            // Exact dark blue from Canva
+                 border: 'none',
+               }}
+            >
+              GET STARTED
+            </a>
+            {/* Sign Up Button - Directs to auth */}
+            <a href={authLinkHref}
+               className="rounded-lg px-8 py-3 text-base font-semibold shadow-sm hover:opacity-80 transition-opacity text-center"
+               style={{
+                 backgroundColor: 'transparent',
+                 color: '#FFD700',
+                 border: '2px solid #FFD700',
+               }}
+            >
+              SIGN UP
+            </a>
+          </div>
         </div>
 
         <div className="lg:w-1/2 flex justify-center items-center h-[40vh]">
@@ -205,16 +222,29 @@ function AboutPageContent() {
         <p className="text-lg md:text-xl mb-8 text-white">
           Join Shelivery today and revolutionize your dorm shopping experience.
         </p>
-        {/* Now using <a> tag with dynamic string href */}
-        <a href={authLinkHref}
-           className="rounded-lg px-6 py-3 text-base font-semibold shadow-sm hover:opacity-80 transition-opacity"
-           style={{
-             backgroundColor: '#FFD700', // Exact yellow from Canva
-             color: '#245b7b',            // Exact dark blue from Canva
-             border: 'none',
-           }}>
-          GET STARTED
-        </a>
+        {/* Button Container */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          {/* Get Started Button - Now directs to dashboard */}
+          <a href="/dashboard"
+             className="rounded-lg px-8 py-3 text-base font-semibold shadow-sm hover:opacity-80 transition-opacity text-center"
+             style={{
+               backgroundColor: '#FFD700', // Exact yellow from Canva
+               color: '#245b7b',            // Exact dark blue from Canva
+               border: 'none',
+             }}>
+            GET STARTED
+          </a>
+          {/* Sign Up Button - Directs to auth */}
+          <a href={authLinkHref}
+             className="rounded-lg px-8 py-3 text-base font-semibold shadow-sm hover:opacity-80 transition-opacity text-center"
+             style={{
+               backgroundColor: 'transparent',
+               color: '#FFD700',
+               border: '2px solid #FFD700',
+             }}>
+            SIGN UP
+          </a>
+        </div>
         <p className="text-sm mt-16 text-gray-400">
           © 2025 Shelivery. All rights reserved.
         </p>
