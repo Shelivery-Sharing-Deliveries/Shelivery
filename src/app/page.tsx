@@ -56,14 +56,10 @@ function HomePageContent() {
     }
   }, [searchParams]); // Depend on searchParams to re-run if URL changes
 
-  // Construct the dynamic href for the "Get Started" button (to Auth page)
-  // Now always a string, converting the object format if necessary.
-  const getStartedHref = inviteCodeFromUrl 
-    ? `/auth?invite=${inviteCodeFromUrl}` 
-    : "/auth";
+  // Get Started always goes to dashboard (invite code is stored in localStorage)
+  const getStartedHref = "/dashboard";
 
-  // Construct the dynamic href for the "Learn more" button (to About page)
-  // Now always a string, converting the object format if necessary.
+  // Learn more can still pass invite code in URL for immediate context
   const learnMoreHref = inviteCodeFromUrl
     ? `/about?invite=${inviteCodeFromUrl}`
     : "/about";
