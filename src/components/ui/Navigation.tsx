@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import { usePWA } from "@/hooks/usePWA";
+import { usePWAPopup } from "@/contexts/PWAContext";
 
 interface NavigationProps {
   className?: string;
@@ -28,6 +30,8 @@ const navItems = [
 
 export function Navigation({ className = "" }: NavigationProps) {
   const pathname = usePathname();
+  const { isPWA, isLoading } = usePWA();
+  const { setShowPwaPopup } = usePWAPopup();
 
   const renderIcon = (iconType: string, isActive: boolean) => {
     let iconPath;
@@ -156,11 +160,12 @@ export function Navigation({ className = "" }: NavigationProps) {
   };
 
   return (
-    <div className="w-full bg-[#245B7B]">
-      <div
-        className={`w-full h-[74px] flex justify-center items-center gap-[45px] px-4 py-1.5 pb-6 ${className}`}
-      >
-        {navItems.map((item) => {
+      <div className="w-full bg-[#245B7B] relative">
+        <div
+          className={`w-full h-[74px] flex items-center gap-[45px] px-4 py-1.5 pb-6 ${className} ${!isPWA && !isLoading ? 'justify-between' : 'justify-center'}`}
+        >
+          <div className={`flex items-center gap-[45px] ${!isPWA && !isLoading ? '' : 'w-full justify-center'}`}>
+            {navItems.map((item) => {
           // Enhanced active state check to include choose-shop for Stores
           const isActive =
             pathname === item.href ||
@@ -184,10 +189,35 @@ export function Navigation({ className = "" }: NavigationProps) {
               >
                 {item.name}
               </span>
-            </Link>
-          );
-        })}
+              </Link>
+            );
+          })}
+          </div>
+          {!isPWA && !isLoading && (
+            <button
+              onClick={() => setShowPwaPopup(true)}
+              className="flex flex-col items-center gap-1 transition-all duration-200 min-w-[60px]"
+              aria-label="Install App"
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-6 h-6"
+              >
+                <path
+                  d="M12 16L7 11L8.4 9.55L11 12.15V4H13V12.15L15.6 9.55L17 11L12 16ZM6 20C5.45 20 4.979 19.804 4.587 19.412C4.195 19.02 3.99933 18.5493 4 18V15H6V18H18V15H20V18C20 18.55 19.804 19.021 19.412 19.413C19.02 19.805 18.5493 20.0007 18 20H6Z"
+                  fill="#FFDB0D"
+                />
+              </svg>
+              <span className="text-[12px] font-semibold leading-4 text-[#FFDB0D]">
+                Install
+              </span>
+            </button>
+          )}
+        </div>
       </div>
-    </div>
   );
 }
