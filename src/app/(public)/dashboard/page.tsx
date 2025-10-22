@@ -7,6 +7,7 @@ import SignInCard from "@/components/dashboard/SignInCard";
 import AddBasket from "@/components/dashboard/AddBasket";
 import Baskets from "@/components/dashboard/Baskets";
 import Banner from "@/components/dashboard/Banner";
+import SquareBanner from "@/components/dashboard/SquareBanner";
 import DashboardTutorial from "@/components/dashboard/DashboardTutorial"; // NEW: Import the tutorial component
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -196,32 +197,13 @@ export default function DashboardPage() {
             ) : !user ? (
                 <>
                     <div className="py-1 flex justify-between items-center" id="dashboard-header">
-                        <h1 className="text-[20px] font-bold leading-8 text-black">
-                            Dashboard
-                        </h1>
                     </div>
 
                     <SignInCard id="sign-in-card" />
 
+                    <SquareBanner id="square-banner" />
+
                     <AddBasket onClick={handleAddBasket} id="add-basket-button" />
-
-                    <div className="text-center py-8 text-gray-500" id="visitor-dashboard-message">
-                        <img
-                            src="/graphics/empty-basket.svg"
-                            alt="No active baskets"
-                            className="w-full h-auto"
-                        />
-                        <p className="mt-4 text-lg font-semibold">Start your first basket</p>
-                        <p>Browse shops and build a basket. You'll sign in when you submit.</p>
-                        <button
-                            onClick={handleAddBasket}
-                            className="mt-4 bg-[#245B7B] text-white px-4 py-2 rounded-lg text-[12px] font-semibold"
-                        >
-                            Choose a Shop
-                        </button>
-                    </div>
-
-                    <Banner id="dashboard-banner" />
                 </>
             ) : (
                 <>  

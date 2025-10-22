@@ -31,7 +31,7 @@ export default function AddBasket({ onClick, id }: AddBasketProps) { // Destruct
 
           {/* Add Basket Text */}
           <span className="text-[16px] font-bold leading-[24px] text-[#111827]">
-            Add Basket
+            Start your shared delivery
           </span>
         </div>
       </div>

@@ -18,9 +18,9 @@ export default function SignInCard({ id }: SignInCardProps) {
       className="flex items-center gap-[18px] mb-[18px] w-full text-left hover:opacity-80 transition-opacity cursor-pointer"
     >
       {/* Avatar with default profile picture */}
-      <div className="relative w-[54px] h-[54px] rounded-full border-2 border-[#FFDB0D] overflow-hidden">
+      <div className="relative w-[52px] h-[52px]   overflow-hidden">
         <img
-          src="/avatars/default-avatar.png"
+          src="/icons/shelivery-logo.png"
           alt="Default Avatar"
           className="w-full h-full object-cover"
         />
