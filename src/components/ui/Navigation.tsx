@@ -162,9 +162,9 @@ export function Navigation({ className = "" }: NavigationProps) {
   return (
       <div className="w-full bg-[#245B7B] relative">
         <div
-          className={`w-full h-[74px] flex items-center gap-[45px] px-4 py-1.5 pb-6 ${className} ${!isPWA && !isLoading ? 'justify-between' : 'justify-center'}`}
+          className={`w-full h-[74px] flex items-center px-4 py-1.5 pb-6 ${className} ${!isPWA && !isLoading ? 'justify-between' : 'justify-center'}`}
         >
-          <div className={`flex items-center gap-[45px] ${!isPWA && !isLoading ? '' : 'w-full justify-center'}`}>
+          <div className={`flex items-center ${!isPWA && !isLoading ? 'gap-[45px]' : 'gap-[45px] w-full justify-center'}`}>
             {navItems.map((item) => {
           // Enhanced active state check to include choose-shop for Stores
           const isActive =
@@ -192,11 +192,10 @@ export function Navigation({ className = "" }: NavigationProps) {
               </Link>
             );
           })}
-          </div>
           {!isPWA && !isLoading && (
             <button
               onClick={() => setShowPwaPopup(true)}
-              className="flex flex-col items-center gap-1 transition-all duration-200 min-w-[60px]"
+              className="flex flex-col items-center gap-1 transition-all duration-200"
               aria-label="Install App"
             >
               <svg
@@ -217,6 +216,7 @@ export function Navigation({ className = "" }: NavigationProps) {
               </span>
             </button>
           )}
+          </div>
         </div>
       </div>
   );

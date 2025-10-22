@@ -15,6 +15,9 @@ interface ProgressBarProps {
   className?: string;
   showPercentage?: boolean;
   animated?: boolean;
+  showAmount?: boolean;
+  currency?: string;
+  variant?: 'default' | 'shops' | 'pool';
 }
 
 export function ProgressBar({
@@ -24,6 +27,9 @@ export function ProgressBar({
   className,
   showPercentage = true,
   animated = true,
+  showAmount = true,
+  currency = "CHF",
+  variant = "default",
 }: ProgressBarProps) {
   // Safely parse current and target to ensure they are numbers
   // If they are not valid numbers, default to 0
@@ -34,17 +40,37 @@ export function ProgressBar({
   const percentage = safeTarget > 0 ? Math.min((safeCurrent / safeTarget) * 100, 100) : 0;
   const isComplete = percentage >= 100;
 
+  // Determine fill color based on variant
+  const getFillClasses = () => {
+    const baseClasses = animated ? "pool-progress-animate" : "";
+
+    switch (variant) {
+      case 'shops':
+        return cn(
+          "bg-shelivery-primary-blue h-full transition-all duration-500 ease-out transform-gpu origin-left",
+          baseClasses
+        );
+      case 'pool':
+        return cn(
+          "bg-shelivery-success-green h-full transition-all duration-500 ease-out transform-gpu origin-left",
+          baseClasses
+        );
+      default:
+        return cn(
+          "shelivery-progress-fill",
+          isComplete && "shelivery-progress-current",
+          baseClasses
+        );
+    }
+  };
+
   return (
     <div className={cn("space-y-4", className)}>
       {/* Progress Bar */}
       <div className="relative">
         <div className="shelivery-progress-bar">
           <div
-            className={cn(
-              "shelivery-progress-fill",
-              isComplete && "shelivery-progress-current",
-              animated && "pool-progress-animate"
-            )}
+            className={getFillClasses()}
             style={{ transform: `scaleX(${percentage / 100})` }}
           />
         </div>
@@ -86,17 +112,19 @@ export function ProgressBar({
       </div>
 
       {/* Progress information */}
-      <div className="flex justify-between items-center text-sm">
-        <div className="text-shelivery-text-secondary">
-          {/* Use safeCurrent and safeTarget for toFixed */}
-          {safeCurrent.toFixed(2)} CHF /  {safeTarget.toFixed(2)} CHF
-        </div>
-        {showPercentage && (
-          <div className="text-shelivery-text-primary font-medium">
-            {percentage.toFixed(0)}%
+      {showAmount && (
+        <div className="flex justify-between items-center text-sm">
+          <div className="text-shelivery-text-secondary">
+            {safeCurrent.toFixed(0)} / {safeTarget.toFixed(0)}
+            {currency && ` ${currency}`}
           </div>
-        )}
-      </div>
+          {showPercentage && (
+            <div className="text-shelivery-text-primary font-medium">
+              {percentage.toFixed(0)}%
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Completion status */}
       {isComplete && (

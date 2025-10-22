@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
 import { Navigation } from "@/components/ui/Navigation"; // Assuming this is for general navigation, not a specific header
 import { PageLayout } from "@/components/ui/PageLayout"; // Corrected import path for PageLayout based on usage
+import { ProgressBar } from "@/components/ui/ProgressBar";
 
 // Interface for a Shop, including only the fields used/fetched
 interface Shop {
@@ -25,12 +26,38 @@ interface Basket {
     // Add any other fields you might need from the basket table here
 }
 
+// Interface for Pool data
+interface Pool {
+    id: string;
+    shop_id: string | null;
+    dormitory_id: number;
+    current_amount: number | null;
+    min_amount: number;
+}
+
+// Interface for enhanced Shop data with pool progress
+interface ShopWithProgress extends Shop {
+    poolProgress: {
+        current: number;
+        target: number;
+        percentage: number;
+    };
+}
+
+// Interface for User with dormitory info
+interface UserWithDormitory {
+    id: string;
+    dormitory_id: number | null;
+    email: string;
+}
+
 export default function ShopsPage() {
     const [shops, setShops] = useState<Shop[]>([]);
     const [activeBaskets, setActiveBaskets] = useState<Basket[]>([]); // New state for user's active baskets
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [warningMessage, setWarningMessage] = useState<string | null>(null); // New state for the warning message
+    const [userWithDormitory, setUserWithDormitory] = useState<UserWithDormitory | null>(null);
 
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
@@ -38,7 +65,38 @@ export default function ShopsPage() {
     // No longer redirect if not authenticated - allow anonymous shop browsing
     // Authentication will be handled at basket submission time
 
-    // Fetch shops and user's active baskets from Supabase
+    // Fetch user's dormitory information
+    useEffect(() => {
+        const fetchUserDormitory = async () => {
+            if (user) {
+                try {
+                    const { data: userData, error: userError } = await supabase
+                        .from("user")
+                        .select("id, dormitory_id, email")
+                        .eq("id", user.id)
+                        .single();
+
+                    if (userError) {
+                        console.error("Error fetching user dormitory:", userError.message);
+                        setUserWithDormitory(null);
+                    } else {
+                        setUserWithDormitory(userData);
+                    }
+                } catch (err) {
+                    console.error("Error fetching user dormitory:", err);
+                    setUserWithDormitory(null);
+                }
+            } else {
+                setUserWithDormitory(null);
+            }
+        };
+
+        if (!authLoading) {
+            fetchUserDormitory();
+        }
+    }, [user, authLoading]);
+
+    // Fetch shops, user's active baskets, and pool data from Supabase
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
@@ -56,9 +114,111 @@ export default function ShopsPage() {
                 if (shopsError) {
                     throw shopsError;
                 }
-                setShops(shopsData || []);
 
-                // --- 2. Fetch User's Active Baskets (only if authenticated) ---
+                const shops = shopsData || [];
+
+                // --- 2. Fetch Pool Data for Each Shop ---
+                const shopsWithProgress: ShopWithProgress[] = await Promise.all(
+                    shops.map(async (shop) => {
+                        try {
+                            let poolQuery = supabase
+                                .from("pool")
+                                .select("id, shop_id, dormitory_id, current_amount, min_amount")
+                                .eq("shop_id", shop.id);
+
+                            const { data: poolsData, error: poolsError } = await poolQuery;
+
+                            if (poolsError) {
+                                console.error(`Error fetching pools for shop ${shop.id}:`, poolsError.message);
+                                // Return shop with zero progress if pool fetch fails
+                                return {
+                                    ...shop,
+                                    poolProgress: {
+                                        current: 0,
+                                        target: shop.min_amount || 100,
+                                        percentage: 0,
+                                    },
+                                };
+                            }
+
+                            const pools: Pool[] = (poolsData || []).filter((pool): pool is Pool => pool != null);
+
+                            if (pools.length === 0) {
+                                // No pools for this shop
+                                return {
+                                    ...shop,
+                                    poolProgress: {
+                                        current: 0,
+                                        target: shop.min_amount || 100,
+                                        percentage: 0,
+                                    },
+                                };
+                            }
+
+                            let selectedPool: Pool | null = null;
+
+                            if (userWithDormitory && userWithDormitory.dormitory_id) {
+                                // For authenticated users: find pool matching user's dormitory
+                                selectedPool = pools.find(pool => pool.dormitory_id === userWithDormitory.dormitory_id) ?? null;
+                            }
+
+                            if (!selectedPool) {
+                                // For guest users or if no matching dormitory pool found:
+                                // select pool with maximum current_amount
+                                selectedPool = pools.reduce((maxPool: Pool, currentPool: Pool) => {
+                                    const currentAmount = currentPool.current_amount || 0;
+                                    const maxAmount = maxPool.current_amount || 0;
+                                    return currentAmount > maxAmount ? currentPool : maxPool;
+                                });
+                            }
+
+                            if (!selectedPool) {
+                                // Fallback: use first pool
+                                selectedPool = pools[0];
+                            }
+
+                            if (selectedPool) {
+                                const currentAmount = selectedPool.current_amount || 0;
+                                const targetAmount = selectedPool.min_amount;
+                                const percentage = targetAmount > 0 ? Math.min((currentAmount / targetAmount) * 100, 100) : 0;
+
+                                return {
+                                    ...shop,
+                                    poolProgress: {
+                                        current: currentAmount,
+                                        target: targetAmount,
+                                        percentage: percentage,
+                                    },
+                                };
+                            } else {
+                                // No pools available
+                                return {
+                                    ...shop,
+                                    poolProgress: {
+                                        current: 0,
+                                        target: shop.min_amount || 100,
+                                        percentage: 0,
+                                    },
+                                };
+                            }
+                        } catch (shopError) {
+                            console.error(`Error processing shop ${shop.id}:`, shopError);
+                            // Return shop with zero progress on error
+                            return {
+                                ...shop,
+                                poolProgress: {
+                                    current: 0,
+                                    target: shop.min_amount || 100,
+                                    percentage: 0,
+                                },
+                            };
+                        }
+                    })
+                );
+
+                setShops(shopsWithProgress);
+
+                // --- 3. Fetch User's Active Baskets (only if authenticated) ---
                 if (user) {
                     const { data: basketsData, error: basketsError } = await supabase
                         .from("basket")
@@ -89,7 +249,7 @@ export default function ShopsPage() {
         if (!authLoading) {
             fetchData();
         }
-    }, [user, authLoading]); // Re-run when user or authLoading changes
+    }, [user, authLoading, userWithDormitory]); // Re-run when user, authLoading, or userWithDormitory changes
 
     // Filtered shops (no category filter implemented currently)
     const filteredShops = shops;
@@ -282,8 +442,19 @@ export default function ShopsPage() {
 
                                     {/* Shop Details */}
                                     <div className="flex flex-wrap gap-4 text-sm text-shelivery-text-tertiary">
-                                        <div className="flex items-center gap-1">
-                                            Min: CHF {shop.min_amount}
+                                        <div className="w-full">
+                                            <div className="mb-1 text-xs text-shelivery-text-secondary">
+                                                Min: CHF {(shop as ShopWithProgress).poolProgress.target}
+                                            </div>
+                                            <ProgressBar
+                                                current={(shop as ShopWithProgress).poolProgress.current}
+                                                target={(shop as ShopWithProgress).poolProgress.target}
+                                                showPercentage={true}
+                                                showAmount={false}
+                                                animated={false}
+                                                variant="default"
+                                                className="h-2"
+                                            />
                                         </div>
                                     </div>
                                 </div>
