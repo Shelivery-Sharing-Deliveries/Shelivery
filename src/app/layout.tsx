@@ -89,10 +89,10 @@ export default function RootLayout({
         <meta name="msapplication-tap-highlight" content="no" />
       </head>
       <body
-        className={`${inter.className} antialiased min-h-screen bg-background font-sans`}
+        className={`${inter.className} antialiased bg-background font-sans`}
       >
         <PostHogProvider>
-          <div className="relative flex min-h-screen flex-col">
+          <div className="relative h-screen flex flex-col">
             <div className="flex-1">{children}</div>
           </div>
         </PostHogProvider>

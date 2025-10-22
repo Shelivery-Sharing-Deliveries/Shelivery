@@ -20,7 +20,7 @@ export function PageLayout({
 }: PageLayoutProps) {
 
   return (
-    <div className="min-h-screen bg-[#245B7B] relative flex justify-center">
+    <div className="h-screen bg-[#245B7B] relative flex justify-center overflow-hidden">
       {/* Rounded content container */}
       <div className="w-[calc(100vw-25px)] md:w-[375px] bg-white rounded-[30px] md:mx-[10px] flex flex-col overflow-hidden relative" style={{ height: showNavigation && !footer ? 'calc(100vh - 148px)' : '100vh', marginBottom: showNavigation && !footer ? '148px' : '0' }}>
         

@@ -94,10 +94,16 @@
   }
   body {
     @apply bg-background text-foreground font-poppins;
+    overflow: hidden; /* Prevent body from scrolling */
   }
-  
+
   html {
     font-family: 'Poppins', sans-serif;
+    overflow: hidden; /* Prevent html from scrolling */
+    height: 100vh; /* Ensure full viewport height */
+    /* Improve mobile scrolling */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: none;
   }
   
   h1, h2, h3, h4, h5, h6 {
@@ -384,13 +390,35 @@
   .shelivery-container {
     @apply px-shelivery-3;
   }
-  
+
   .shelivery-navbar {
     @apply p-shelivery-3;
   }
-  
+
   .shelivery-basket-card {
     @apply p-shelivery-3;
+  }
+}
+
+/* Mobile scrolling fixes */
+@media screen and (max-width: 768px) {
+  /* Prevent mobile browser bounce scrolling */
+  body {
+    position: fixed;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Ensure proper touch scrolling in content areas */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+
+  /* Prevent zoom on input focus */
+  input, textarea, select {
+    font-size: 16px !important;
   }
 }
 
