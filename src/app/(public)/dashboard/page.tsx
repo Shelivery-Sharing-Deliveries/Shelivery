@@ -7,6 +7,7 @@ import SignInCard from "@/components/dashboard/SignInCard";
 import AddBasket from "@/components/dashboard/AddBasket";
 import Baskets from "@/components/dashboard/Baskets";
 import Banner from "@/components/dashboard/Banner";
+import { AnimationBanner } from "@/components/dashboard";
 import SquareBanner from "@/components/dashboard/SquareBanner";
 import DashboardTutorial from "@/components/dashboard/DashboardTutorial"; // NEW: Import the tutorial component
 import { useRouter } from "next/navigation";
@@ -201,7 +202,10 @@ export default function DashboardPage() {
 
                     <SignInCard id="sign-in-card" />
 
-                    <SquareBanner id="square-banner" />
+                    {/*<SquareBanner id="square-banner" />*/}
+
+                    {/* Animation Banner for Guest Users */}
+                    <AnimationBanner id="guest-animation-banner" />
 
                     <AddBasket onClick={handleAddBasket} id="add-basket-button" />
                 </>
