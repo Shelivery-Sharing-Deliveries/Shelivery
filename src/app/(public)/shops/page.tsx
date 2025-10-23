@@ -174,7 +174,7 @@ export default function ShopsPage() {
 
                             if (!selectedPool) {
                                 // Fallback: use first pool
-                                selectedPool = pools[0];
+                                selectedPool = pools[0] ?? null;
                             }
 
                             if (selectedPool) {
