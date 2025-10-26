@@ -161,7 +161,21 @@ module.exports = {
       boxShadow: {
         'shelivery-sm': '0px 1px 2px 0px rgba(10, 13, 18, 0.05)',
         'shelivery-md': '0px 1px 3px 0px rgba(0, 0, 0, 0.1)',
-        'shelivery-lg': '0px 2px 4px -2px rgba(10, 13, 18, 0.06), 0px 4px 8px -2px rgba(10, 13, 18, 0.1)'
+        'shelivery-lg': '0px 2px 4px -2px rgba(10, 13, 18, 0.06), 0px 4px 8px -2px rgba(10, 13, 18, 0.1)',
+        'ios-glass': '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
+        'ios-glass-hover': '0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+        'ios-glow': '0 0 20px rgba(255, 219, 13, 0.3), 0 0 40px rgba(255, 219, 13, 0.1)',
+        'ios-inner': 'inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.1)'
+      },
+      backdropBlur: {
+        'ios': '20px',
+        'ios-strong': '30px'
+      },
+      padding: {
+        'safe': 'env(safe-area-inset-bottom)',
+        'safe-top': 'env(safe-area-inset-top)',
+        'safe-left': 'env(safe-area-inset-left)',
+        'safe-right': 'env(safe-area-inset-right)',
       },
       keyframes: {
         'accordion-down': {

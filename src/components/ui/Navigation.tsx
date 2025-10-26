@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { usePWA } from "@/hooks/usePWA";
 import { usePWAPopup } from "@/contexts/PWAContext";
+import { useState, useEffect } from "react";
 
 interface NavigationProps {
   className?: string;
@@ -32,6 +33,18 @@ export function Navigation({ className = "" }: NavigationProps) {
   const pathname = usePathname();
   const { isPWA, isLoading } = usePWA();
   const { setShowPwaPopup } = usePWAPopup();
+  const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // Dynamic background based on scroll and theme
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const renderIcon = (iconType: string, isActive: boolean) => {
     let iconPath;
@@ -160,64 +173,183 @@ export function Navigation({ className = "" }: NavigationProps) {
   };
 
   return (
-      <div className="w-full bg-[#245B7B] relative">
-        <div
-          className={`w-full h-[74px] flex items-center px-4 py-1.5 pb-6 ${className} justify-center`}
-        >
-          <div className={`flex items-center gap-[45px]`}>
+    <div className="w-full relative">
+      {/* Eclipse-shaped navigation container - Bottom positioned with safe area */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 pb-2 sm:pb-0" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="w-full h-[74px] flex items-center justify-center px-4 py-1.5 pt-6 pb-2">
+          <div
+            className="relative flex items-center gap-[45px] px-8 py-3 rounded-[50px] transition-all duration-500"
+            style={{
+              background: isScrolled
+                ? `
+                  linear-gradient(135deg,
+                    rgba(36, 91, 123, 0.95) 0%,
+                    rgba(36, 91, 123, 0.98) 25%,
+                    rgba(36, 91, 123, 0.98) 50%,
+                    rgba(36, 91, 123, 0.98) 75%,
+                    rgba(36, 91, 123, 0.95) 100%
+                  ),
+                  radial-gradient(circle at 50% 0%,
+                    rgba(255, 255, 255, 0.15) 0%,
+                    rgba(255, 255, 255, 0.08) 30%,
+                    rgba(255, 255, 255, 0.03) 60%,
+                    transparent 100%
+                  )
+                `
+                : `
+                  linear-gradient(135deg,
+                    rgba(36, 91, 123, 0.85) 0%,
+                    rgba(36, 91, 123, 0.92) 25%,
+                    rgba(36, 91, 123, 0.92) 50%,
+                    rgba(36, 91, 123, 0.92) 75%,
+                    rgba(36, 91, 123, 0.85) 100%
+                  ),
+                  radial-gradient(circle at 50% 0%,
+                    rgba(255, 255, 255, 0.12) 0%,
+                    rgba(255, 255, 255, 0.06) 30%,
+                    rgba(255, 255, 255, 0.02) 60%,
+                    transparent 100%
+                  )
+                `,
+              boxShadow: isScrolled
+                ? `
+                  0 20px 60px rgba(0, 0, 0, 0.4),
+                  0 8px 32px rgba(0, 0, 0, 0.3),
+                  inset 0 2px 0 rgba(255, 255, 255, 0.15),
+                  inset 0 -2px 0 rgba(0, 0, 0, 0.1),
+                  inset 0 0 0 1px rgba(255, 255, 255, 0.08)
+                `
+                : `
+                  0 12px 40px rgba(0, 0, 0, 0.25),
+                  0 4px 20px rgba(0, 0, 0, 0.2),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                  inset 0 -1px 0 rgba(0, 0, 0, 0.05),
+                  inset 0 0 0 1px rgba(255, 255, 255, 0.05)
+                `,
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              backdropFilter: isScrolled ? 'blur(40px)' : 'blur(25px)',
+            }}
+          >
             {navItems.map((item) => {
-          // Enhanced active state check to include choose-shop for Stores
-          const isActive =
-            pathname === item.href ||
-            pathname.startsWith(item.href + "/") ||
-            (item.href === "/shops" && pathname === "/choose-shop");
+              // Enhanced active state check to include choose-shop for Stores
+              const isActive =
+                pathname === item.href ||
+                pathname.startsWith(item.href + "/") ||
+                (item.href === "/shops" && pathname === "/choose-shop");
 
-          return (
-            <Link
-              key={item.name}
-              href={item.href as any}
-              className="flex flex-col items-center gap-1 transition-all duration-200"
-            >
-              <div className="w-6 h-6">{renderIcon(item.icon, isActive)}</div>
-              <span
-                className="text-[12px] font-semibold leading-4 transition-colors duration-200"
-                style={{
-                  color: isActive
-                    ? "var(--shelivery-primary-yellow)"
-                    : "#FFFFFF",
-                }}
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href as any}
+                  className="relative flex flex-col items-center gap-1 transition-all duration-300 group"
+                  onMouseEnter={() => setActiveTab(item.name)}
+                  onMouseLeave={() => setActiveTab(null)}
+                >
+                  {/* Ripple effect background */}
+                  <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-20 group-active:opacity-30 transition-all duration-200 bg-white/20 scale-75 group-active:scale-100" />
+
+                  {/* Icon container with enhanced effects */}
+                  <div
+                    className={`relative w-6 h-6 transition-all duration-300 ${
+                      isActive || activeTab === item.name
+                        ? 'scale-110 drop-shadow-lg'
+                        : 'scale-100 group-hover:scale-105'
+                    }`}
+                  >
+                    {renderIcon(item.icon, isActive)}
+
+                    {/* Active indicator glow */}
+                    {isActive && (
+                      <div className="absolute inset-0 rounded-full bg-[#FFDB0D]/30 blur-md animate-pulse" />
+                    )}
+                  </div>
+
+                  {/* Enhanced text with better typography */}
+                  <span
+                    className={`text-[12px] font-semibold leading-4 transition-all duration-300 ${
+                      isActive || activeTab === item.name
+                        ? 'text-[#FFDB0D] scale-105'
+                        : 'text-white/90 group-hover:text-white group-hover:scale-102'
+                    }`}
+                    style={{
+                      textShadow: isActive
+                        ? '0 0 8px rgba(255, 219, 13, 0.5)'
+                        : 'none',
+                    }}
+                  >
+                    {item.name}
+                  </span>
+
+                  {/* Active indicator bar */}
+                  {isActive && (
+                    <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-[#FFDB0D] rounded-full animate-pulse" />
+                  )}
+                </Link>
+              );
+            })}
+
+            {/* Enhanced Install button */}
+            {!isPWA && !isLoading && (
+              <button
+                onClick={() => setShowPwaPopup(true)}
+                className="relative flex flex-col items-center gap-1 transition-all duration-300 group"
+                aria-label="Install App"
+                onMouseEnter={() => setActiveTab('install')}
+                onMouseLeave={() => setActiveTab(null)}
               >
-                {item.name}
-              </span>
-              </Link>
-            );
-          })}
-          {!isPWA && !isLoading && (
-            <button
-              onClick={() => setShowPwaPopup(true)}
-              className="flex flex-col items-center gap-1 transition-all duration-200"
-              aria-label="Install App"
-            >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-6 h-6"
-              >
-                <path
-                  d="M12 16L7 11L8.4 9.55L11 12.15V4H13V12.15L15.6 9.55L17 11L12 16ZM6 20C5.45 20 4.979 19.804 4.587 19.412C4.195 19.02 3.99933 18.5493 4 18V15H6V18H18V15H20V18C20 18.55 19.804 19.021 19.412 19.413C19.02 19.805 18.5493 20.0007 18 20H6Z"
-                  fill="#FFDB0D"
-                />
-              </svg>
-              <span className="text-[12px] font-semibold leading-4 text-[#FFDB0D]">
-                Install
-              </span>
-            </button>
-          )}
+                {/* Ripple effect */}
+                <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-20 group-active:opacity-30 transition-all duration-200 bg-[#FFDB0D]/20 scale-75 group-active:scale-100" />
+
+                <div
+                  className={`relative w-6 h-6 transition-all duration-300 ${
+                    activeTab === 'install'
+                      ? 'scale-110 drop-shadow-lg'
+                      : 'scale-100 group-hover:scale-105'
+                  }`}
+                >
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-6 h-6 transition-all duration-300"
+                  >
+                    <path
+                      d="M12 16L7 11L8.4 9.55L11 12.15V4H13V12.15L15.6 9.55L17 11L12 16ZM6 20C5.45 20 4.979 19.804 4.587 19.412C4.195 19.02 3.99933 18.5493 4 18V15H6V18H18V15H20V18C20 18.55 19.804 19.021 19.412 19.413C19.02 19.805 18.5493 20.0007 18 20H6Z"
+                      fill="#FFDB0D"
+                      className="transition-all duration-300 group-hover:drop-shadow-lg"
+                    />
+                  </svg>
+
+                  {/* Glow effect for install button */}
+                  {activeTab === 'install' && (
+                    <div className="absolute inset-0 rounded-full bg-[#FFDB0D]/30 blur-md animate-pulse" />
+                  )}
+                </div>
+
+                <span
+                  className={`text-[12px] font-semibold leading-4 transition-all duration-300 ${
+                    activeTab === 'install'
+                      ? 'text-[#FFDB0D] scale-105'
+                      : 'text-[#FFDB0D]/90 group-hover:text-[#FFDB0D] group-hover:scale-102'
+                  }`}
+                  style={{
+                    textShadow: activeTab === 'install'
+                      ? '0 0 8px rgba(255, 219, 13, 0.5)'
+                      : 'none',
+                  }}
+                >
+                  Install
+                </span>
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Spacer to prevent content overlap - Bottom navigation */}
+      <div className="h-[74px] w-full" />
+    </div>
   );
 }
