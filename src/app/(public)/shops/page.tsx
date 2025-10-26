@@ -279,7 +279,7 @@ export default function ShopsPage() {
     };
 
     const handleAddStoreClick = () => {
-        router.push("/feedback");
+        router.push("/feedback" as any);
     };
 
     // --- Conditional Rendering for Loading/Error States ---
@@ -444,7 +444,7 @@ export default function ShopsPage() {
                                     <div className="flex flex-wrap gap-4 text-sm text-shelivery-text-tertiary">
                                         <div className="w-full">
                                             <div className="mb-1 text-xs text-shelivery-text-secondary">
-                                                Min: CHF {(shop as ShopWithProgress).poolProgress.target}
+                                                  {(shop as ShopWithProgress).poolProgress.target - (shop as ShopWithProgress).poolProgress.current} CHF to go
                                             </div>
                                             <ProgressBar
                                                 current={(shop as ShopWithProgress).poolProgress.current}

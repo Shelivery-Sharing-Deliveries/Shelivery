@@ -24,12 +24,12 @@ const banners: Banner[] = [
   },
   {
     id: "2",
-    src: "/banners/banner-2.jpg",
+    src: "/banners/banner-2.png",
     alt: "The problem"
   },
   {
     id: "3",
-    src: "/banners/banner-3.jpg",
+    src: "/banners/banner-3.png",
     alt: "Solution"
   }
 ];
