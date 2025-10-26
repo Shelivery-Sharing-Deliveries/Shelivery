@@ -17,11 +17,7 @@ interface SquareBannerProps {
 }
 
 const banners: Banner[] = [
-  {
-    id: "1",
-    src: "/banners/banner-1.png",
-    alt: "Welcome to Shelivery - Start Shopping"
-  },
+  
   {
     id: "2",
     src: "/banners/banner-2.png",
@@ -31,6 +27,11 @@ const banners: Banner[] = [
     id: "3",
     src: "/banners/banner-3.png",
     alt: "Solution"
+  },
+  {
+    id: "1",
+    src: "/banners/banner-1.png",
+    alt: "Welcome to Shelivery - Start Shopping"
   }
 ];
 
@@ -72,7 +73,7 @@ export default function SquareBanner({
 
   return (
     <div
-      className={`w-full py-2 ${className}`}
+      className={`w-full ${className}`}
       id={id}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -119,24 +120,22 @@ export default function SquareBanner({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </button>
+      </div>
 
-        {/* Dot Indicators */}
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex space-x-2">
+      {/* Dashed Line Indicator */}
+      <div className="w-full flex justify-center mt-4">
+        <div className="flex items-center space-x-2">
           {banners.map((_, index) => (
-            <button
+            <div
               key={index}
-              onClick={() => goToSlide(index)}
-              className={`w-2 h-2 rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/50 ${
+              className={`h-0.5 flex-1 transition-all duration-300 ${
                 index === currentIndex
-                  ? "bg-white"
-                  : "bg-white/50 hover:bg-white/75"
+                  ? "bg-white shadow-sm"
+                  : "bg-white/30"
               }`}
-              aria-label={`Go to banner ${index + 1}`}
             />
           ))}
         </div>
-
-
       </div>
     </div>
   );
