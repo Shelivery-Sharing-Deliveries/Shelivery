@@ -20,7 +20,7 @@ export default function SignInCard({ id }: SignInCardProps) {
       {/* Avatar with default profile picture */}
       <div className="relative w-[52px] h-[52px]   overflow-hidden">
         <img
-          src="/icons/shelivery-logo.png"
+          src="/icons/shelivery-logo3.svg"
           alt="Default Avatar"
           className="w-full h-full object-cover"
         />

@@ -18,6 +18,54 @@ import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { TicketIcon } from '@heroicons/react/24/outline';
 
+// Loading component that matches the app's design
+function DashboardLoading() {
+    return (
+        <div className="space-y-6">
+            {/* Header skeleton */}
+            <div className="py-1 flex justify-between items-center">
+                <Skeleton height={32} width={100} />
+                <div className="flex items-center gap-2">
+                    <Skeleton height={32} width={100} className="rounded-lg" />
+                    <Skeleton height={32} width={80} className="rounded-lg" />
+                </div>
+            </div>
+
+            {/* Profile card skeleton */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center gap-4">
+                    <Skeleton circle width={54} height={54} />
+                    <div className="flex-1">
+                        <Skeleton height={20} width={150} />
+                        <Skeleton height={16} width={100} className="mt-1" />
+                    </div>
+                </div>
+            </div>
+
+            {/* Add basket button skeleton */}
+            <Skeleton height={60} width="100%" className="rounded-xl" />
+
+            {/* Baskets section skeleton */}
+            <div className="space-y-3">
+                <Skeleton height={24} width={200} />
+                <div className="space-y-2">
+                    <Skeleton height={80} width="100%" className="rounded-lg" />
+                    <Skeleton height={80} width="100%" className="rounded-lg" />
+                    <Skeleton height={80} width="100%" className="rounded-lg" />
+                </div>
+            </div>
+
+            {/* Banner skeleton */}
+            <Skeleton height={120} width="100%" className="rounded-xl" />
+
+            {/* Archive section skeleton */}
+            <div className="mt-6 border-t border-gray-200 pt-4">
+                <Skeleton height={40} width="100%" className="rounded-md" />
+            </div>
+        </div>
+    );
+}
+
 // Define the interface for the Shop data as it exists in the 'shop' table
 interface ShopData {
     id: string;
@@ -190,10 +238,7 @@ export default function DashboardPage() {
     return (
         <PageLayout >
             {authLoading ? (
-                <div className="flex items-center justify-center py-8">
-                    <div className="w-8 h-8 border-4 border-[#FFDB0D] border-t-transparent rounded-full animate-spin mr-2" />
-                    <p className="text-gray-600">Loading...</p>
-                </div>
+                <DashboardLoading />
             ) : !user ? (
                 <>
                     <div className="py-1 flex justify-between items-center" id="dashboard-header">
@@ -246,17 +291,9 @@ export default function DashboardPage() {
                         </div>
                     </div>)}
                     
-                    <AddBasket onClick={handleAddBasket} id="add-basket-button" /> 
+                    <AddBasket onClick={handleAddBasket} id="add-basket-button" />
                     {loadingBaskets ? (
-                        
-                        <div className="flex items-center justify-center py-8">
-                            <div>
-                            <Skeleton height={20} width={300} />
-                            <Skeleton height={15} width={300} count={5} /></div>
-                        </div>
-
-                            
-                            
+                        <DashboardLoading />
                     ) : error ? (
                         <div className="text-center py-8 text-red-600">
                             <p>{error}</p>

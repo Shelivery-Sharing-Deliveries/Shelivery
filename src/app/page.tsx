@@ -65,10 +65,31 @@ function HomePageContent() {
   );
 }
 
+// Loading component for homepage that matches the app's design
+function HomePageLoading() {
+  return (
+    <main
+      className="flex min-h-screen flex-col items-center justify-center p-24"
+      style={{
+        backgroundColor: '#245b7b',
+        color: 'white',
+        fontFamily: 'Poppins, sans-serif',
+      }}
+    >
+      <img
+        src="/icons/shelivery-logo2.svg"
+        alt="Shelivery Logo"
+        className="mx-auto h-24 sm:h-32 mb-6 animate-bounce"
+      />
+      <div className="mt-6 h-8 w-8 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+    </main>
+  );
+}
+
 // Main component wrapped with Suspense
 export default function HomePage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<HomePageLoading />}>
       <HomePageContent />
     </Suspense>
   );
