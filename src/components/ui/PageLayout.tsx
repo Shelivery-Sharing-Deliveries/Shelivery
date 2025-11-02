@@ -9,14 +9,16 @@ interface PageLayoutProps {
   footer?: ReactNode; // Keeping footer prop as requested
   showNavigation?: boolean;
   className?: string; // Applies to the scrollable content area
+  flat?: boolean; // Flat design without shadows/borders
 }
 
-export function PageLayout({ 
-  children, 
-  header, 
-  footer, 
-  showNavigation = true, 
-  className = "" 
+export function PageLayout({
+  children,
+  header,
+  footer,
+  showNavigation = true,
+  className = "",
+  flat = false
 }: PageLayoutProps) {
 
   return (
@@ -26,7 +28,7 @@ export function PageLayout({
         
         {/* Fixed Header - Optional */}
         {header && (
-          <div className="flex-shrink-0 bg-white rounded-t-[30px] px-4 pt-[18px] pb-4 border-b border-gray-100 shadow-sm z-10">
+          <div className={`flex-shrink-0 bg-white rounded-t-[30px] px-4 pt-[18px] z-10 ${flat ? '' : 'border-b border-gray-100 shadow-sm'}`}>
             {header}
           </div>
         )}

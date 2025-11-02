@@ -11,6 +11,8 @@ interface BasketData {
   shopName: string;
   amount: number;
   link: string;
+  currency: string;
+  locationId: string;
   note?: string;
   items?: any[];
 }
@@ -59,6 +61,7 @@ export default function SubmitBasketContent() {
         amount: basketData.amount,
         link: basketData.link || null,
         note: basketData.note || null,
+        location_id: basketData.locationId,
         user_id: user.id,
       };
 

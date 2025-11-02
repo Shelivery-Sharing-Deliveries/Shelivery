@@ -23,6 +23,9 @@ export default function BasketCreationPage() {
     const [basketLink, setBasketLink] = useState("");
     const [basketNote, setBasketNote] = useState("");
     const [basketAmount, setBasketAmount] = useState(""); // Storing as string for input
+    const [selectedLocationId, setSelectedLocationId] = useState<string>("");
+    const [locationType, setLocationType] = useState<'residence' | 'meetup'>('residence');
+    const [selectedLocationName, setSelectedLocationName] = useState<string>("");
 
     const [loading, setLoading] = useState(true); // For initial shop data fetch
     const [submitting, setSubmitting] = useState(false); // For basket creation/update process
@@ -41,6 +44,45 @@ export default function BasketCreationPage() {
 
     // No longer redirect if not authenticated - allow anonymous basket creation
     // Authentication will be handled at submission time
+
+    // Read location type and meetup location from URL parameters
+    useEffect(() => {
+        const typeParam = searchParams.get('type');
+        const meetupLocationParam = searchParams.get('meetupLocation');
+
+        if (typeParam === 'residence' || typeParam === 'meetup') {
+            setLocationType(typeParam);
+        }
+
+        if (meetupLocationParam && typeParam === 'meetup') {
+            setSelectedLocationId(meetupLocationParam);
+        }
+    }, [searchParams]);
+
+    // Fetch location name when selectedLocationId changes
+    useEffect(() => {
+        const fetchLocationName = async () => {
+            if (selectedLocationId && locationType === 'meetup') {
+                try {
+                    const { data, error } = await supabase
+                        .from('location')
+                        .select('name')
+                        .eq('id', selectedLocationId)
+                        .single();
+
+                    if (error) throw error;
+                    setSelectedLocationName(data?.name || '');
+                } catch (err) {
+                    console.error('Error fetching location name:', err);
+                    setSelectedLocationName('');
+                }
+            } else {
+                setSelectedLocationName('');
+            }
+        };
+
+        fetchLocationName();
+    }, [selectedLocationId, locationType]);
 
     // Fetch shop details and handle edit mode pre-population
     useEffect(() => {
@@ -222,12 +264,17 @@ export default function BasketCreationPage() {
         const hasLink = basketLink.trim() !== "";
         const hasNote = basketNote.trim() !== "";
         const isLinkValid = isValidUrl(basketLink);
-        
-        // At least link OR note must be filled (can be both), amount must be > 0, and link must be valid if provided
+
+        // For meetup mode, location must be selected
+        const hasLocation = locationType === 'meetup' ? selectedLocationId !== "" : true;
+
+        // At least link OR note must be filled (can be both), amount must be > 0, link must be valid if provided
+        // Location validation depends on mode
         return (
             (hasLink || hasNote) &&
             totalAmount > 0 &&
-            isLinkValid
+            isLinkValid &&
+            hasLocation
         );
     };
 
@@ -266,11 +313,42 @@ export default function BasketCreationPage() {
         setError(null);
 
         try {
+            // Determine the correct location_id based on delivery mode
+            let finalLocationId = selectedLocationId;
+            if (locationType === 'residence') {
+                // Get user's dormitory and find corresponding location
+                const { data: userData, error: userError } = await supabase
+                    .from("user")
+                    .select("dormitory_id")
+                    .eq("id", user.id)
+                    .single();
+
+                if (userError || !userData?.dormitory_id) {
+                    throw new Error("Unable to determine your dormitory location. Please update your profile.");
+                }
+
+                // Find the location that corresponds to this dormitory (type = 'dormitory')
+                const { data: locationData, error: locationError } = await supabase
+                    .from("location")
+                    .select("id")
+                    .eq("dormitory_id", userData.dormitory_id)
+                    .eq("type", "dormitory")
+                    .single();
+
+                if (locationError || !locationData) {
+                    throw new Error("Unable to find location for your dormitory.");
+                }
+
+                finalLocationId = locationData.id;
+            }
+            // For meetup mode, selectedLocationId is already the correct location_id
+
             const basketData = {
                 shop_id: shop.id,
                 amount: calculateTotalAmount(),
                 link: basketLink.trim() ? normalizeUrl(basketLink) : null,
                 note: basketNote.trim() || null,
+                location_id: finalLocationId,
                 user_id: user.id, // Ensure user_id is included for both create/update
             };
 
@@ -525,6 +603,21 @@ export default function BasketCreationPage() {
                             required
                         />
                     </div>
+
+                    {/* Selected Location Display */}
+                    {locationType === 'meetup' && selectedLocationId && selectedLocationName && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-shelivery-sm p-3">
+                            <div className="flex items-center gap-2">
+                                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <span className="text-sm text-blue-800">
+                                    Meetup point is set to {selectedLocationName}
+                                </span>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {error && (

@@ -79,6 +79,7 @@ export type Database = {
           is_delivered_by_user: boolean | null
           is_ready: boolean | null
           link: string | null
+          location_id: string | null
           note: string | null
           pool_id: string | null
           shop_id: string
@@ -94,6 +95,7 @@ export type Database = {
           is_delivered_by_user?: boolean | null
           is_ready?: boolean | null
           link?: string | null
+          location_id?: string | null
           note?: string | null
           pool_id?: string | null
           shop_id?: string
@@ -109,6 +111,7 @@ export type Database = {
           is_delivered_by_user?: boolean | null
           is_ready?: boolean | null
           link?: string | null
+          location_id?: string | null
           note?: string | null
           pool_id?: string | null
           shop_id?: string
@@ -244,17 +247,49 @@ export type Database = {
         Row: {
           created_at: string | null
           id: number
+          location_id: string | null
           name: string
         }
         Insert: {
           created_at?: string | null
           id?: number
+          location_id?: string | null
           name: string
         }
         Update: {
           created_at?: string | null
           id?: number
+          location_id?: string | null
           name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dormitory_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "location"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      location: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          type?: string
         }
         Relationships: []
       }
@@ -486,24 +521,27 @@ export type Database = {
         Row: {
           created_at: string | null
           current_amount: number | null
-          dormitory_id: number
+          dormitory_id: number | null
           id: string
+          location_id: string | null
           min_amount: number
           shop_id: string | null
         }
         Insert: {
           created_at?: string | null
           current_amount?: number | null
-          dormitory_id: number
+          dormitory_id?: number | null
           id?: string
+          location_id?: string | null
           min_amount: number
           shop_id?: string | null
         }
         Update: {
           created_at?: string | null
           current_amount?: number | null
-          dormitory_id?: number
+          dormitory_id?: number | null
           id?: string
+          location_id?: string | null
           min_amount?: number
           shop_id?: string | null
         }
@@ -513,6 +551,13 @@ export type Database = {
             columns: ["dormitory_id"]
             isOneToOne: false
             referencedRelation: "dormitory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pool_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "location"
             referencedColumns: ["id"]
           },
           {
@@ -826,6 +871,10 @@ export type Database = {
       }
       ensure_pool_for_shop_dorm: {
         Args: { p_dormitory_id: number; p_shop_id: string }
+        Returns: string
+      }
+      ensure_pool_for_shop_location: {
+        Args: { p_shop_id: string; p_location_id: string }
         Returns: string
       }
       ensure_user_pool: {

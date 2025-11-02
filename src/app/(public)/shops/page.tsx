@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
 import { Navigation } from "@/components/ui/Navigation"; // Assuming this is for general navigation, not a specific header
 import { PageLayout } from "@/components/ui/PageLayout"; // Corrected import path for PageLayout based on usage
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import LocationTypeSelector from "@/components/shops/LocationTypeSelector";
 
 // Interface for a Shop, including only the fields used/fetched
 interface Shop {
@@ -30,7 +31,7 @@ interface Basket {
 interface Pool {
     id: string;
     shop_id: string | null;
-    dormitory_id: number;
+    location_id: string;
     current_amount: number | null;
     min_amount: number;
 }
@@ -58,9 +59,12 @@ export default function ShopsPage() {
     const [error, setError] = useState<string | null>(null);
     const [warningMessage, setWarningMessage] = useState<string | null>(null); // New state for the warning message
     const [userWithDormitory, setUserWithDormitory] = useState<UserWithDormitory | null>(null);
+    const [locationType, setLocationType] = useState<'residence' | 'meetup'>('residence');
+    const [selectedMeetupLocationId, setSelectedMeetupLocationId] = useState<string>("");
 
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     // No longer redirect if not authenticated - allow anonymous shop browsing
     // Authentication will be handled at basket submission time
@@ -123,8 +127,36 @@ export default function ShopsPage() {
                         try {
                             let poolQuery = supabase
                                 .from("pool")
-                                .select("id, shop_id, dormitory_id, current_amount, min_amount")
+                                .select("id, shop_id, location_id, current_amount, min_amount")
                                 .eq("shop_id", shop.id);
+
+                            // Filter pools based on location type
+                            if (locationType === 'residence' && userWithDormitory?.dormitory_id) {
+                                // For residence mode, find pools for user's dormitory location
+                                const { data: locationData } = await supabase
+                                    .from("location")
+                                    .select("id")
+                                    .eq("dormitory_id", userWithDormitory.dormitory_id)
+                                    .single();
+
+                                if (locationData) {
+                                    poolQuery = poolQuery.eq("location_id", locationData.id);
+                                } else {
+                                    // No location found for user's dormitory
+                                    return {
+                                        ...shop,
+                                        poolProgress: {
+                                            current: 0,
+                                            target: shop.min_amount || 100,
+                                            percentage: 0,
+                                        },
+                                    };
+                                }
+                            } else if (locationType === 'meetup' && selectedMeetupLocationId) {
+                                // For meetup mode, filter by selected location
+                                poolQuery = poolQuery.eq("location_id", selectedMeetupLocationId);
+                            }
+                            // For meetup mode without selection or other cases, show all pools
 
                             const { data: poolsData, error: poolsError } = await poolQuery;
 
@@ -144,7 +176,7 @@ export default function ShopsPage() {
                             const pools: Pool[] = (poolsData || []).filter((pool): pool is Pool => pool != null);
 
                             if (pools.length === 0) {
-                                // No pools for this shop
+                                // No pools for this shop and location type
                                 return {
                                     ...shop,
                                     poolProgress: {
@@ -155,27 +187,12 @@ export default function ShopsPage() {
                                 };
                             }
 
-                            let selectedPool: Pool | null = null;
-
-                            if (userWithDormitory && userWithDormitory.dormitory_id) {
-                                // For authenticated users: find pool matching user's dormitory
-                                selectedPool = pools.find(pool => pool.dormitory_id === userWithDormitory.dormitory_id) ?? null;
-                            }
-
-                            if (!selectedPool) {
-                                // For guest users or if no matching dormitory pool found:
-                                // select pool with maximum current_amount
-                                selectedPool = pools.reduce((maxPool: Pool, currentPool: Pool) => {
-                                    const currentAmount = currentPool.current_amount || 0;
-                                    const maxAmount = maxPool.current_amount || 0;
-                                    return currentAmount > maxAmount ? currentPool : maxPool;
-                                });
-                            }
-
-                            if (!selectedPool) {
-                                // Fallback: use first pool
-                                selectedPool = pools[0] ?? null;
-                            }
+                            // Select pool with maximum current_amount for the filtered results
+                            const selectedPool = pools.reduce((maxPool: Pool, currentPool: Pool) => {
+                                const currentAmount = currentPool.current_amount || 0;
+                                const maxAmount = maxPool.current_amount || 0;
+                                return currentAmount > maxAmount ? currentPool : maxPool;
+                            });
 
                             if (selectedPool) {
                                 const currentAmount = selectedPool.current_amount || 0;
@@ -249,7 +266,7 @@ export default function ShopsPage() {
         if (!authLoading) {
             fetchData();
         }
-    }, [user, authLoading, userWithDormitory]); // Re-run when user, authLoading, or userWithDormitory changes
+    }, [user, authLoading, userWithDormitory, locationType, selectedMeetupLocationId]); // Re-run when user, authLoading, userWithDormitory, locationType, or selectedMeetupLocationId changes
 
     // Filtered shops (no category filter implemented currently)
     const filteredShops = shops;
@@ -274,7 +291,10 @@ export default function ShopsPage() {
         } else {
             // If no active basket for this shop, proceed to create a new one
             setWarningMessage(null); // Clear any previous warning
-            router.push(`/shops/${shop.id}/basket` as any);
+            const url = locationType === 'meetup' && selectedMeetupLocationId
+                ? `/shops/${shop.id}/basket?type=${locationType}&meetupLocation=${selectedMeetupLocationId}`
+                : `/shops/${shop.id}/basket?type=${locationType}`;
+            router.push(url as any);
         }
     };
 
@@ -332,21 +352,31 @@ export default function ShopsPage() {
 
     // --- Main Content Rendering ---
     const headerContent = (
-        <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-shelivery-text-primary mb-2">
-                Choose a Shop
-            </h1>
-            <p className="text-shelivery-text-secondary">
-                Select a delivery service to start your basket
-            </p>
+        <div className="shadow-none border-none">
+            <div className="text-center">
+                <h1 className="text-xl font-semibold text-shelivery-text-primary mb-1">
+                    Choose a Shop
+                </h1>
+                <p className="text-sm text-shelivery-text-secondary">
+                    Select a delivery service to start your basket
+                </p>
+            </div>
+            {/* Location Type Selector in Header */}
+            <LocationTypeSelector
+                selectedType={locationType}
+                selectedMeetupLocationId={selectedMeetupLocationId}
+                onTypeChange={setLocationType}
+                onMeetupLocationChange={setSelectedMeetupLocationId}
+            />
         </div>
     );
 
     return (
-        <PageLayout header={headerContent}>
+        <PageLayout header={headerContent} flat={true}>
+
             {/* Warning Message Display */}
             {warningMessage && (
-                <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4 rounded-md shadow-sm" role="alert">
+                <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-2 mb-4 rounded-md shadow-sm" role="alert">
                     <p className="font-bold">Warning!</p>
                     <p style={{ whiteSpace: "pre-line" }}>{warningMessage}</p>
                     <button
