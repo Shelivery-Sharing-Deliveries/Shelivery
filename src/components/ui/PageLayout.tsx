@@ -46,9 +46,9 @@ export function PageLayout({
         )}
       </div>
 
-      {/* Fixed Navigation outside rounded container - touches bottom */}
+      {/* Fixed Navigation outside rounded container - with bottom spacing */}
       {!footer && showNavigation && (
-        <div className="fixed bottom-0 left-0 right-0 z-20 w-full md:w-[375px] md:left-1/2 md:-translate-x-1/2">
+        <div className="fixed bottom-4 left-0 right-0 z-20 w-full md:w-[375px] md:left-1/2 md:-translate-x-1/2">
           <Navigation />
         </div>
       )}

@@ -42,7 +42,7 @@ export default function LoginForm({
           {/* Email Field */}
           <TextField
             label="Email Address"
-            placeholder="Enter you Email Adress"
+            placeholder="Enter your Email Adress"
             value={email}
             onChange={setEmail}
             type="email"

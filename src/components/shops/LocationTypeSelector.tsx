@@ -64,7 +64,7 @@ export default function LocationTypeSelector({
         >
           <div className="text-center">
             <div className="text-sm font-medium mb-1">At Residence</div>
-            <div className="text-xs opacity-75">Deliver to dormitory</div>
+            <div className="text-xs opacity-75">Meet at your place</div>
           </div>
         </button>
 
@@ -81,7 +81,7 @@ export default function LocationTypeSelector({
               {selectedLocation ? `at ${selectedLocation.name}` : 'Meetup Point'}
             </div>
             <div className="text-xs opacity-75">
-              {selectedLocation ? 'Pickup location selected' : 'Pickup at campus location'}
+              {selectedLocation ? "": 'Select a location'}
             </div>
           </div>
         </button>
