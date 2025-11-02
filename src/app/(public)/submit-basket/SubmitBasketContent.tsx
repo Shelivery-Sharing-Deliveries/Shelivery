@@ -11,8 +11,11 @@ interface BasketData {
   shopName: string;
   amount: number;
   link: string;
-  currency: string;
-  locationId: string;
+  currency?: string;
+  locationId?: string;
+  locationType?: 'residence' | 'meetup';
+  selectedLocationId?: string;
+  selectedLocationName?: string;
   note?: string;
   items?: any[];
 }
@@ -55,13 +58,48 @@ export default function SubmitBasketContent() {
     setError(null);
 
     try {
+      // Determine the correct location_id based on stored location data
+      let finalLocationId: string;
+
+      if (basketData.locationType === 'meetup' && basketData.selectedLocationId) {
+        // For meetup mode, use the stored selectedLocationId
+        finalLocationId = basketData.selectedLocationId;
+      } else if (basketData.locationType === 'residence') {
+        // For residence mode, determine location from user's dormitory
+        const { data: userData, error: userError } = await supabase
+          .from("user")
+          .select("dormitory_id")
+          .eq("id", user.id)
+          .single();
+
+        if (userError || !userData?.dormitory_id) {
+          throw new Error("Unable to determine your dormitory location. Please update your profile.");
+        }
+
+        // Find the location that corresponds to this dormitory (type = 'dormitory')
+        const { data: locationData, error: locationError } = await supabase
+          .from("location")
+          .select("id")
+          .eq("dormitory_id", userData.dormitory_id)
+          .eq("type", "dormitory")
+          .single();
+
+        if (locationError || !locationData) {
+          throw new Error("Unable to find location for your dormitory.");
+        }
+
+        finalLocationId = locationData.id;
+      } else {
+        throw new Error("Invalid location data. Please try creating your basket again.");
+      }
+
       // Use the same RPC function as the authenticated basket creation
       const basketDataForRPC = {
         shop_id: basketData.shopId,
         amount: basketData.amount,
         link: basketData.link || null,
         note: basketData.note || null,
-        location_id: basketData.locationId,
+        location_id: finalLocationId,
         user_id: user.id,
       };
 

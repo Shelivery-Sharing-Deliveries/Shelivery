@@ -301,7 +301,10 @@ export default function BasketCreationPage() {
                 shopName: shop.name,
                 amount: calculateTotalAmount(),
                 link: basketLink.trim() ? normalizeUrl(basketLink) : "",
-                note: basketNote.trim() || ""
+                note: basketNote.trim() || "",
+                locationType: locationType,
+                selectedLocationId: selectedLocationId,
+                selectedLocationName: selectedLocationName
             };
 
             localStorage.setItem('pendingBasket', JSON.stringify(basketData));
