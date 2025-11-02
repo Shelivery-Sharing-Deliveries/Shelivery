@@ -99,6 +99,13 @@ export default function ShopsPage() {
         }
     }, [user, authLoading]);
 
+    // Auto-switch to meetup mode if user doesn't have dormitory and is on residence mode
+    useEffect(() => {
+        if (userWithDormitory && !userWithDormitory.dormitory_id && locationType === 'residence') {
+            setLocationType('meetup');
+        }
+    }, [userWithDormitory, locationType]);
+
     // Fetch shops, user's active baskets, and pool data from Supabase
     useEffect(() => {
         const fetchData = async () => {
@@ -366,6 +373,7 @@ export default function ShopsPage() {
                 selectedMeetupLocationId={selectedMeetupLocationId}
                 onTypeChange={setLocationType}
                 onMeetupLocationChange={setSelectedMeetupLocationId}
+                userHasDormitory={!!userWithDormitory?.dormitory_id}
             />
         </div>
     );

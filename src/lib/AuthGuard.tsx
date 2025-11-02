@@ -53,24 +53,17 @@ export default function AuthGuard({ children }: AuthGuardProps) {
             .single(); // Expecting a single user record
 
           if (userError) {
-            // Log any errors encountered while fetching dormitory_id.
+            // Log any errors encountered while fetching user data.
             // This might happen if the user exists in auth but not yet in the 'user' table.
             console.error(
-              "AuthGuard: Error fetching dormitory_id from 'user' table:",
+              "AuthGuard: Error fetching user data from 'user' table:",
               userError.message
             );
             console.log("AuthGuard: Redirecting to /profile-set due to fetch error.");
             router.push(`/profile-set/${user.id}`); // Redirect to profile setup
-          } else if (
-            userData?.dormitory_id === null ||
-            userData?.dormitory_id === undefined
-          ) {
-            // User exists, but their dormitory_id is missing or null.
-            console.log("AuthGuard: User has no dormitory_id, redirecting to /profile-set.");
-            router.push(`/profile-set/${user.id}`); // Redirect to profile setup
           } else {
-            // User is authenticated and has a confirmed dormitory_id. All checks passed.
-            console.log("AuthGuard: User authenticated and dormitory_id confirmed. Allowing access.");
+            // User is authenticated. All checks passed.
+            console.log("AuthGuard: User authenticated. Allowing access.");
             checkedUserIdRef.current = user.id; // Store this user's ID to avoid re-checking
 
             // Identify the user with PostHog (assuming PostHog is globally initialized)

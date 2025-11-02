@@ -267,10 +267,6 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
             setError("First Name and Last Name are required.");
             return;
         }
-        if (!formData.dormitoryId) {
-            setError("Please select your Dormitory.");
-            return;
-        }
         if (!formData.favoriteStore) { // Validation for favoriteStore (name)
             setError("Please select your Favorite Store.");
             return;
@@ -474,10 +470,11 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
                                 <select
                                     id="dormitory"
                                     value={formData.dormitoryId || ""}
-                                    onChange={(e) => handleInputChange("dormitoryId", e.target.value || null)}
+                                    onChange={(e) => handleInputChange("dormitoryId", e.target.value === "none" ? null : e.target.value || null)}
                                     className="px-4 py-3 border border-[#E5E8EB] rounded-[18px] w-full text-[#111827] font-poppins text-sm bg-white"
                                 >
                                     <option value="">Select a dormitory</option>
+                                    <option value="none">None</option>
                                     {dormitories.map((dorm) => (
                                         <option key={dorm.id} value={dorm.id}>
                                             {dorm.name}

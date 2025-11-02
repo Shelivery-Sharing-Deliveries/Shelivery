@@ -11,13 +11,15 @@ interface LocationTypeSelectorProps {
   selectedMeetupLocationId?: string;
   onTypeChange: (type: 'residence' | 'meetup') => void;
   onMeetupLocationChange?: (locationId: string) => void;
+  userHasDormitory?: boolean;
 }
 
 export default function LocationTypeSelector({
   selectedType,
   selectedMeetupLocationId,
   onTypeChange,
-  onMeetupLocationChange
+  onMeetupLocationChange,
+  userHasDormitory = true
 }: LocationTypeSelectorProps) {
   const [meetupLocations, setMeetupLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(false);
@@ -53,18 +55,25 @@ export default function LocationTypeSelector({
       <div className="flex gap-4">
         <button
           onClick={() => {
-            onTypeChange('residence');
-            onMeetupLocationChange?.(''); // Clear meetup selection
+            if (userHasDormitory) {
+              onTypeChange('residence');
+              onMeetupLocationChange?.(''); // Clear meetup selection
+            }
           }}
+          disabled={!userHasDormitory}
           className={`flex-1 py-3 px-4 rounded-shelivery-md border-2 transition-all ${
             selectedType === 'residence'
               ? 'border-shelivery-primary-blue bg-blue-50 text-shelivery-primary-blue'
+              : !userHasDormitory
+              ? 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
               : 'border-gray-200 bg-white text-shelivery-text-secondary hover:border-gray-300'
           }`}
         >
           <div className="text-center">
             <div className="text-sm font-medium mb-1">At Residence</div>
-            <div className="text-xs opacity-75">Meet at your place</div>
+            <div className="text-xs opacity-75">
+              {userHasDormitory ? 'Meet at your place' : 'Select dormitory first'}
+            </div>
           </div>
         </button>
 
