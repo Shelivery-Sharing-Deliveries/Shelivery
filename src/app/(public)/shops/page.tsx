@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
@@ -64,7 +64,6 @@ export default function ShopsPage() {
 
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
-    const searchParams = useSearchParams();
 
     // No longer redirect if not authenticated - allow anonymous shop browsing
     // Authentication will be handled at basket submission time
