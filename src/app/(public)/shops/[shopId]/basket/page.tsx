@@ -375,10 +375,22 @@ export default function BasketCreationPage() {
                 }
 
                 // Find the location that corresponds to this dormitory (type = 'dorm')
+                // Get dormitory record to find location_id
+                const { data: dormitoryData, error: dormitoryError } = await supabase
+                    .from("dormitory")
+                    .select("location_id")
+                    .eq("id", userData.dormitory_id)
+                    .single();
+
+                if (dormitoryError || !dormitoryData?.location_id) {
+                    throw new Error("Unable to find dormitory location association.");
+                }
+
+                // Now find the location using the location_id and ensure it's type 'dorm'
                 const { data: locationData, error: locationError } = await supabase
                     .from("location")
                     .select("id")
-                    .eq("dormitory_id", userData.dormitory_id)
+                    .eq("id", dormitoryData.location_id)
                     .eq("type", "dorm")
                     .single();
 
