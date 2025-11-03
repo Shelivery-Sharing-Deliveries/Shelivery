@@ -554,7 +554,7 @@ export default function BasketCreationPage() {
                 Back to Shops
             </button>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 pb-2">
                 <div className="w-16 h-16 bg-gray-100 rounded-shelivery-md flex items-center justify-center flex-shrink-0">
                     {shop.logo_url ? (
                         <img
@@ -582,7 +582,7 @@ export default function BasketCreationPage() {
                     <h1 className="text-2xl font-bold text-shelivery-text-primary">
                         {shop.name}
                     </h1>
-                    <div className="flex gap-4 text-sm text-shelivery-text-tertiary mt-1">
+                    <div className="flex gap-4 text-sm text-shelivery-text-tertiary mt-1 ">
                         <span>Min: CHF {shop.min_amount.toFixed(2)}</span>
                     </div>
                 </div>
