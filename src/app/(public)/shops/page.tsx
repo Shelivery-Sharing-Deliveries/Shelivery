@@ -280,6 +280,14 @@ export default function ShopsPage() {
 
     // Handles clicking on a shop card
     const handleShopSelect = (shop: Shop) => {
+        // Check if user selected meetup mode but hasn't chosen a meetup location
+        if (locationType === 'meetup' && !selectedMeetupLocationId) {
+            setWarningMessage(
+                `Please select a meetup point before choosing a shop.`
+            );
+            return; // Prevent navigation
+        }
+
         // Check if the user already has an active basket for this specific shop
         const hasActiveBasketForShop = activeBaskets.some(
             (basket) => basket.shop_id === shop.id
