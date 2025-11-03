@@ -154,7 +154,7 @@ export default function BasketCreationPage() {
                     // Fetch the full basket details for pre-population
                     const { data: existingBasketData, error: fetchBasketError } = await supabase
                         .from("basket")
-                        .select("amount, link, note, pool_id, shop_id") // Select all needed fields, including shop_id for validation
+                        .select("amount, link, note, pool_id, shop_id, location_id") // Select all needed fields, including shop_id for validation
                         .eq("id", urlBasketId)
                         .eq("user_id", user.id) // IMPORTANT: Ensure the user owns this basket
                         .single();
@@ -191,6 +191,50 @@ export default function BasketCreationPage() {
                     setBasketNote(existingBasketData.note || "");
                     setBasketAmount(existingBasketData.amount.toString()); // Convert number to string for input
                     setCurrentBasketPoolId(existingBasketData.pool_id);
+
+                    // Determine location type based on location_id
+                    if (existingBasketData.location_id) {
+                        try {
+                            // Fetch location details to determine type
+                            const { data: locationData, error: locationError } = await supabase
+                                .from('location')
+                                .select('type')
+                                .eq('id', existingBasketData.location_id)
+                                .single();
+
+                            if (locationData) {
+                                if (locationData.type === 'dormitory') {
+                                    setLocationType('residence');
+                                    setSelectedLocationId('');
+                                } else if (locationData.type === 'other') {
+                                    setLocationType('meetup');
+                                    setSelectedLocationId(existingBasketData.location_id);
+                                }
+                            }
+                        } catch (locationErr) {
+                            console.error('Error determining location type:', locationErr);
+                        }
+                    } else {
+                        // Default to residence if no location_id
+                        setLocationType('residence');
+                        setSelectedLocationId('');
+                    }
+
+                    // Update URL parameters to preserve location data for this edit session
+                    const newUrlParams = new URLSearchParams(searchParams);
+                    newUrlParams.delete('type'); // Remove existing type param
+                    newUrlParams.delete('meetupLocation'); // Remove existing meetupLocation param
+
+                    if (locationType === 'meetup' && selectedLocationId) {
+                        newUrlParams.set('type', 'meetup');
+                        newUrlParams.set('meetupLocation', selectedLocationId);
+                    } else if (locationType === 'residence') {
+                        newUrlParams.set('type', 'residence');
+                    }
+
+                    // Update URL without causing a page reload
+                    const newUrl = `/shops/${shopId}/basket?${newUrlParams.toString()}`;
+                    window.history.replaceState({}, '', newUrl);
 
                 } else {
                     // This block runs if urlBasketId is NOT present (new basket mode)
