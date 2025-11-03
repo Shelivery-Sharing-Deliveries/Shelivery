@@ -203,7 +203,7 @@ export default function BasketCreationPage() {
                                 .single();
 
                             if (locationData) {
-                                if (locationData.type === 'dormitory') {
+                                if (locationData.type === 'dorm') {
                                     setLocationType('residence');
                                     setSelectedLocationId('');
                                 } else if (locationData.type === 'other') {
@@ -374,12 +374,12 @@ export default function BasketCreationPage() {
                     throw new Error("Unable to determine your dormitory location. Please update your profile.");
                 }
 
-                // Find the location that corresponds to this dormitory (type = 'dormitory')
+                // Find the location that corresponds to this dormitory (type = 'dorm')
                 const { data: locationData, error: locationError } = await supabase
                     .from("location")
                     .select("id")
                     .eq("dormitory_id", userData.dormitory_id)
-                    .eq("type", "dormitory")
+                    .eq("type", "dorm")
                     .single();
 
                 if (locationError || !locationData) {
