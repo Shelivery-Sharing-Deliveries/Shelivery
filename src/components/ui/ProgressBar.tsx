@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { Avatar } from "./Avatar";
+import { useEffect, useState } from "react";
 
 interface ProgressBarProps {
   current: number;
@@ -31,6 +32,8 @@ export function ProgressBar({
   currency = "CHF",
   variant = "default",
 }: ProgressBarProps) {
+  const [isLoaded, setIsLoaded] = useState(false);
+
   // Safely parse current and target to ensure they are numbers
   // If they are not valid numbers, default to 0
   const safeCurrent = typeof current === 'number' ? current : parseFloat(current as any) || 0;
@@ -40,26 +43,32 @@ export function ProgressBar({
   const percentage = safeTarget > 0 ? Math.min((safeCurrent / safeTarget) * 100, 100) : 0;
   const isComplete = percentage >= 100;
 
+  // Effect to mark component as loaded on mount
+  useEffect(() => {
+    setIsLoaded(true);
+  }, []);
+
   // Determine fill color based on variant
   const getFillClasses = () => {
-    const baseClasses = animated ? "pool-progress-animate" : "";
+    const transitionClasses = isLoaded ? "transition-all duration-500 ease-out" : "";
 
     switch (variant) {
       case 'shops':
         return cn(
-          "bg-shelivery-primary-blue h-full transition-all duration-500 ease-out transform-gpu origin-left",
-          baseClasses
+          "bg-shelivery-primary-blue h-full transform-gpu origin-left",
+          transitionClasses
         );
       case 'pool':
         return cn(
-          "bg-shelivery-success-green h-full transition-all duration-500 ease-out transform-gpu origin-left",
-          baseClasses
+          "bg-shelivery-success-green h-full transform-gpu origin-left",
+          transitionClasses
         );
       default:
         return cn(
           "shelivery-progress-fill",
           isComplete && "shelivery-progress-current",
-          baseClasses
+          "transform-gpu origin-left",
+          transitionClasses
         );
     }
   };
@@ -73,6 +82,17 @@ export function ProgressBar({
             className={getFillClasses()}
             style={{ transform: `scaleX(${percentage / 100})` }}
           />
+          {/* Wave overlay - only shows within filled portion */}
+          {animated && percentage > 0 && (
+            <div
+              className="wave-overlay"
+              style={{
+                maskImage: `linear-gradient(to right, transparent 0%, white ${percentage}%, transparent ${percentage}%)`,
+                WebkitMaskImage: `linear-gradient(to right, transparent 0%, white ${percentage}%, transparent ${percentage}%)`,
+                opacity: percentage > 10 ? 1 : percentage / 10, // Fade in wave as progress increases
+              }}
+            />
+          )}
         </div>
 
         {/* User avatars positioned along progress bar */}

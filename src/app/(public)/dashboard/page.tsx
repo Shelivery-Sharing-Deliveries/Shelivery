@@ -8,6 +8,7 @@ import AddBasket from "@/components/dashboard/AddBasket";
 import Baskets from "@/components/dashboard/Baskets";
 import Banner from "@/components/dashboard/Banner";
 import SquareBanner from "@/components/dashboard/SquareBanner";
+import FeaturedShopCard from "@/components/dashboard/FeaturedShopCard";
 import DashboardTutorial from "@/components/dashboard/DashboardTutorial"; // NEW: Import the tutorial component
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -247,8 +248,10 @@ export default function DashboardPage() {
                     <SignInCard id="sign-in-card" />
 
                     <SquareBanner id="square-banner" />
-
+                    <FeaturedShopCard />
                     <AddBasket onClick={handleAddBasket} id="add-basket-button" />
+
+                    
                 </>
             ) : (
                 <>  
@@ -290,8 +293,9 @@ export default function DashboardPage() {
                         <Skeleton height={12} width={150} count={1} style={{ marginTop: '5px' }}/>
                         </div>
                     </div>)}
-                    
                     <AddBasket onClick={handleAddBasket} id="add-basket-button" />
+
+                    <FeaturedShopCard />
                     {loadingBaskets ? (
                         <DashboardLoading />
                     ) : error ? (

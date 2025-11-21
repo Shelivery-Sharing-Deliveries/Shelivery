@@ -240,6 +240,14 @@ export default function ShopsPage() {
                     })
                 );
 
+
+                // Sort shops by ascending CHF to go (closest to goal first)
+                shopsWithProgress.sort((a, b) => {
+                    const aToGo = a.poolProgress.target - a.poolProgress.current;
+                    const bToGo = b.poolProgress.target - b.poolProgress.current;
+                    return aToGo - bToGo;
+                });
+
                 setShops(shopsWithProgress);
 
                 // --- 3. Fetch User's Active Baskets (only if authenticated) ---
@@ -498,7 +506,7 @@ export default function ShopsPage() {
                                                 target={(shop as ShopWithProgress).poolProgress.target}
                                                 showPercentage={true}
                                                 showAmount={false}
-                                                animated={false}
+                                                animated={true}
                                                 variant="default"
                                                 className="h-2"
                                             />
