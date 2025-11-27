@@ -15,12 +15,20 @@ function AboutPageContent() {
   useEffect(() => {
     // Get invite code from URL or localStorage (URL takes priority)
     const invite = getInviteCodeFromUrlOrStorage(searchParams);
-    
+
     if (invite) {
       setInviteCodeFromUrl(invite);
       console.log("AboutPage: Using invite code:", invite);
     }
   }, [searchParams]); // Depend on searchParams to re-run if URL changes
+
+  // Enable scrolling for this page only
+  useEffect(() => {
+    document.body.style.overflow = 'auto';
+    return () => {
+      document.body.style.overflow = 'hidden';
+    };
+  }, []);
 
   // Corrected: Construct the dynamic href as a STRING for "Get Started" links
   // This ensures compatibility with standard <a> tags.
@@ -256,7 +264,7 @@ function AboutPageContent() {
 // Main component wrapped with Suspense
 export default function AboutPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div></div>}>
       <AboutPageContent />
     </Suspense>
   );
