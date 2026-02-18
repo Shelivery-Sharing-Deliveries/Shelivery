@@ -9,7 +9,7 @@ import {
   useEffect,
 } from "react";
 import { NotificationBanner } from "@/components/ui/NotificationBanner";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth"; // adjust path
 import { pushNotificationManager } from "@/lib/push-notifications";
 
@@ -36,7 +36,12 @@ export function useNotify() {
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const [queue, setQueue] = useState<NotificationConfig[]>([]);
-  const supabase = createClientComponentClient();
+  // Use the app-wide singleton supabase client (from @/lib/supabase) — the
+  // same instance useAuth uses. createClientComponentClient() creates a
+  // separate client that reads the session from cookies, while the singleton
+  // uses localStorage. They don't share auth state, so the realtime channel
+  // from createClientComponentClient() has a null JWT → auth.uid() = null →
+  // USING (auth.uid() = user_id) SELECT policy blocks all events.
   const { user, loading: authLoading } = useAuth();
 
   const notify = useCallback((config: NotificationConfig) => {
@@ -160,7 +165,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             duration: 5000,
           });
           }, 0);
-          //console.log("New notification received:", notif);
+          console.log("New notification received:", notif);
         }
       )
       .subscribe();
