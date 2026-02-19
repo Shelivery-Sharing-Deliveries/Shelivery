@@ -248,6 +248,9 @@ export default function DashboardPage() {
                     <SignInCard id="sign-in-card" />
 
                     <SquareBanner id="square-banner" />
+                    <h2 className="text-base font-bold text-gray-800 mt-4 mb-1">
+                        Just About to Complete 🔥
+                    </h2>
                     <FeaturedShopCard />
                     <AddBasket onClick={handleAddBasket} id="add-basket-button" />
 
@@ -295,6 +298,9 @@ export default function DashboardPage() {
                     </div>)}
                     <AddBasket onClick={handleAddBasket} id="add-basket-button" />
 
+                    <h2 className="text-base font-bold text-gray-800 mt-4 mb-1">
+                        Just About to Complete 🔥
+                    </h2>
                     <FeaturedShopCard />
                     {loadingBaskets ? (
                         <DashboardLoading />

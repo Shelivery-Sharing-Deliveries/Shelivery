@@ -17,7 +17,11 @@ interface SquareBannerProps {
 }
 
 const banners: Banner[] = [
-  
+  {
+  id: "4",
+  src: "https://zsqagqzztvzogyktgjph.supabase.co/storage/v1/object/public/banners/Copy%20of%20Order.mp4",
+  alt: "Order video"
+  },
   {
     id: "2",
     src: "/banners/banner-2.png",
@@ -34,6 +38,45 @@ const banners: Banner[] = [
     alt: "Welcome to Shelivery - Start Shopping"
   }
 ];
+
+const VIDEO_EXTENSIONS = [".mp4", ".webm", ".ogg", ".mov"];
+
+function isVideo(src: string): boolean {
+  const lower = src.toLowerCase().split("?")[0] ?? "";
+  return VIDEO_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
+
+interface BannerSlideProps {
+  banner: Banner;
+  priority?: boolean;
+}
+
+function BannerSlide({ banner, priority }: BannerSlideProps) {
+  if (isVideo(banner.src)) {
+    return (
+      <video
+        src={banner.src}
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover"
+        aria-label={banner.alt}
+      />
+    );
+  }
+
+  return (
+    <Image
+      src={banner.src}
+      alt={banner.alt}
+      fill
+      className="object-cover"
+      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+      priority={priority}
+    />
+  );
+}
 
 export default function SquareBanner({
   className = "",
@@ -56,10 +99,6 @@ export default function SquareBanner({
 
     return undefined;
   }, [autoPlay, interval, isHovered]);
-
-  const goToSlide = (index: number) => {
-    setCurrentIndex(index);
-  };
 
   const goToPrevious = () => {
     setCurrentIndex((prevIndex) =>
@@ -88,14 +127,7 @@ export default function SquareBanner({
                 index === currentIndex ? "opacity-100" : "opacity-0"
               }`}
             >
-              <Image
-                src={banner.src}
-                alt={banner.alt}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                priority={index === 0}
-              />
+              <BannerSlide banner={banner} priority={index === 0} />
             </div>
           ))}
         </div>
