@@ -105,8 +105,8 @@ export default function Banner({ className = "", id }: BannerProps) {
 
     return (
         <div className={`flex flex-col gap-3 ${className}`} id={id}>
-            {/* Outer container for the carousel viewport: fixed height, rounded corners, hides overflow */}
-            <div className="relative w-full h-[172px] rounded-[20px] overflow-hidden group"> {/* Added group for hover effects */}
+            {/* Outer container for the carousel viewport: responsive aspect ratio, rounded corners, hides overflow */}
+            <div className="relative w-full aspect-[2/1] sm:aspect-[2.5/1] md:aspect-[3/1] rounded-[20px] overflow-hidden group"> {/* Added group for hover effects */}
                 {/* Inner container that holds all banners side-by-side. 
             This container slides horizontally. */}
                 <div
