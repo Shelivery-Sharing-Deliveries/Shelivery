@@ -23,6 +23,11 @@ const banners: Banner[] = [
   alt: "Order video"
   },
   {
+    id: "1",
+    src: "/banners/banner-1.png",
+    alt: "Welcome to Shelivery - Start Shopping"
+  },
+  {
     id: "2",
     src: "/banners/banner-2.png",
     alt: "The problem"
@@ -32,11 +37,7 @@ const banners: Banner[] = [
     src: "/banners/banner-3.png",
     alt: "Solution"
   },
-  {
-    id: "1",
-    src: "/banners/banner-1.png",
-    alt: "Welcome to Shelivery - Start Shopping"
-  }
+  
 ];
 
 const VIDEO_EXTENSIONS = [".mp4", ".webm", ".ogg", ".mov"];
