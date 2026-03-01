@@ -18,6 +18,9 @@ export default function InviteCodeForm({
   error,
 }: InviteCodeFormProps) {
   const [inviteCode, setInviteCode] = useState("");
+  const [isPopupOpen, setIsPopupOpen] = useState(true);
+  const inviteMessageCode = "INNOSUISSE";
+  const isPopupActive = true;
 
   // Auto-populate invite code from localStorage on component mount
   useEffect(() => {
@@ -46,6 +49,26 @@ export default function InviteCodeForm({
             Get an invite code ?
           </h1>
         </div>
+        {isPopupOpen && isPopupActive && (
+          <div className="relative rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-md">
+            <button
+              type="button"
+              onClick={() => setIsPopupOpen(false)}
+              className="absolute right-3 top-3 text-sm font-semibold text-[#6B7280]"
+              aria-label="Close invitation info"
+            >
+              ✕
+            </button>
+            <div className="flex flex-col gap-2 text-center">
+              <p className="text-[14px] font-semibold text-[#111827]">
+                You can use this invitation code "{inviteMessageCode}"
+              </p>
+              <p className="text-[12px] text-[#6B7280]">
+                For the first trial, you can use the code above to explore the app.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
