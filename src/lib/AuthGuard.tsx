@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import posthog from "posthog-js"; // Assuming posthog is initialized globally elsewhere
+import { usePostHog } from "posthog-js/react";
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -13,6 +13,7 @@ interface AuthGuardProps {
 export default function AuthGuard({ children }: AuthGuardProps) {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const posthog = usePostHog();
   const [isCheckingDormitory, setIsCheckingDormitory] = useState(true);
   const checkedUserIdRef = useRef<string | null>(null);
 
@@ -66,14 +67,18 @@ export default function AuthGuard({ children }: AuthGuardProps) {
             console.log("AuthGuard: User authenticated. Allowing access.");
             checkedUserIdRef.current = user.id; // Store this user's ID to avoid re-checking
 
-            // Identify the user with PostHog (assuming PostHog is globally initialized)
-            posthog.identify(
-             user.id, // The unique ID from your database
-              { 
-                email: user.email || null 
-              }
-            );
-            console.log("AuthGuard: PostHog identify called for user:", user.id);
+            // Identify the user with PostHog
+            if (posthog) {
+              posthog.identify(
+                user.id, // The unique ID from your database
+                { 
+                  email: user.email || undefined 
+                }
+              );
+              console.log("AuthGuard: PostHog identify called for user:", user.id, "with email:", user.email);
+            } else {
+              console.warn("AuthGuard: PostHog not initialized, skipping identify");
+            }
           }
         } catch (error) {
           // Catch any unexpected runtime errors that might occur during the Supabase call.
