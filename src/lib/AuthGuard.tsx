@@ -67,7 +67,12 @@ export default function AuthGuard({ children }: AuthGuardProps) {
             checkedUserIdRef.current = user.id; // Store this user's ID to avoid re-checking
 
             // Identify the user with PostHog (assuming PostHog is globally initialized)
-            posthog.identify(user.id);
+            posthog.identify(
+             user.id, // The unique ID from your database
+              { 
+                email: user.email || null 
+              }
+            );
             console.log("AuthGuard: PostHog identify called for user:", user.id);
           }
         } catch (error) {
