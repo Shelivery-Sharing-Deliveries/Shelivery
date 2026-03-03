@@ -4,7 +4,6 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import posthog from "posthog-js";
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -15,7 +14,6 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter();
   const [isCheckingDormitory, setIsCheckingDormitory] = useState(true);
   const checkedUserIdRef = useRef<string | null>(null);
-  const posthogIdentifyRef = useRef<boolean>(false);
 
   useEffect(() => {
     const checkAuthAndDormitory = async () => {
@@ -66,28 +64,6 @@ export default function AuthGuard({ children }: AuthGuardProps) {
             // User is authenticated. All checks passed.
             console.log("AuthGuard: User authenticated. Allowing access.");
             checkedUserIdRef.current = user.id; // Store this user's ID to avoid re-checking
-
-            // Identify the user with PostHog
-            // Use ref to ensure we only identify once per session
-            if (!posthogIdentifyRef.current) {
-              try {
-                // Check if PostHog is initialized
-                if (posthog.__loaded) {
-                  posthog.identify(
-                    user.id, // The unique ID from your database
-                    { 
-                      email: user.email || undefined 
-                    }
-                  );
-                  posthogIdentifyRef.current = true;
-                  console.log("AuthGuard: PostHog identify called for user:", user.id, "with email:", user.email);
-                } else {
-                  console.warn("AuthGuard: PostHog not yet loaded, will retry on next render");
-                }
-              } catch (error) {
-                console.error("AuthGuard: Error calling posthog.identify:", error);
-              }
-            }
           }
         } catch (error) {
           // Catch any unexpected runtime errors that might occur during the Supabase call.

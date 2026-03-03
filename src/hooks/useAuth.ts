@@ -4,6 +4,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import posthog from "posthog-js";
 
 interface AuthState {
     user: User | null;
@@ -19,6 +20,20 @@ export function useAuth() {
         loading: true,
         error: null,
     });
+
+    // Identify user with PostHog - defined first so it can be used in effects
+    const identifyUser = useCallback((user: User) => {
+        try {
+            if (posthog.__loaded) {
+                posthog.identify(user.id, {
+                    email: user.email || undefined,
+                });
+                console.log("useAuth: PostHog identify called for user:", user.id);
+            }
+        } catch (error) {
+            console.error("useAuth: Error calling posthog.identify:", error);
+        }
+    }, []);
 
     useEffect(() => {
         let isMounted = true;
@@ -50,6 +65,11 @@ export function useAuth() {
                     error: null,
                 });
 
+                // Identify user on initial session load (returning user)
+                if (session?.user) {
+                    identifyUser(session.user);
+                }
+
             } catch (err: any) {
                 if (!isMounted) return;
                 console.error("useAuth: getInitialSession - Unexpected error:", err);
@@ -78,6 +98,7 @@ export function useAuth() {
 
                 if (event === "SIGNED_IN" && session?.user) {
                     handleUserProfileCreation(session.user);
+                    identifyUser(session.user);
                 }
             }
         );
