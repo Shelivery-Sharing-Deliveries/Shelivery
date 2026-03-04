@@ -119,7 +119,7 @@ export class PushNotificationManager {
           
           subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: applicationServerKey,
+            applicationServerKey: applicationServerKey as BufferSource,
           });
           console.log('New subscription created:', subscription);
         } catch (subscribeError) {
