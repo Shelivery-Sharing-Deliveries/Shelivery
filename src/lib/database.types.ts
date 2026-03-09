@@ -72,48 +72,60 @@ export type Database = {
       }
       basket: {
         Row: {
+          address: string | null
           amount: number
           chatroom_id: string | null
           created_at: string | null
           id: string
           is_delivered_by_user: boolean | null
           is_ready: boolean | null
+          lat: number | null
           link: string | null
+          lng: number | null
           location_id: string | null
           note: string | null
           pool_id: string | null
+          radius_km: number | null
           shop_id: string
           status: Database["public"]["Enums"]["basket_status"] | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          address?: string | null
           amount: number
           chatroom_id?: string | null
           created_at?: string | null
           id?: string
           is_delivered_by_user?: boolean | null
           is_ready?: boolean | null
+          lat?: number | null
           link?: string | null
+          lng?: number | null
           location_id?: string | null
           note?: string | null
           pool_id?: string | null
+          radius_km?: number | null
           shop_id?: string
           status?: Database["public"]["Enums"]["basket_status"] | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          address?: string | null
           amount?: number
           chatroom_id?: string | null
           created_at?: string | null
           id?: string
           is_delivered_by_user?: boolean | null
           is_ready?: boolean | null
+          lat?: number | null
           link?: string | null
+          lng?: number | null
           location_id?: string | null
           note?: string | null
           pool_id?: string | null
+          radius_km?: number | null
           shop_id?: string
           status?: Database["public"]["Enums"]["basket_status"] | null
           updated_at?: string | null
@@ -519,28 +531,37 @@ export type Database = {
       }
       pool: {
         Row: {
+          address: string | null
           created_at: string | null
           current_amount: number | null
           dormitory_id: number | null
           id: string
+          lat: number | null
+          lng: number | null
           location_id: string | null
           min_amount: number
           shop_id: string | null
         }
         Insert: {
+          address?: string | null
           created_at?: string | null
           current_amount?: number | null
           dormitory_id?: number | null
           id?: string
+          lat?: number | null
+          lng?: number | null
           location_id?: string | null
           min_amount: number
           shop_id?: string | null
         }
         Update: {
+          address?: string | null
           created_at?: string | null
           current_amount?: number | null
           dormitory_id?: number | null
           id?: string
+          lat?: number | null
+          lng?: number | null
           location_id?: string | null
           min_amount?: number
           shop_id?: string | null
@@ -862,8 +883,8 @@ export type Database = {
       create_basket_and_join_pool: {
         Args:
           | { amount_param: number; link_param?: string; shop_id_param: number }
-          | { basket_data: Json }
-        Returns: string
+          | { basket_data: Json; pool_id?: string | null }
+        Returns: Json
       }
       create_invitation: {
         Args: { expires_in_days?: number }
@@ -983,6 +1004,26 @@ export type Database = {
       track_event: {
         Args: { event_type_param: string; metadata_param?: Json }
         Returns: undefined
+      }
+      delete_basket_from_pool: {
+        Args: { p_basket_id: string }
+        Returns: Json
+      }
+      find_nearby_pools: {
+        Args: {
+          p_lat: number
+          p_lng: number
+          p_max_radius_km?: number
+          p_shop_id: string
+        }
+        Returns: {
+          address: string
+          current_amount: number
+          distance_km: number
+          member_count: number
+          min_amount: number
+          pool_id: string
+        }[]
       }
       urlencode: {
         Args: { data: Json } | { string: string } | { string: string }

@@ -86,6 +86,7 @@ export default function PoolPage({ params }: PoolPageProps) {
         }
         return false; // Default to false on server-side render
     }); // NEW: State for tutorial visibility
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
 
     const handleBack = () => {
@@ -356,41 +357,32 @@ export default function PoolPage({ params }: PoolPageProps) {
         router.push(editUrl as any);
     };
 
-    // --- handleDelete for removing a basket entry ---
-    const handleDelete = async () => {
+    // --- handleDelete — shows confirmation modal first ---
+    const handleDelete = () => {
         if (!poolData || isButtonLoading) return;
+        setShowDeleteConfirm(true);
+    };
 
-        // Using a custom modal/dialog instead of window.confirm as per instructions
-        // For this example, we'll simulate the confirmation
-        const confirmed = true; // In a real app, this would be from a custom modal
-        if (!confirmed) {
-            return;
-        }
-        console.log("Simulating: User confirmed deletion."); // Log for demo
-
+    // --- confirmDelete — calls the RPC that handles anchor transfer or pool dissolution ---
+    const confirmDelete = async () => {
+        setShowDeleteConfirm(false);
         setIsButtonLoading(true);
         setError(null);
 
-        const basketIdToDelete = params.basketId;
-
         try {
-            const { error: supabaseError } = await supabase
-                .from('basket')
-                .delete()
-                .eq('id', basketIdToDelete);
+            const { data, error: rpcError } = await supabase.rpc(
+                'delete_basket_from_pool',
+                { p_basket_id: params.basketId }
+            );
 
-            if (supabaseError) {
-                console.error('DELETE_ERROR: Supabase delete error:', supabaseError);
-                setError(supabaseError.message || 'Failed to delete basket.');
-                return;
-            }
+            if (rpcError) throw rpcError;
 
-            console.log(`DELETE_SUCCESS: Basket ${basketIdToDelete} deleted successfully.`);
+            const action = (data as any)?.action;
+            console.log(`DELETE_SUCCESS: action=${action}`, data);
             router.push('/dashboard');
-
-        } catch (generalError) {
-            console.error('DELETE_ERROR: General error during delete:', generalError);
-            setError('An unexpected error occurred during deletion.');
+        } catch (err: any) {
+            console.error('DELETE_ERROR:', err);
+            setError(err.message || 'Failed to delete basket.');
         } finally {
             setIsButtonLoading(false);
         }
@@ -640,49 +632,72 @@ export default function PoolPage({ params }: PoolPageProps) {
                         <button
                             onClick={handleEdit}
                             className="flex-1 bg-[#EAF7FF] border border-[#D8F0FE] rounded-lg px-4 py-2 flex items-center justify-center gap-1.5 h-9"
-                            id="edit-basket-button" 
+                            id="edit-basket-button"
                         >
-                            <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="#245B7B"
-                                strokeWidth="1.5"
-                            >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#245B7B" strokeWidth="1.5">
                                 <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                                 <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                             </svg>
-                            <span className="text-[#245B7B] font-poppins text-xs font-semibold">
-                                Edit
-                            </span>
+                            <span className="text-[#245B7B] font-poppins text-xs font-semibold">Edit</span>
                         </button>
                         <button
                             onClick={handleDelete}
-                            className="flex-1 bg-[#FEF3F2] border border-[#FEE4E2] rounded-lg px-4 py-2 flex items-center justify-center gap-1.5 h-9"
-                            id="delete-basket-button" 
+                            disabled={isButtonLoading}
+                            className="flex-1 bg-[#FEF3F2] border border-[#FEE4E2] rounded-lg px-4 py-2 flex items-center justify-center gap-1.5 h-9 disabled:opacity-50"
+                            id="delete-basket-button"
                         >
-                            <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="#B42318"
-                                strokeWidth="1.5"
-                            >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B42318" strokeWidth="1.5">
                                 <polyline points="3,6 5,6 21,6" />
                                 <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
                                 <line x1="10" y1="11" x2="10" y2="17" />
                                 <line x1="14" y1="11" x2="14" y2="17" />
                             </svg>
                             <span className="text-[#B42318] font-poppins text-xs font-semibold">
-                                Delete
+                                {isButtonLoading ? "Deleting..." : "Delete"}
                             </span>
                         </button>
                     </div>
                 )}
                 {error && (
                     <p className="text-red-500 text-sm mt-2 font-medium">{error}</p>
+                )}
+
+                {/* Delete Confirmation Modal */}
+                {showDeleteConfirm && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+                        <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+                            <div className="flex flex-col items-center gap-3 mb-5">
+                                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B42318" strokeWidth="1.5">
+                                        <polyline points="3,6 5,6 21,6" />
+                                        <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-[#111827] font-poppins text-base font-bold text-center">
+                                    Delete Basket?
+                                </h3>
+                                <p className="text-[#6B7280] font-poppins text-sm text-center leading-relaxed">
+                                    {poolData?.pool_id
+                                        ? "Your basket will be removed from the pool. If you're the only member, the pool will be dissolved. Otherwise, the pool anchor will be passed to the next member."
+                                        : "This will permanently delete your basket."}
+                                </p>
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setShowDeleteConfirm(false)}
+                                    className="flex-1 h-11 rounded-xl border border-gray-200 text-[#374151] font-poppins text-sm font-semibold"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={confirmDelete}
+                                    className="flex-1 h-11 rounded-xl bg-[#B42318] text-white font-poppins text-sm font-semibold"
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {/* Bottom Action Button - Dynamic Text and Color (MOVED BACK HERE) */}
