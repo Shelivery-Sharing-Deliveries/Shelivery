@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
@@ -15,7 +15,39 @@ import {
   type NearbyPool,
 } from "@/components/alpha";
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── Storage ─────────────────────────────────────────────────────────────────
+
+const STORAGE_KEY = "pendingAlphaBasket";
+
+interface PersistedDraft {
+  shopId: string | null;
+  location: LocationData | null;
+  basketLink: string;
+  basketNote: string;
+  basketAmount: string;
+  step: number;
+}
+
+function saveDraft(draft: PersistedDraft) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+  } catch {}
+}
+
+function loadDraft(): PersistedDraft | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as PersistedDraft) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearDraft() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch {}
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function isValidUrl(url: string): boolean {
   if (!url.trim()) return true;
@@ -32,7 +64,7 @@ function normalizeUrl(url: string): string {
   return t.startsWith("http://") || t.startsWith("https://") ? t : `https://${t}`;
 }
 
-// ─── Page ────────────────────────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AlphaTrialPage() {
   const { user, loading: authLoading } = useAuth();
@@ -62,8 +94,15 @@ export default function AlphaTrialPage() {
   const [matchingLoading, setMatchingLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [restoredFromDraft, setRestoredFromDraft] = useState(false);
 
-  useEffect(() => { fetchShops(); }, []);
+  // Prevent saving during the initial restore phase
+  const isRestoring = useRef(true);
+
+  // ── Fetch shops then restore draft ───────────────────────────────────────
+  useEffect(() => {
+    fetchShops();
+  }, []);
 
   async function fetchShops() {
     try {
@@ -73,13 +112,48 @@ export default function AlphaTrialPage() {
         .eq("is_active", true)
         .order("name");
       if (error) throw error;
-      setShops(data || []);
+
+      const fetchedShops: Shop[] = data || [];
+      setShops(fetchedShops);
+
+      // Restore draft after shops are loaded so we can match shopId → Shop object
+      const draft = loadDraft();
+      if (draft) {
+        if (draft.shopId) {
+          const match = fetchedShops.find((s) => s.id === draft.shopId);
+          if (match) setSelectedShop(match);
+        }
+        if (draft.location) setUserLocation(draft.location);
+        if (draft.basketLink) setBasketLink(draft.basketLink);
+        if (draft.basketNote) setBasketNote(draft.basketNote);
+        if (draft.basketAmount) setBasketAmount(draft.basketAmount);
+        // Restore to furthest useful step (max step 3 — don't skip to pool selection)
+        setCurrentStep(Math.min(draft.step, 3));
+        setRestoredFromDraft(true);
+      }
     } catch {
       setError("Failed to load shops");
     } finally {
       setLoading(false);
+      // Allow saving after a tick so the restored state is committed first
+      setTimeout(() => { isRestoring.current = false; }, 50);
     }
   }
+
+  // ── Auto-save draft whenever form state changes ───────────────────────────
+  useEffect(() => {
+    if (isRestoring.current) return;
+    saveDraft({
+      shopId: selectedShop?.id ?? null,
+      location: userLocation,
+      basketLink,
+      basketNote,
+      basketAmount,
+      step: currentStep,
+    });
+  }, [selectedShop, userLocation, basketLink, basketNote, basketAmount, currentStep]);
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   function calculateTotal(): number {
     const v = parseFloat(basketAmount);
@@ -100,17 +174,17 @@ export default function AlphaTrialPage() {
   async function handleFindPools() {
     if (!canSubmitBasket() || !selectedShop || !userLocation) return;
 
-    // Unauthenticated: save & redirect
+    // Unauthenticated: save full draft & redirect to login
     if (!user) {
-      localStorage.setItem("pendingBasket", JSON.stringify({
+      saveDraft({
         shopId: selectedShop.id,
-        shopName: selectedShop.name,
-        amount: calculateTotal(),
-        link: basketLink.trim() ? normalizeUrl(basketLink) : "",
-        note: basketNote.trim() || "",
         location: userLocation,
-      }));
-      router.push("/submit-basket");
+        basketLink: basketLink.trim() ? normalizeUrl(basketLink) : "",
+        basketNote: basketNote.trim(),
+        basketAmount,
+        step: 3,
+      });
+      router.push("/auth" as any);
       return;
     }
 
@@ -126,7 +200,7 @@ export default function AlphaTrialPage() {
       });
       if (rpcError) throw rpcError;
       setNearbyPools(data || []);
-      setSelectedPool(null); // default: create new pool
+      setSelectedPool(null);
       setCurrentStep(4);
     } catch (err: any) {
       setError(err.message || "Failed to find nearby pools");
@@ -174,6 +248,9 @@ export default function AlphaTrialPage() {
         },
       });
 
+      // Clear draft after successful submission
+      clearDraft();
+
       setSuccess("Basket created! Redirecting...");
       setTimeout(() => router.push(`/pool/${data.basket_id}` as any), 1500);
     } catch (err: any) {
@@ -183,7 +260,7 @@ export default function AlphaTrialPage() {
     }
   }
 
-  // ── Loading screen
+  // ── Loading screen ────────────────────────────────────────────────────────
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-shelivery-background-gray flex items-center justify-center">
@@ -195,17 +272,38 @@ export default function AlphaTrialPage() {
     );
   }
 
+  const totalSteps = 4;
+
   const header = (
     <div>
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-1">
         <span className="px-2 py-1 bg-shelivery-primary-yellow text-black text-xs font-bold rounded">ALPHA</span>
         <span className="text-sm text-shelivery-text-secondary">Create Your Order</span>
       </div>
+      {restoredFromDraft && (
+        <div className="flex items-center justify-between bg-yellow-50 border border-yellow-200 rounded-shelivery-sm px-3 py-1.5 mt-2">
+          <p className="text-xs text-yellow-800">
+            📋 Draft restored — continue where you left off
+          </p>
+          <button
+            onClick={() => {
+              clearDraft();
+              setSelectedShop(null);
+              setUserLocation(null);
+              setBasketLink("");
+              setBasketNote("");
+              setBasketAmount("");
+              setCurrentStep(1);
+              setRestoredFromDraft(false);
+            }}
+            className="text-xs text-yellow-700 underline ml-2"
+          >
+            Clear
+          </button>
+        </div>
+      )}
     </div>
   );
-
-  // Progress dots (steps 1–4, but show 1–3 visually like before + extend to 4)
-  const totalSteps = 4;
 
   return (
     <PageLayout header={header}>
@@ -280,6 +378,16 @@ export default function AlphaTrialPage() {
           onBack={() => { setError(null); setCurrentStep(3); }}
         />
       )}
+
+      {/* Alpha info */}
+      <div className="bg-blue-50 border border-blue-200 rounded-shelivery-lg p-4 mt-4">
+        <h3 className="text-sm font-semibold text-blue-800 mb-2">🧪 Alpha Trial</h3>
+        <ul className="text-xs text-blue-700 space-y-1">
+          <li>• Your progress is auto-saved — come back anytime</li>
+          <li>• Nearby pools are found using the Haversine distance formula</li>
+          <li>• All features are in testing — feedback is appreciated!</li>
+        </ul>
+      </div>
     </PageLayout>
   );
 }
