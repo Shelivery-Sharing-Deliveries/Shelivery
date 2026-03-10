@@ -33,6 +33,9 @@ interface BasketData {
     note: string | null;
     is_ready: boolean;
     status: 'resolved' | 'in_pool' | 'in_chat'; // Added status
+    lat: number | null;
+    lng: number | null;
+    address: string | null;
     shop: ShopData; // Nested shop data from join
     pool: PoolInfo | null; // Nested pool data from join, made nullable as pool_id can be null
 }
@@ -87,6 +90,8 @@ export default function PoolPage({ params }: PoolPageProps) {
         return false; // Default to false on server-side render
     }); // NEW: State for tutorial visibility
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showEditConfirm, setShowEditConfirm] = useState(false);
+    const [rawBasketData, setRawBasketData] = useState<BasketData | null>(null);
 
 
     const handleBack = () => {
@@ -108,6 +113,9 @@ export default function PoolPage({ params }: PoolPageProps) {
           shop_id,
           pool_id,
           chatroom_id,        
+          lat,
+          lng,
+          address,
           shop (              
             name,
             logo_url
@@ -191,6 +199,7 @@ export default function PoolPage({ params }: PoolPageProps) {
             console.log("Result from fetchAndProcessBasketData:", result); // Debugging log
             if (result) {
                 setPoolData(result.structuredData);
+                setRawBasketData(result.fetchedBasket);
                 setIsReady(result.fetchedBasket.is_ready);
                 console.log("FETCH_INIT_SUCCESS: Initial poolData set.");
 
@@ -268,6 +277,7 @@ export default function PoolPage({ params }: PoolPageProps) {
             if (result) {
                 // If result is not null, it means no redirect happened yet (or error was handled)
                 setPoolData(result.structuredData);
+                setRawBasketData(result.fetchedBasket);
                 setIsReady(result.fetchedBasket.is_ready);
                 console.log(`POLLING_SUCCESS: Basket status: ${result.fetchedBasket.status}`);
             } else {
@@ -349,12 +359,57 @@ export default function PoolPage({ params }: PoolPageProps) {
         }
     };
 
-    const handleEdit = () => {
-        if (!poolData) return;
+    const saveDraftAndRedirect = () => {
+        if (!poolData || !rawBasketData) return;
+        const draft = {
+            shopId: poolData.shop_id,
+            location: (rawBasketData.lat && rawBasketData.lng) ? {
+                latitude: rawBasketData.lat,
+                longitude: rawBasketData.lng,
+                address: rawBasketData.address || undefined
+            } : null,
+            basketLink: poolData.userBasket.itemsUrl || "",
+            basketNote: poolData.userBasket.itemsNote || "",
+            basketAmount: poolData.userBasket.total.toString(),
+            step: 3
+        };
+        localStorage.setItem('pendingAlphaBasket', JSON.stringify(draft));
+        router.push('/alpha?restored=true');
+    };
 
-        const editUrl = `/shops/${poolData.shop_id}/basket?basketId=${params.basketId}`;
-        console.log("NAVIGATE: Navigating to edit URL:", editUrl);
-        router.push(editUrl as any);
+    const handleEdit = () => {
+        if (!poolData || !rawBasketData || isButtonLoading) return;
+
+        if (poolData.pool_id) {
+            setShowEditConfirm(true);
+        } else {
+            saveDraftAndRedirect();
+        }
+    };
+
+    const confirmEdit = async () => {
+        if (!poolData || !rawBasketData) return;
+        setShowEditConfirm(false);
+        setIsButtonLoading(true);
+        setError(null);
+
+        try {
+            const { data, error: rpcError } = await supabase.rpc(
+                'remove_basket_from_pool',
+                { p_basket_id: params.basketId }
+            );
+
+            if (rpcError) throw rpcError;
+
+            const action = (data as any)?.action;
+            console.log(`EDIT_REMOVE_SUCCESS: action=${action}`, data);
+            
+            saveDraftAndRedirect();
+        } catch (err: any) {
+            console.error('EDIT_REMOVE_ERROR:', err);
+            setError(err.message || 'Failed to remove basket from pool for editing.');
+            setIsButtonLoading(false); // Only reset loading on error since success navigates away
+        }
     };
 
     // --- handleDelete — shows confirmation modal first ---
@@ -660,6 +715,42 @@ export default function PoolPage({ params }: PoolPageProps) {
                 )}
                 {error && (
                     <p className="text-red-500 text-sm mt-2 font-medium">{error}</p>
+                )}
+
+                {/* Edit Confirmation Modal */}
+                {showEditConfirm && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+                        <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+                            <div className="flex flex-col items-center gap-3 mb-5">
+                                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#245B7B" strokeWidth="1.5">
+                                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                                        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-[#111827] font-poppins text-base font-bold text-center">
+                                    Edit Basket?
+                                </h3>
+                                <p className="text-[#6B7280] font-poppins text-sm text-center leading-relaxed">
+                                    Editing your basket will remove you from the current pool. If you're the only member, the pool will be dissolved. Otherwise, the pool anchor will be passed to the next member. Do you wish to continue?
+                                </p>
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setShowEditConfirm(false)}
+                                    className="flex-1 h-11 rounded-xl border border-gray-200 text-[#374151] font-poppins text-sm font-semibold"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={confirmEdit}
+                                    className="flex-1 h-11 rounded-xl bg-[#245B7B] text-white font-poppins text-sm font-semibold"
+                                >
+                                    Continue
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {/* Delete Confirmation Modal */}

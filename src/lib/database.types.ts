@@ -1009,6 +1009,10 @@ export type Database = {
         Args: { p_basket_id: string }
         Returns: Json
       }
+      remove_basket_from_pool: {
+        Args: { p_basket_id: string }
+        Returns: Json
+      }
       find_nearby_pools: {
         Args: {
           p_lat: number

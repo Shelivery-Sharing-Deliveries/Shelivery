@@ -285,33 +285,27 @@ export default function AlphaTrialPage() {
   const totalSteps = 4;
 
   const header = (
-    <div>
-      <div className="flex items-center gap-2 mb-1">
+    <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center gap-2">
         <span className="px-2 py-1 bg-shelivery-primary-yellow text-black text-xs font-bold rounded">ALPHA</span>
         <span className="text-sm text-shelivery-text-secondary">Create Your Order</span>
       </div>
-      {restoredFromDraft && (
-        <div className="flex items-center justify-between bg-yellow-50 border border-yellow-200 rounded-shelivery-sm px-3 py-1.5 mt-2">
-          <p className="text-xs text-yellow-800">
-            📋 Draft restored — continue where you left off
-          </p>
-          <button
-            onClick={() => {
-              clearDraft();
-              setSelectedShop(null);
-              setUserLocation(null);
-              setBasketLink("");
-              setBasketNote("");
-              setBasketAmount("");
-              setCurrentStep(1);
-              setRestoredFromDraft(false);
-            }}
-            className="text-xs text-yellow-700 underline ml-2"
-          >
-            Clear
-          </button>
-        </div>
-      )}
+      <button
+        onClick={() => {
+          clearDraft();
+          setSelectedShop(null);
+          setUserLocation(null);
+          setBasketLink("");
+          setBasketNote("");
+          setBasketAmount("");
+          setCurrentStep(1);
+          setRestoredFromDraft(false);
+        }}
+        className="text-xs text-shelivery-text-secondary hover:text-shelivery-text-primary bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition-colors"
+        title="Clear Draft"
+      >
+        Reset
+      </button>
     </div>
   );
 

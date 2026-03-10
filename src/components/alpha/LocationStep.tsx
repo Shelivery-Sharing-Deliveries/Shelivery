@@ -23,7 +23,7 @@ export function LocationStep({ userLocation, onLocationSelect, onContinue, onBac
 
       <div className="mt-6 flex gap-3">
         <Button variant="secondary" onClick={onBack} className="flex-1">Back</Button>
-        <Button onClick={onContinue} disabled={!userLocation} className="flex-1">Continue to Order Details</Button>
+        <Button onClick={onContinue} disabled={!userLocation} className="flex-1">Continue</Button>
       </div>
     </div>
   );
