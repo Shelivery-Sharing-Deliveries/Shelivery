@@ -200,7 +200,7 @@ export default function DashboardPage() {
     }, [user, authLoading]); // Depend on 'user' and 'authLoading' from useAuth
 
     const handleAddBasket = () => {
-        router.push("/shops");
+        router.push("/alpha");
     };
 
     const handleInviteFriend = () => {
@@ -298,7 +298,7 @@ export default function DashboardPage() {
                     </div>)}
                     <AddBasket onClick={handleAddBasket} id="add-basket-button" />
 
-                    <h2 className="text-base font-bold text-gray-800 mt-4 mb-1">
+                    <h2 className="text-base font-bold text-gray-800 mt-4 py-4">
                         Just About to Complete 🔥
                     </h2>
                     <FeaturedShopCard />
@@ -314,15 +314,15 @@ export default function DashboardPage() {
                     ) : (
                         <>
                             {activeBaskets.length === 0 ? (
-                                <div className="text-center text-gray-500" id="no-active-baskets-message"> {/* ADDED ID */}
-                                    <img
+                                <div className="text-center text-gray-500 border border-gray-200 rounded-2xl p-6 bg-white shadow-sm my-4" id="no-active-baskets-message"> {/* ADDED ID */}
+                                    {/*<img
                                         src="/graphics/empty-basket.svg"  // Replace with your actual image path
                                         alt="No active baskets"
                                         className="w-full h-auto"  // Adjust sizing as needed
-                                    />
+                                    />*/}
 
-                                    <p className="mt-4 py-2 text-lg font-semibold">No active baskets</p>
-                                    <p>Create a basket and have shared shopping experience!</p>
+                                    <p className="text-lg font-semibold text-gray-800">No active baskets</p>
+                                    <p className="mt-2 text-sm text-gray-500">Create a basket and have a shared shopping experience!</p>
                                 </div>
                             ) : (
                                 <Baskets baskets={activeBaskets} onBasketClick={handleBasketClick} id="active-baskets-list" />

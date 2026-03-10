@@ -117,19 +117,26 @@ export default function AlphaTrialPage() {
       setShops(fetchedShops);
 
       // Restore draft after shops are loaded so we can match shopId → Shop object
-      const draft = loadDraft();
-      if (draft) {
-        if (draft.shopId) {
-          const match = fetchedShops.find((s) => s.id === draft.shopId);
-          if (match) setSelectedShop(match);
+      // ONLY restore if we came back from an auth redirect
+      const isRestored = typeof window !== 'undefined' && window.location.search.includes('restored=true');
+      
+      if (isRestored) {
+        const draft = loadDraft();
+        if (draft) {
+          if (draft.shopId) {
+            const match = fetchedShops.find((s) => s.id === draft.shopId);
+            if (match) setSelectedShop(match);
+          }
+          if (draft.location) setUserLocation(draft.location);
+          if (draft.basketLink) setBasketLink(draft.basketLink);
+          if (draft.basketNote) setBasketNote(draft.basketNote);
+          if (draft.basketAmount) setBasketAmount(draft.basketAmount);
+          // Restore to furthest useful step (max step 3 — don't skip to pool selection)
+          setCurrentStep(Math.min(draft.step, 3));
+          setRestoredFromDraft(true);
         }
-        if (draft.location) setUserLocation(draft.location);
-        if (draft.basketLink) setBasketLink(draft.basketLink);
-        if (draft.basketNote) setBasketNote(draft.basketNote);
-        if (draft.basketAmount) setBasketAmount(draft.basketAmount);
-        // Restore to furthest useful step (max step 3 — don't skip to pool selection)
-        setCurrentStep(Math.min(draft.step, 3));
-        setRestoredFromDraft(true);
+      } else {
+        clearDraft();
       }
     } catch {
       setError("Failed to load shops");
@@ -184,7 +191,10 @@ export default function AlphaTrialPage() {
         basketAmount,
         step: 3,
       });
-      router.push("/auth" as any);
+      
+      const params = new URLSearchParams();
+      params.set('redirect', '/alpha?restored=true');
+      router.push(`/auth?${params.toString()}` as any);
       return;
     }
 
@@ -252,7 +262,7 @@ export default function AlphaTrialPage() {
       clearDraft();
 
       setSuccess("Basket created! Redirecting...");
-      setTimeout(() => router.push(`/pool/${data.basket_id}` as any), 1500);
+      setTimeout(() => router.push(`/pool/${data.basket_id}` as any), 500);
     } catch (err: any) {
       setError(err.message || "Failed to create basket");
     } finally {
@@ -379,15 +389,6 @@ export default function AlphaTrialPage() {
         />
       )}
 
-      {/* Alpha info */}
-      <div className="bg-blue-50 border border-blue-200 rounded-shelivery-lg p-4 mt-4">
-        <h3 className="text-sm font-semibold text-blue-800 mb-2">🧪 Alpha Trial</h3>
-        <ul className="text-xs text-blue-700 space-y-1">
-          <li>• Your progress is auto-saved — come back anytime</li>
-          <li>• Nearby pools are found using the Haversine distance formula</li>
-          <li>• All features are in testing — feedback is appreciated!</li>
-        </ul>
-      </div>
     </PageLayout>
   );
 }

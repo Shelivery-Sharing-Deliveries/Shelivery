@@ -19,7 +19,7 @@ const navItems = [
   },
   {
     name: "Stores",
-    href: "/shops",
+    href: "/alpha",
     icon: "shop",
   },
   {
@@ -235,7 +235,7 @@ export function Navigation({ className = "" }: NavigationProps) {
               const isActive =
                 pathname === item.href ||
                 pathname.startsWith(item.href + "/") ||
-                (item.href === "/shops" && pathname === "/choose-shop");
+                (item.href === "/alpha" && pathname === "/choose-shop");
 
               return (
                 <Link

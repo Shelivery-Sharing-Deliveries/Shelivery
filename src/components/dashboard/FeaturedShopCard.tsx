@@ -171,7 +171,11 @@ export default function FeaturedShopCard({ className }: FeaturedShopCardProps) {
     }
 
     if (!featuredPool) {
-        return null; // Hide component if no featured pool available
+        return (
+            <div className={`text-center text-gray-500 border border-gray-200 rounded-2xl p-6 bg-white shadow-sm mb-4 ${className || ''}`}>
+                <p className="text-lg font-semibold text-gray-800">There is no featured pool available right now.</p>
+            </div>
+        );
     }
 
     return (
