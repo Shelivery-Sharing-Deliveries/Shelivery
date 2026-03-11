@@ -11,6 +11,7 @@ import { usePushNotifications } from '@/hooks/usePushNotifications'; // NEW: Imp
 import { useNotify } from "@/components/ui/NotificationsContext"; // NEW: Import useNotify for pop-up messages
 import PrivacyPopup from "@/components/ui/PrivacyPopup";
 import { AvatarUpload } from "@/components/ui/AvatarUpload";
+import MapboxLocationPicker from "@/components/mapbox/MapboxLocationPicker";
 
 // Assuming AuthLayout is in components/auth/AuthLayout.tsx
 import AuthLayout from "@/components/auth/AuthLayout";
@@ -21,6 +22,10 @@ interface ProfileFormData {
     email: string;
     dormitoryId: string | null; // Changed to ID for saving
     favoriteStore: string | null; // Changed to name for saving
+    address: string;
+    lat: number | null;
+    lng: number | null;
+    preferedKm: number;
 }
 
 interface Dormitory {
@@ -47,6 +52,10 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
         email: "",
         dormitoryId: null,
         favoriteStore: null,
+        address: "",
+        lat: null,
+        lng: null,
+        preferedKm: 5,
     });
 
     const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -63,6 +72,8 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
     const [showPrivacyPopup, setShowPrivacyPopup] = useState(false);
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [privacyAccepted, setPrivacyAccepted] = useState(false);
+    const [currentStep, setCurrentStep] = useState(1);
+    const totalSteps = 3;
 
     const currentUrlUserId = params?.userId as string;
 
@@ -127,7 +138,7 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
                     // Fetch dormitory_id and favorite_store (name)
                     const { data, error: fetchError } = await supabase
                         .from("user")
-                        .select("first_name, last_name, email, favorite_store, dormitory_id, image")
+                        .select("first_name, last_name, email, favorite_store, dormitory_id, image, address, lat, lng, prefered_km")
                         .eq("id", user.id)
                         .single();
 
@@ -147,6 +158,10 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
                             email: data.email || user.email || "",
                             dormitoryId: data.dormitory_id || null, // Set ID
                             favoriteStore: data.favorite_store || null, // Set Name
+                            address: data.address || "",
+                            lat: data.lat || null,
+                            lng: data.lng || null,
+                            preferedKm: data.prefered_km || 5,
                         });
 
                         if (data.image) {
@@ -186,10 +201,20 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
     }, [user, loading, authLoading, isSubscribed]); // isSubscribed needs to be a dependency
 
     // Update form field values
-    const handleInputChange = (field: keyof ProfileFormData, value: string | null) => {
+    const handleInputChange = (field: keyof ProfileFormData, value: string | null | number) => {
         setFormData((prev) => ({
             ...prev,
             [field]: value,
+        }));
+    };
+
+    // Handle location selection from MapboxLocationPicker
+    const handleLocationSelect = (locationData: { longitude: number; latitude: number; address?: string }) => {
+        setFormData((prev) => ({
+            ...prev,
+            address: locationData.address || "",
+            lat: locationData.latitude,
+            lng: locationData.longitude,
         }));
     };
 
@@ -254,9 +279,18 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
 
     // Save updated profile data to Supabase
     const handleSave = async () => {
+        // Check if terms and privacy are accepted
         if (!termsAccepted || !privacyAccepted) {
+            // Force show the privacy popup
             setShowPrivacyPopup(true);
-            notify({ type: "warning", title: "Action Required", message: "Please accept both Terms of Service and Privacy Policy before saving your profile." });
+            // Add a small delay to ensure state update, then show notification
+            setTimeout(() => {
+                notify({
+                    type: "warning",
+                    title: "Action Required",
+                    message: "Please accept both Terms of Service and Privacy Policy before saving your profile."
+                });
+            }, 100);
             return;
         }
         if (!userId) {
@@ -269,6 +303,10 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
         }
         if (!formData.favoriteStore) { // Validation for favoriteStore (name)
             setError("Please select your Favorite Store.");
+            return;
+        }
+        if (!formData.address || !formData.lat || !formData.lng) {
+            setError("Please select your delivery location.");
             return;
         }
 
@@ -287,6 +325,10 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
                         favorite_store: formData.favoriteStore, // Save Name
                         email: formData.email,
                         image: profileImage,
+                        address: formData.address,
+                        lat: formData.lat,
+                        lng: formData.lng,
+                        prefered_km: formData.preferedKm,
                     },
                     { onConflict: 'id' }
                 );
@@ -348,7 +390,8 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
     return (
         <>
         {showPrivacyPopup && (
-            <PrivacyPopup 
+            <PrivacyPopup
+                forceOpen={true}
                 onAccept={(termsAccepted, privacyAccepted) => {
                     setTermsAccepted(termsAccepted);
                     setPrivacyAccepted(privacyAccepted);
@@ -361,182 +404,293 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
             />
         )}
 
-        <AuthLayout className="gap-8"> {/* Using AuthLayout for consistent styling */}
-            <div className="w-full flex flex-col gap-6 flex-1">
-                {/* Header */}
-                <div className="flex flex-col gap-6 w-full">
-                    <div className="flex flex-col w-full h-[107px]">
-                        <div className="flex flex-col gap-2.5 px-4 w-full shadow-sm bg-white">
-                            <div className="flex items-center gap-2 py-4">
-                                {/* REMOVED: Back button */}
-                                <h1 className="text-black font-inter text-base font-bold leading-8 tracking-[-0.017em]">
-                                    Edit Profile
-                                </h1>
+        <div className="h-screen bg-white w-full max-w-[375px] mx-auto flex flex-col overflow-hidden">
+            {/* Fixed Header - Step Indicators */}
+            <div className="flex-shrink-0 bg-white z-10 py-6 border-b border-gray-100">
+                <div className="w-full max-w-[343px] mx-auto">
+                    {/* Step Indicators */}
+                    <div className="flex items-center justify-center mb-6">
+                        {Array.from({ length: totalSteps }, (_, i) => i + 1).map((step) => (
+                            <div key={step} className="flex items-center">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= step ? "bg-[#FFDB0D] text-black" : "bg-gray-200 text-gray-500"}`}>
+                                    {step}
+                                </div>
+                                {step < totalSteps && (
+                                    <div className={`w-12 h-1 ${currentStep > step ? "bg-[#FFDB0D]" : "bg-gray-200"}`} />
+                                )}
                             </div>
-                        </div>
+                        ))}
                     </div>
                 </div>
+            </div>
 
-                {/* Main Content */}
-                <div className="flex flex-col justify-between items-center flex-1 gap-8 px-4 pb-8">
-                    <div className="flex flex-col items-center gap-8 w-full">
-                        {/* Profile Picture Upload */}
-                        <button
-                            className="relative w-[126px] h-[126px] rounded-[16px] bg-cover bg-center"
-                            style={{
-                                backgroundImage: profileImage
-                                    ? `url(${profileImage})`
-                                    : "url('/avatars/default-avatar.png')",
-                            }}
-                            onClick={() => document.getElementById("profile-upload")?.click()}
-                        >
-                            <input
-                                type="file"
-                                id="profile-upload"
-                                className="hidden"
-                                accept="image/*"
-                                onChange={handleImageUpload}
-                            />
-                            <div className="absolute bottom-0 left-0 w-[126px] h-[31px] bg-[#FFE65B] rounded-b-[16px] flex items-center justify-center gap-1 px-4 py-2">
-                                <Image
-                                    src="/icons/upload-icon.svg"
-                                    alt="Upload"
-                                    width={16}
-                                    height={16}
-                                />
-                                <span className="text-black font-inter text-sm font-medium leading-5">
-                                    Upload
-                                </span>
-                            </div>
-                        </button>
+            {/* Scrollable Content Area */}
+            <div className="flex-1 overflow-y-auto min-h-0">
+                <div className="w-full max-w-[343px] mx-auto px-4 py-6">
+                    {/* Step Content */}
+                    {currentStep === 1 && (
+                        <div className="flex flex-col items-center gap-8 w-full">
+                            <h2 className="text-xl font-semibold text-center">Basic Information</h2>
 
-                        {/* Form Fields */}
-                        <div className="flex flex-col gap-4 w-full">
-                            {/* First Name */}
-                            <div className="flex flex-col gap-1 w-full">
-                                <label htmlFor="firstName" className="text-[#111827] font-poppins text-sm font-medium leading-5">
-                                    First Name
-                                </label>
-                                <div className="flex items-center gap-2 px-4 py-3 border border-[#E5E8EB] rounded-[18px] w-full">
-                                    <input
-                                        type="text"
-                                        id="firstName"
-                                        value={formData.firstName}
-                                        onChange={(e) => handleInputChange("firstName", e.target.value)}
-                                        className="flex-1 text-[#111827] font-poppins text-sm leading-5 bg-transparent border-none outline-none"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Last Name */}
-                            <div className="flex flex-col gap-1 w-full">
-                                <label htmlFor="lastName" className="text-[#111827] font-poppins text-sm font-medium leading-5">
-                                    Last Name
-                                </label>
-                                <div className="flex items-center gap-2 px-4 py-3 border border-[#E5E8EB] rounded-[18px] w-full">
-                                    <input
-                                        type="text"
-                                        id="lastName"
-                                        value={formData.lastName}
-                                        onChange={(e) => handleInputChange("lastName", e.target.value)}
-                                        className="flex-1 text-[#111827] font-poppins text-sm leading-5 bg-transparent border-none outline-none"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Email (read-only) */}
-                            <div className="flex flex-col gap-1 w-full">
-                                <label htmlFor="email" className="text-[#111827] font-poppins text-sm font-medium leading-5">
-                                    Email
-                                </label>
-                                <div className="flex items-center gap-2 px-4 py-3 border border-[#E5E8EB] rounded-[18px] bg-gray-100 w-full">
-                                    <input
-                                        type="text"
-                                        id="email"
-                                        value={formData.email}
-                                        readOnly
-                                        className="flex-1 text-[#6B7280] font-poppins text-sm leading-5 bg-transparent border-none outline-none"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Dormitory Dropdown */}
-                            <div className="flex flex-col gap-1 w-full">
-                                <label htmlFor="dormitory" className="text-[#111827] font-poppins text-sm font-medium leading-5">
-                                    Select Your Dormitory
-                                </label>
-                                <select
-                                    id="dormitory"
-                                    value={formData.dormitoryId || ""}
-                                    onChange={(e) => handleInputChange("dormitoryId", e.target.value === "none" ? null : e.target.value || null)}
-                                    className="px-4 py-3 border border-[#E5E8EB] rounded-[18px] w-full text-[#111827] font-poppins text-sm bg-white"
-                                >
-                                    <option value="">Select a dormitory</option>
-                                    <option value="none">None</option>
-                                    {dormitories.map((dorm) => (
-                                        <option key={dorm.id} value={dorm.id}>
-                                            {dorm.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Favorite Store Dropdown */}
-                            <div className="flex flex-col gap-1 w-full">
-                                <label htmlFor="favoriteStore" className="text-[#111827] font-poppins text-sm font-medium leading-5">
-                                    Favorite Store
-                                </label>
-                                <select
-                                    id="favoriteStore"
-                                    value={formData.favoriteStore || ""} // Value is the name
-                                    onChange={(e) => handleInputChange("favoriteStore", e.target.value || null)} // Save the name
-                                    className="px-4 py-3 border border-[#E5E8EB] rounded-[18px] w-full text-[#111827] font-poppins text-sm bg-white"
-                                >
-                                    <option value="">Select a store</option>
-                                    {shops.map((shop) => (
-                                        <option key={shop.id} value={shop.name}> {/* Option value is shop.name */}
-                                            {shop.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* NEW: Conditional Push Notification Opt-in Prompt */}
-                    {showPushNotificationOptIn && (
-                        <div className="w-full mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
-                            <h2 className="text-lg font-bold text-blue-800 mb-2">Enable Notifications</h2>
-                            <p className="text-sm text-blue-700 mb-4">
-                                Get instant updates on your orders and basket activities.
-                            </p>
+                            {/* Profile Picture Upload */}
                             <button
-                                onClick={handleActivatePushNotifications}
-                                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
-                                disabled={loading}
+                                className="relative w-[126px] h-[126px] rounded-[16px] bg-cover bg-center"
+                                style={{
+                                    backgroundImage: profileImage
+                                        ? `url(${profileImage})`
+                                        : "url('/avatars/default-avatar.png')",
+                                }}
+                                onClick={() => document.getElementById("profile-upload")?.click()}
                             >
-                                {loading ? "Activating..." : "Activate Push Notifications"}
+                                <input
+                                    type="file"
+                                    id="profile-upload"
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={handleImageUpload}
+                                />
+                                <div className="absolute bottom-0 left-0 w-[126px] h-[31px] bg-[#FFE65B] rounded-b-[16px] flex items-center justify-center gap-1 px-4 py-2">
+                                    <Image
+                                        src="/icons/upload-icon.svg"
+                                        alt="Upload"
+                                        width={16}
+                                        height={16}
+                                    />
+                                    <span className="text-black font-inter text-sm font-medium leading-5">
+                                        Upload
+                                    </span>
+                                </div>
                             </button>
+
+                            {/* Form Fields */}
+                            <div className="flex flex-col gap-4 w-full">
+                                {/* First Name */}
+                                <div className="flex flex-col gap-1 w-full">
+                                    <label htmlFor="firstName" className="text-[#111827] font-poppins text-sm font-medium leading-5">
+                                        First Name
+                                    </label>
+                                    <div className="flex items-center gap-2 px-4 py-3 border border-[#E5E8EB] rounded-[18px] w-full">
+                                        <input
+                                            type="text"
+                                            id="firstName"
+                                            value={formData.firstName}
+                                            onChange={(e) => handleInputChange("firstName", e.target.value)}
+                                            className="flex-1 text-[#111827] font-poppins text-sm leading-5 bg-transparent border-none outline-none"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Last Name */}
+                                <div className="flex flex-col gap-1 w-full">
+                                    <label htmlFor="lastName" className="text-[#111827] font-poppins text-sm font-medium leading-5">
+                                        Last Name
+                                    </label>
+                                    <div className="flex items-center gap-2 px-4 py-3 border border-[#E5E8EB] rounded-[18px] w-full">
+                                        <input
+                                            type="text"
+                                            id="lastName"
+                                            value={formData.lastName}
+                                            onChange={(e) => handleInputChange("lastName", e.target.value)}
+                                            className="flex-1 text-[#111827] font-poppins text-sm leading-5 bg-transparent border-none outline-none"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Email (read-only) */}
+                                <div className="flex flex-col gap-1 w-full">
+                                    <label htmlFor="email" className="text-[#111827] font-poppins text-sm font-medium leading-5">
+                                        Email
+                                    </label>
+                                    <div className="flex items-center gap-2 px-4 py-3 border border-[#E5E8EB] rounded-[18px] bg-gray-100 w-full">
+                                        <input
+                                            type="text"
+                                            id="email"
+                                            value={formData.email}
+                                            readOnly
+                                            className="flex-1 text-[#6B7280] font-poppins text-sm leading-5 bg-transparent border-none outline-none"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
 
-                    
+                    {currentStep === 2 && (
+                        <div className="flex flex-col items-center gap-8 w-full">
+                            <h2 className="text-xl font-semibold text-center">Preferences & Location</h2>
 
-                    {/* Save Button */}
-                    <button
-                        onClick={handleSave}
-                        className="flex items-center justify-center gap-2 py-3 px-0 w-full bg-[#FFE75B] rounded-[16px] disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={loading}
-                    >
-                        <span className="text-black font-poppins text-lg font-semibold leading-[26px]">
-                            {loading ? "Saving..." : "Save"}
-                        </span>
-                    </button>
+                            {/* Form Fields */}
+                            <div className="flex flex-col gap-4 w-full">
+                                {/* Dormitory Dropdown */}
+                                <div className="flex flex-col gap-1 w-full">
+                                    <label htmlFor="dormitory" className="text-[#111827] font-poppins text-sm font-medium leading-5">
+                                        Select Your Dormitory
+                                    </label>
+                                    <select
+                                        id="dormitory"
+                                        value={formData.dormitoryId || ""}
+                                        onChange={(e) => handleInputChange("dormitoryId", e.target.value === "none" ? null : e.target.value || null)}
+                                        className="px-4 py-3 border border-[#E5E8EB] rounded-[18px] w-full text-[#111827] font-poppins text-sm bg-white"
+                                    >
+                                        <option value="">Select a dormitory</option>
+                                        <option value="none">None</option>
+                                        {dormitories.map((dorm) => (
+                                            <option key={dorm.id} value={dorm.id}>
+                                                {dorm.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Favorite Store Dropdown */}
+                                <div className="flex flex-col gap-1 w-full">
+                                    <label htmlFor="favoriteStore" className="text-[#111827] font-poppins text-sm font-medium leading-5">
+                                        Favorite Store
+                                    </label>
+                                    <select
+                                        id="favoriteStore"
+                                        value={formData.favoriteStore || ""} // Value is the name
+                                        onChange={(e) => handleInputChange("favoriteStore", e.target.value || null)} // Save the name
+                                        className="px-4 py-3 border border-[#E5E8EB] rounded-[18px] w-full text-[#111827] font-poppins text-sm bg-white"
+                                    >
+                                        <option value="">Select a store</option>
+                                        {shops.map((shop) => (
+                                            <option key={shop.id} value={shop.name}> {/* Option value is shop.name */}
+                                                {shop.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Location Picker */}
+                                <div className="flex flex-col gap-1 w-full">
+                                    <MapboxLocationPicker
+                                        onLocationSelect={handleLocationSelect}
+                                        initialLocation={
+                                            formData.lat && formData.lng
+                                                ? {
+                                                    longitude: formData.lng,
+                                                    latitude: formData.lat,
+                                                    address: formData.address,
+                                                }
+                                                : undefined
+                                        }
+                                        label="Your Delivery Location"
+                                        placeholder="Search for your delivery address..."
+                                    />
+                                </div>
+
+                                {/* Preferred Distance */}
+                                <div className="flex flex-col gap-1 w-full">
+                                    <label htmlFor="preferedKm" className="text-[#111827] font-poppins text-sm font-medium leading-5">
+                                        Preferred Delivery Distance (km)
+                                    </label>
+                                    <div className="flex items-center gap-2 px-4 py-3 border border-[#E5E8EB] rounded-[18px] w-full">
+                                        <input
+                                            type="number"
+                                            id="preferedKm"
+                                            value={formData.preferedKm}
+                                            onChange={(e) => {
+                                                const value = parseInt(e.target.value);
+                                                if (value >= 1 && value <= 20) {
+                                                    handleInputChange("preferedKm", value);
+                                                }
+                                            }}
+                                            min={1}
+                                            max={20}
+                                            className="flex-1 text-[#111827] font-poppins text-sm leading-5 bg-transparent border-none outline-none"
+                                            required
+                                        />
+                                    </div>
+                                    <p className="text-xs text-[#6B7280] mt-1">Choose your preferred maximum delivery distance (1-20 km)</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {currentStep === 3 && (
+                        <div className="flex flex-col items-center gap-8 w-full">
+                            <h2 className="text-xl font-semibold text-center">Review & Complete</h2>
+
+                            {/* Profile Summary */}
+                            <div className="w-full bg-gray-50 rounded-lg p-4 space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-full bg-cover bg-center"
+                                         style={{
+                                             backgroundImage: profileImage
+                                                 ? `url(${profileImage})`
+                                                 : "url('/avatars/default-avatar.png')",
+                                         }}
+                                    />
+                                    <div>
+                                        <p className="font-medium">{formData.firstName} {formData.lastName}</p>
+                                        <p className="text-sm text-gray-600">{formData.email}</p>
+                                    </div>
+                                </div>
+
+                                <div className="border-t pt-3 space-y-2">
+                                    <p><span className="font-medium">Store:</span> {formData.favoriteStore || 'Not selected'}</p>
+                                    <p><span className="font-medium">Location:</span> {formData.address || 'Not selected'}</p>
+                                    <p><span className="font-medium">Distance:</span> {formData.preferedKm}km</p>
+                                </div>
+                            </div>
+
+                            {/* NEW: Conditional Push Notification Opt-in Prompt */}
+                            {showPushNotificationOptIn && (
+                                <div className="w-full p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
+                                    <h3 className="text-lg font-bold text-blue-800 mb-2">Enable Notifications</h3>
+                                    <p className="text-sm text-blue-700 mb-4">
+                                        Get instant updates on your orders and basket activities.
+                                    </p>
+                                    <button
+                                        onClick={handleActivatePushNotifications}
+                                        className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                                        disabled={loading}
+                                    >
+                                        {loading ? "Activating..." : "Activate Push Notifications"}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
-        </AuthLayout>
+
+            {/* Fixed Footer - Step Navigation */}
+            <div className="sticky bottom-0 bg-white border-t border-gray-100 py-4 px-4">
+                <div className="w-full max-w-[343px] mx-auto">
+                    <div className="flex gap-3 w-full">
+                        {currentStep > 1 && (
+                            <button
+                                onClick={() => setCurrentStep(currentStep - 1)}
+                                className="flex-1 py-3 px-4 bg-gray-200 text-gray-700 rounded-[16px] font-medium"
+                            >
+                                Back
+                            </button>
+                        )}
+
+                        {currentStep < totalSteps ? (
+                            <button
+                                onClick={() => setCurrentStep(currentStep + 1)}
+                                className="flex-1 py-3 px-4 bg-[#FFDB0D] text-black rounded-[16px] font-medium"
+                            >
+                                Next
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleSave}
+                                className="flex-1 py-3 px-4 bg-[#FFE75B] text-black rounded-[16px] font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={loading}
+                            >
+                                {loading ? "Saving..." : "Complete Setup"}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
         </>
     );
 }

@@ -8,22 +8,29 @@ import TermsOfServiceContent from "./TermsOfServiceContent";
 interface PrivacyPopupProps {
   onAccept: (termsAccepted: boolean, privacyAccepted: boolean) => void;
   onBack?: () => void;
+  forceOpen?: boolean; // New prop to force show popup regardless of localStorage
 }
 
 type ViewMode = 'checkboxes' | 'terms' | 'privacy';
 
-const PrivacyPopup: React.FC<PrivacyPopupProps> = ({ onAccept, onBack }) => {
+const PrivacyPopup: React.FC<PrivacyPopupProps> = ({ onAccept, onBack, forceOpen = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('checkboxes');
 
   useEffect(() => {
-    const accepted = localStorage.getItem("privacyAccepted");
-    if (!accepted) {
+    // If forceOpen is true, always show the popup regardless of localStorage
+    if (forceOpen) {
       setIsOpen(true);
+    } else {
+      // Otherwise, check localStorage (original behavior)
+      const accepted = localStorage.getItem("privacyAccepted");
+      if (!accepted) {
+        setIsOpen(true);
+      }
     }
-  }, []);
+  }, [forceOpen]);
 
   const handleSave = () => {
     if (termsAccepted && privacyAccepted) {

@@ -15,6 +15,10 @@ interface User {
     last_name: string | null;
     favorite_store: string | null;
     image: string | null;
+    address: string | null;
+    lat: number | null;
+    lng: number | null;
+    prefered_km: number | null;
 }
 
 interface Chatroom {

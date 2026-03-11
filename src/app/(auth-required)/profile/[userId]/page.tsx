@@ -1,13 +1,12 @@
 "use client";
 
-import { PageLayout } from '@/components/ui/PageLayout'; // <--- IMPORTANT: Adjust this path to your actual PageLayout component location
-import { PushNotificationSettings } from '@/components/ui/PushNotificationSettings';
-import { usePushNotifications } from '@/hooks/usePushNotifications'; // <-- ADD THIS IMPORT
-import { AvatarUpload } from '@/components/ui/AvatarUpload';
+import { PageLayout } from '@/components/ui/PageLayout';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
+import { GeneralTab, PreferencesTab, NotificationsTab, TabNavigation } from './components';
 
 interface ProfileFormData {
     firstName: string;
@@ -15,17 +14,28 @@ interface ProfileFormData {
     email: string;
     dormitory: string;
     favoriteStore: string;
+    address: string;
+    lat: number | null;
+    lng: number | null;
+    preferedKm: number;
 }
+
+type TabType = 'general' | 'preferences' | 'notifications';
 
 export default function ProfileEditPage() {
     const router = useRouter();
     const { unsubscribe } = usePushNotifications();
+    const [activeTab, setActiveTab] = useState<TabType>('general');
     const [formData, setFormData] = useState<ProfileFormData>({
         firstName: "",
         lastName: "",
         email: "",
         dormitory: "",
         favoriteStore: "",
+        address: "",
+        lat: null,
+        lng: null,
+        preferedKm: 5,
     });
 
     // State for profile image URL and user ID
@@ -79,7 +89,7 @@ export default function ProfileEditPage() {
 
             const { data, error } = await supabase
                 .from("user")
-                .select("first_name, last_name, email, favorite_store, dormitory(name), image")
+                .select("first_name, last_name, email, favorite_store, dormitory(name), image, address, lat, lng, prefered_km")
                 .eq("id", user.id)
                 .single();
 
@@ -92,6 +102,10 @@ export default function ProfileEditPage() {
                     favoriteStore: "",
                     dormitory: "",
                     email: user.email || "", // Use authenticated user's email as fallback
+                    address: "",
+                    lat: null,
+                    lng: null,
+                    preferedKm: 5,
                 });
             } else if (data) {
                 setFormData({
@@ -102,6 +116,10 @@ export default function ProfileEditPage() {
                         ? data.dormitory[0]?.name || ""
                         : (data.dormitory as { name: string } | null)?.name || "",
                     email: data.email || user.email || "", // Prefer DB email, fallback to auth email
+                    address: data.address || "",
+                    lat: data.lat || null,
+                    lng: data.lng || null,
+                    preferedKm: data.prefered_km || 5,
                 });
 
                 if (data.image) {
@@ -113,10 +131,20 @@ export default function ProfileEditPage() {
     }, [router]); // Added router to dependency array as it's used inside
 
     // Update form field values
-    const handleInputChange = (field: keyof ProfileFormData, value: string) => {
+    const handleInputChange = (field: keyof ProfileFormData, value: string | number) => {
         setFormData((prev) => ({
             ...prev,
             [field]: value,
+        }));
+    };
+
+    // Handle location selection from MapboxLocationPicker
+    const handleLocationSelect = (locationData: { longitude: number; latitude: number; address?: string }) => {
+        setFormData((prev) => ({
+            ...prev,
+            address: locationData.address || "",
+            lat: locationData.latitude,
+            lng: locationData.longitude,
         }));
     };
 
@@ -180,7 +208,6 @@ export default function ProfileEditPage() {
     // Save updated profile data to Supabase
     const handleSave = async () => {
         if (!userId) {
-            // alert("User ID not available. Please log in again."); // Removed alert
             console.error("User ID not available. Please log in again.");
             return;
         }
@@ -190,15 +217,17 @@ export default function ProfileEditPage() {
                 first_name: formData.firstName,
                 last_name: formData.lastName,
                 favorite_store: formData.favoriteStore,
+                address: formData.address,
+                lat: formData.lat,
+                lng: formData.lng,
+                prefered_km: formData.preferedKm,
                 // Dormitory is read-only in this form, so not included in update
             })
             .eq("id", userId);
         if (error) {
             console.error("Error saving profile:", error);
-            // alert("Failed to save profile. Please try again."); // Removed alert
         } else {
-            // alert("Profile saved successfully!"); // Success feedback - Removed alert
-            console.log("Profile saved successfully!"); // Added console log for feedback
+            console.log("Profile saved successfully!");
             router.back();
         }
     };
@@ -224,7 +253,15 @@ export default function ProfileEditPage() {
         } else {
             // Clear any local state if necessary (though a full page redirect often handles this)
             setFormData({
-                firstName: "", lastName: "", email: "", dormitory: "", favoriteStore: ""
+                firstName: "",
+                lastName: "",
+                email: "",
+                dormitory: "",
+                favoriteStore: "",
+                address: "",
+                lat: null,
+                lng: null,
+                preferedKm: 5,
             });
             setProfileImage(null);
             setUserId(null);
@@ -256,145 +293,55 @@ export default function ProfileEditPage() {
 
     return (
         <PageLayout header={profileEditHeader} showNavigation={false}>
-            {/* The original outer divs are now managed by PageLayout */}
-            <div className="flex flex-col justify-between items-center flex-1 gap-8 pb-8">
-                    <div className="flex flex-col items-center gap-8 w-full">
-                        {/* Profile Picture Upload */}
-                        <button
-                            className="relative w-[126px] h-[126px] rounded-[16px] bg-cover bg-center"
-                            style={{
-                                backgroundImage: profileImage
-                                    ? `url(${profileImage})`
-                                    : "url('/avatars/default-avatar.png')",
+            <div className="flex flex-col flex-1 pb-8">
+                <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+
+                {/* Tab Content */}
+                <div className="flex-1 px-4">
+                    {activeTab === 'general' && (
+                        <GeneralTab
+                            formData={{
+                                firstName: formData.firstName,
+                                lastName: formData.lastName,
+                                email: formData.email,
                             }}
-                            onClick={() => document.getElementById("profile-upload")?.click()}
-                        >
-                            <input
-                                type="file"
-                                id="profile-upload"
-                                className="hidden"
-                                accept="image/*"
-                                onChange={handleImageUpload}
-                            />
-                            <div className="absolute bottom-0 left-0 w-[126px] h-[31px] bg-[#FFE65B] rounded-b-[16px] flex items-center justify-center gap-1 px-4 py-2">
-                                <Image
-                                    src="/icons/upload-icon.svg"
-                                    alt="Upload"
-                                    width={16}
-                                    height={16}
-                                />
-                                <span className="text-black font-inter text-sm font-medium leading-5">
-                                    Upload
-                                </span>
-                            </div>
-                        </button>
+                            profileImage={profileImage}
+                            onInputChange={handleInputChange}
+                            onImageUpload={handleImageUpload}
+                            onSave={handleSave}
+                        />
+                    )}
 
-                    {/* Form Fields */}
-                    <div className="flex flex-col gap-4 w-full">
-                        {/* First Name */}
-                        <div className="flex flex-col gap-1 w-full"> {/* Changed w-[343px] to w-full */}
-                            <label className="text-[#111827] font-poppins text-sm font-medium leading-5">
-                                First Name
-                            </label>
-                            <div className="flex items-center gap-2 px-4 py-3 border border-[#E5E8EB] rounded-[18px] w-full">
-                                <input
-                                    type="text"
-                                    value={formData.firstName}
-                                    onChange={(e) => handleInputChange("firstName", e.target.value)}
-                                    className="flex-1 text-[#111827] font-poppins text-sm leading-5 bg-transparent border-none outline-none"
-                                />
-                            </div>
-                        </div>
+                    {activeTab === 'preferences' && (
+                        <PreferencesTab
+                            formData={{
+                                favoriteStore: formData.favoriteStore,
+                                dormitory: formData.dormitory,
+                                address: formData.address,
+                                lat: formData.lat,
+                                lng: formData.lng,
+                                preferedKm: formData.preferedKm,
+                            }}
+                            shops={shops}
+                            onInputChange={handleInputChange}
+                            onLocationSelect={handleLocationSelect}
+                            onSave={handleSave}
+                        />
+                    )}
 
-                        {/* Last Name */}
-                        <div className="flex flex-col gap-1 w-full"> {/* Changed w-[343px] to w-full */}
-                            <label className="text-[#111827] font-poppins text-sm font-medium leading-5">
-                                Last Name
-                            </label>
-                            <div className="flex items-center gap-2 px-4 py-3 border border-[#E5E8EB] rounded-[18px] w-full">
-                                <input
-                                    type="text"
-                                    value={formData.lastName}
-                                    onChange={(e) => handleInputChange("lastName", e.target.value)}
-                                    className="flex-1 text-[#111827] font-poppins text-sm leading-5 bg-transparent border-none outline-none"
-                                />
-                            </div>
-                        </div>
-                        {/* Email (read-only) */}
-                        <div className="flex flex-col gap-1 w-full"> {/* Changed w-[343px] to w-full */}
-                            <label className="text-[#111827] font-poppins text-sm font-medium leading-5">
-                                Email
-                            </label>
-                            <div className="flex items-center gap-2 px-4 py-3 border border-[#E5E8EB] rounded-[18px] bg-gray-100 w-full">
-                                <input
-                                    type="text"
-                                    value={formData.email}
-                                    readOnly
-                                    className="flex-1 text-[#6B7280] font-poppins text-sm leading-5 bg-transparent border-none outline-none"
-                                />
-                            </div>
-                        </div>
-                        {/* Dormitory (read-only) */}
-                        <div className="flex flex-col gap-1 w-full"> {/* Changed w-[343px] to w-full */}
-                            <label className="text-[#111827] font-poppins text-sm font-medium leading-5">
-                                Location
-                            </label>
-                            <div className="flex items-center gap-2 px-4 py-3 border border-[#E5E8EB] bg-gray-100 rounded-[18px] w-full">
-                                <input
-                                    type="text"
-                                    value={formData.dormitory}
-                                    readOnly
-                                    className="flex-1 text-[#6B7280] font-poppins text-sm leading-5 bg-transparent border-none outline-none"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Favorite Store Dropdown */}
-                        <div className="flex flex-col gap-1 w-full"> {/* Changed w-[343px] to w-full */}
-                            <label className="text-[#111827] font-poppins text-sm font-medium leading-5">
-                                Favorite Store
-                            </label>
-                            <select
-                                value={formData.favoriteStore}
-                                onChange={(e) => handleInputChange("favoriteStore", e.target.value)}
-                                className="px-4 py-3 border border-[#E5E8EB] rounded-[18px] w-full text-[#111827] font-poppins text-sm"
-                            >
-                                <option value="" disabled>
-                                    Select a store
-                                </option>
-                                {shops.map((shopName) => (
-                                    <option key={shopName} value={shopName}>
-                                        {shopName}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
+                    {activeTab === 'notifications' && <NotificationsTab />}
                 </div>
 
-                {/* Save Button */}
-                <button
-                    onClick={handleSave}
-                    className="flex items-center justify-center gap-2 py-3 px-0 w-full bg-[#FFE75B] rounded-[16px] mb-4"
-                >
-                    <span className="text-black font-poppins text-lg font-semibold leading-[26px]">
-                        Save
-                    </span>
-                </button>
-
-                {/* LOGOUT BUTTON */}
-                <button
-                    onClick={handleLogout}
-                    className="flex items-center justify-center gap-2 py-3 px-0 w-full bg-red-500 text-white rounded-[16px]"
-                >
-                    <span className="font-poppins text-lg font-semibold leading-[26px]">
-                        Logout
-                    </span>
-                </button>
-                
-                <div>
-                    <h1 className="text-xl font-bold text-gray-800 mt-8 mb-4">Notification Settings</h1>
-                    <PushNotificationSettings />
+                {/* LOGOUT BUTTON - Always visible at bottom */}
+                <div className="px-4 mt-8">
+                    <button
+                        onClick={handleLogout}
+                        className="flex items-center justify-center gap-2 py-3 px-0 w-full bg-red-500 text-white rounded-[16px]"
+                    >
+                        <span className="font-poppins text-lg font-semibold leading-[26px]">
+                            Logout
+                        </span>
+                    </button>
                 </div>
             </div>
         </PageLayout>

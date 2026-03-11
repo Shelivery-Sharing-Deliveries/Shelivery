@@ -77,6 +77,7 @@ export default function AlphaTrialPage() {
 
   // ── Location state
   const [userLocation, setUserLocation] = useState<LocationData | null>(null);
+  const [userPreferedKm, setUserPreferedKm] = useState<number>(5);
 
   // ── Basket form state
   const [basketLink, setBasketLink] = useState("");
@@ -103,6 +104,45 @@ export default function AlphaTrialPage() {
   useEffect(() => {
     fetchShops();
   }, []);
+
+  // ── Load user location data when authenticated ───────────────────────────
+  useEffect(() => {
+    const loadUserLocationData = async () => {
+      if (!user) return;
+
+      try {
+        const { data, error } = await supabase
+          .from("user")
+          .select("address, lat, lng, prefered_km")
+          .eq("id", user.id)
+          .single();
+
+        if (error) {
+          console.log("No user location data found, will use defaults");
+          return;
+        }
+
+        if (data && data.lat && data.lng) {
+          // Initialize user location with saved data
+          const locationData: LocationData = {
+            latitude: data.lat,
+            longitude: data.lng,
+            address: data.address || undefined,
+          };
+          setUserLocation(locationData);
+
+          // Also set the user's preferred distance for pool finding
+          if (data.prefered_km) {
+            setUserPreferedKm(data.prefered_km);
+          }
+        }
+      } catch (err) {
+        console.log("Error loading user location data:", err);
+      }
+    };
+
+    loadUserLocationData();
+  }, [user]);
 
   async function fetchShops() {
     try {
@@ -206,7 +246,7 @@ export default function AlphaTrialPage() {
         p_shop_id: selectedShop.id,
         p_lat: userLocation.latitude,
         p_lng: userLocation.longitude,
-        p_max_radius_km: 5.0,
+        p_max_radius_km: userPreferedKm,
       });
       if (rpcError) throw rpcError;
       setNearbyPools(data || []);

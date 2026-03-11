@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+    PostgrestVersion: "14.1"
   }
   public: {
     Tables: {
@@ -137,6 +137,13 @@ export type Database = {
             columns: ["chatroom_id"]
             isOneToOne: false
             referencedRelation: "chatroom"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "basket_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "location"
             referencedColumns: ["id"]
           },
           {
@@ -284,27 +291,6 @@ export type Database = {
           },
         ]
       }
-      location: {
-        Row: {
-          created_at: string | null
-          id: string
-          name: string
-          type: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          name: string
-          type: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          name?: string
-          type?: string
-        }
-        Relationships: []
-      }
       event: {
         Row: {
           created_at: string | null
@@ -376,6 +362,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      location: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          type?: string
+        }
+        Relationships: []
       }
       log_basket_insertions: {
         Row: {
@@ -760,6 +767,7 @@ export type Database = {
       }
       user: {
         Row: {
+          address: string | null
           created_at: string | null
           dormitory_id: number | null
           email: string
@@ -768,10 +776,14 @@ export type Database = {
           id: string
           image: string | null
           last_name: string | null
+          lat: number | null
+          lng: number | null
+          prefered_km: number | null
           profile: Json | null
           updated_at: string | null
         }
         Insert: {
+          address?: string | null
           created_at?: string | null
           dormitory_id?: number | null
           email: string
@@ -780,10 +792,14 @@ export type Database = {
           id: string
           image?: string | null
           last_name?: string | null
+          lat?: number | null
+          lng?: number | null
+          prefered_km?: number | null
           profile?: Json | null
           updated_at?: string | null
         }
         Update: {
+          address?: string | null
           created_at?: string | null
           dormitory_id?: number | null
           email?: string
@@ -792,6 +808,9 @@ export type Database = {
           id?: string
           image?: string | null
           last_name?: string | null
+          lat?: number | null
+          lng?: number | null
+          prefered_km?: number | null
           profile?: Json | null
           updated_at?: string | null
         }
@@ -868,151 +887,49 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      bytea_to_text: {
-        Args: { data: string }
-        Returns: string
-      }
-      check_user_exists: {
-        Args: { p_email: string }
-        Returns: boolean
-      }
+      bytea_to_text: { Args: { data: string }; Returns: string }
+      check_user_exists: { Args: { p_email: string }; Returns: boolean }
       confirm_user_delivery: {
         Args: { p_chatroom_id: string; p_user_id: string }
         Returns: Json
       }
-      create_basket_and_join_pool: {
-        Args:
-          | { amount_param: number; link_param?: string; shop_id_param: number }
-          | { basket_data: Json; pool_id?: string | null }
-        Returns: Json
-      }
-      create_invitation: {
-        Args: { expires_in_days?: number }
-        Returns: string
+      create_basket_and_join_pool:
+        | { Args: { basket_data: Json }; Returns: Json }
+        | { Args: { basket_data: Json; pool_id?: string }; Returns: Json }
+        | {
+            Args: {
+              amount_param: number
+              link_param?: string
+              shop_id_param: number
+            }
+            Returns: string
+          }
+      create_invitation: { Args: { expires_in_days?: number }; Returns: string }
+      delete_basket_from_pool: { Args: { p_basket_id: string }; Returns: Json }
+      distance_km: {
+        Args: { lat1: number; lat2: number; lng1: number; lng2: number }
+        Returns: number
       }
       ensure_pool_for_shop_dorm: {
         Args: { p_dormitory_id: number; p_shop_id: string }
         Returns: string
       }
       ensure_pool_for_shop_location: {
-        Args: { p_shop_id: string; p_location_id: string }
+        Args: { p_location_id: string; p_shop_id: string }
         Returns: string
       }
-      ensure_user_pool: {
-        Args:
-          | { p_shop_id: string; p_user_id: string }
-          | { shop_id_param: number; user_id_param: string }
-        Returns: string
-      }
-      extend_chatroom_expire_at: {
-        Args:
-          | { p_chatroom_id: string }
-          | { p_chatroom_id: string; p_days_to_extend: number }
-        Returns: string
-      }
-      get_dashboard_data: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      get_pool_status: {
-        Args: { pool_id_param: string }
-        Returns: Json
-      }
-      http: {
-        Args: { request: Database["public"]["CompositeTypes"]["http_request"] }
-        Returns: Database["public"]["CompositeTypes"]["http_response"]
-      }
-      http_delete: {
-        Args:
-          | { content: string; content_type: string; uri: string }
-          | { uri: string }
-        Returns: Database["public"]["CompositeTypes"]["http_response"]
-      }
-      http_get: {
-        Args: { data: Json; uri: string } | { uri: string }
-        Returns: Database["public"]["CompositeTypes"]["http_response"]
-      }
-      http_head: {
-        Args: { uri: string }
-        Returns: Database["public"]["CompositeTypes"]["http_response"]
-      }
-      http_header: {
-        Args: { field: string; value: string }
-        Returns: Database["public"]["CompositeTypes"]["http_header"]
-      }
-      http_list_curlopt: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          curlopt: string
-          value: string
-        }[]
-      }
-      http_patch: {
-        Args: { content: string; content_type: string; uri: string }
-        Returns: Database["public"]["CompositeTypes"]["http_response"]
-      }
-      http_post: {
-        Args:
-          | { content: string; content_type: string; uri: string }
-          | { data: Json; uri: string }
-        Returns: Database["public"]["CompositeTypes"]["http_response"]
-      }
-      http_put: {
-        Args: { content: string; content_type: string; uri: string }
-        Returns: Database["public"]["CompositeTypes"]["http_response"]
-      }
-      http_reset_curlopt: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      http_set_curlopt: {
-        Args: { curlopt: string; value: string }
-        Returns: boolean
-      }
-      leave_chatroom: {
-        Args: { chatroom_id_param: string }
-        Returns: boolean
-      }
-      mark_basket_as_delivered: {
-        Args: { p_basket_id: string }
-        Returns: string
-      }
-      mark_chatroom_as_delivered_by_admin: {
-        Args: { p_chatroom_id: string }
-        Returns: string
-      }
-      resolve_chatroom: {
-        Args: { chatroom_id_param: string }
-        Returns: boolean
-      }
-      resolve_chatroom_baskets: {
-        Args: { p_chatroom_id: string }
-        Returns: undefined
-      }
-      seed_users_with_auth_no_delete: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      text_to_bytea: {
-        Args: { data: string }
-        Returns: string
-      }
-      toggle_basket_ready: {
-        Args: { basket_id_param: string }
-        Returns: boolean
-      }
-      track_event: {
-        Args: { event_type_param: string; metadata_param?: Json }
-        Returns: undefined
-      }
-      delete_basket_from_pool: {
-        Args: { p_basket_id: string }
-        Returns: Json
-      }
-      remove_basket_from_pool: {
-        Args: { p_basket_id: string }
-        Returns: Json
-      }
+      ensure_user_pool:
+        | { Args: { p_shop_id: string; p_user_id: string }; Returns: string }
+        | {
+            Args: { shop_id_param: number; user_id_param: string }
+            Returns: string
+          }
+      extend_chatroom_expire_at:
+        | { Args: { p_chatroom_id: string }; Returns: string }
+        | {
+            Args: { p_chatroom_id: string; p_days_to_extend: number }
+            Returns: string
+          }
       find_nearby_pools: {
         Args: {
           p_lat: number
@@ -1029,10 +946,175 @@ export type Database = {
           pool_id: string
         }[]
       }
-      urlencode: {
-        Args: { data: Json } | { string: string } | { string: string }
+      get_dashboard_data: { Args: never; Returns: Json }
+      get_pool_status: { Args: { pool_id_param: string }; Returns: Json }
+      http: {
+        Args: { request: Database["public"]["CompositeTypes"]["http_request"] }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+        SetofOptions: {
+          from: "http_request"
+          to: "http_response"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      http_delete:
+        | {
+            Args: { uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: { content: string; content_type: string; uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+      http_get:
+        | {
+            Args: { uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: { data: Json; uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+      http_head: {
+        Args: { uri: string }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+        SetofOptions: {
+          from: "*"
+          to: "http_response"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      http_header: {
+        Args: { field: string; value: string }
+        Returns: Database["public"]["CompositeTypes"]["http_header"]
+        SetofOptions: {
+          from: "*"
+          to: "http_header"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      http_list_curlopt: {
+        Args: never
+        Returns: {
+          curlopt: string
+          value: string
+        }[]
+      }
+      http_patch: {
+        Args: { content: string; content_type: string; uri: string }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+        SetofOptions: {
+          from: "*"
+          to: "http_response"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      http_post:
+        | {
+            Args: { content: string; content_type: string; uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: { data: Json; uri: string }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+            SetofOptions: {
+              from: "*"
+              to: "http_response"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+      http_put: {
+        Args: { content: string; content_type: string; uri: string }
+        Returns: Database["public"]["CompositeTypes"]["http_response"]
+        SetofOptions: {
+          from: "*"
+          to: "http_response"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      http_reset_curlopt: { Args: never; Returns: boolean }
+      http_set_curlopt: {
+        Args: { curlopt: string; value: string }
+        Returns: boolean
+      }
+      leave_chatroom: { Args: { chatroom_id_param: string }; Returns: boolean }
+      mark_basket_as_delivered: {
+        Args: { p_basket_id: string }
         Returns: string
       }
+      mark_chatroom_as_delivered_by_admin: {
+        Args: { p_chatroom_id: string }
+        Returns: string
+      }
+      remove_basket_from_pool: { Args: { p_basket_id: string }; Returns: Json }
+      resolve_chatroom: {
+        Args: { chatroom_id_param: string }
+        Returns: boolean
+      }
+      resolve_chatroom_baskets: {
+        Args: { p_chatroom_id: string }
+        Returns: undefined
+      }
+      seed_users_with_auth_no_delete: { Args: never; Returns: undefined }
+      text_to_bytea: { Args: { data: string }; Returns: string }
+      toggle_basket_ready: {
+        Args: { basket_id_param: string }
+        Returns: boolean
+      }
+      track_event: {
+        Args: { event_type_param: string; metadata_param?: Json }
+        Returns: undefined
+      }
+      urlencode:
+        | { Args: { data: Json }; Returns: string }
+        | {
+            Args: { string: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.urlencode(string => bytea), public.urlencode(string => varchar). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+          }
+        | {
+            Args: { string: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.urlencode(string => bytea), public.urlencode(string => varchar). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+          }
       use_invitation_code: {
         Args: { invitation_code: string; user_id: string }
         Returns: boolean
@@ -1058,7 +1140,7 @@ export type Database = {
         value: string | null
       }
       http_request: {
-        method: unknown | null
+        method: unknown
         uri: string | null
         headers: Database["public"]["CompositeTypes"]["http_header"][] | null
         content_type: string | null

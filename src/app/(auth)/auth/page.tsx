@@ -63,7 +63,7 @@ function AuthPageContent() {
                 // FETCHING: Include all fields that define a "complete" profile
                 const { data: userData, error: profileError } = await supabase
                     .from("user")
-                    .select("first_name, last_name, favorite_store") // Added last_name and favorite_store
+                    .select("first_name, last_name, favorite_store, address, lat, lng, prefered_km") // Added location fields
                     .eq("id", user.id)
                     .single();
 
@@ -75,11 +75,15 @@ function AuthPageContent() {
                     return;
                 }
 
-                // Check if first_name, last_name, AND favorite_store are set.
+                // Check if first_name, last_name, favorite_store, address, lat, lng, AND prefered_km are set.
                 // Adjust these fields based on what truly defines a "complete" profile for your app.
                 const isProfileComplete = userData?.first_name &&
                     userData?.last_name &&
-                    userData?.favorite_store; // Checks for non-null/non-empty string
+                    userData?.favorite_store &&
+                    userData?.address &&
+                    userData?.lat &&
+                    userData?.lng &&
+                    userData?.prefered_km; // Checks for non-null/non-empty values
 
                 if (isProfileComplete) {
                     console.log("AuthPage: Profile is complete.");
