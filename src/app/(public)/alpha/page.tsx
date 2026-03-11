@@ -120,6 +120,7 @@ export default function AlphaTrialPage() {
           .single();
 
         if (error) {
+          
           console.log("No user location data found, will use defaults");
           return;
         }
