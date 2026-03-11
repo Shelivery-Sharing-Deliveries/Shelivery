@@ -35,76 +35,105 @@ export default function FeaturedShopCard({ className }: FeaturedShopCardProps) {
             try {
                 setLoading(true);
 
-                let query = supabase
-                    .from("pool")
-                    .select(`
-                        id,
-                        shop_id,
-                        location_id,
-                        current_amount,
-                        min_amount,
-                        shop:shop (
-                            name,
-                            logo_url,
-                            is_active
-                        ),
-                        location:location (
-                            name,
-                            type
-                        )
-                    `);
+                // Get user's location data
+                let userLat: number | null = null;
+                let userLng: number | null = null;
+                let maxRadiusKm = 5; // Default radius
 
-                // Filter for meetup locations (type = 'other')
-                query = query.eq("location.type", "other");
-
-                // Filter based on user auth status
                 if (user) {
-                    // For authenticated users: public pools OR pools matching their dormitory
                     const { data: userData } = await supabase
                         .from("user")
-                        .select("dormitory_id")
+                        .select("lat, lng, prefered_km")
                         .eq("id", user.id)
                         .single();
 
-                    if (userData?.dormitory_id) {
-                        // Include public pools OR private pools matching user's dormitory
-                        query = query.or(`dormitory_id.is.null,dormitory_id.eq.${userData.dormitory_id}`);
-                    } else {
-                        // User has no dormitory - only public pools
-                        query = query.is("dormitory_id", null);
+                    if (userData?.lat && userData?.lng) {
+                        userLat = userData.lat;
+                        userLng = userData.lng;
+                        if (userData.prefered_km) {
+                            maxRadiusKm = userData.prefered_km;
+                        }
                     }
-                } else {
-                    // For guest users: only public pools
-                    query = query.is("dormitory_id", null);
                 }
 
-                // Only active shops
-                query = query.eq("shop.is_active", true);
-
-                const { data, error } = await query;
-
-                if (error) {
-                    console.error("Error fetching featured pool:", error);
+                // If user has no location, don't show any featured pool
+                if (!userLat || !userLng) {
                     setFeaturedPool(null);
                     return;
                 }
 
-                if (!data || data.length === 0) {
+                // User has location - find nearby pools
+                // Get all active shops first
+                const { data: shops, error: shopsError } = await supabase
+                    .from("shop")
+                    .select("id")
+                    .eq("is_active", true);
+
+                if (shopsError || !shops) {
+                    console.error("Error fetching shops:", shopsError);
                     setFeaturedPool(null);
                     return;
                 }
+
+                // Collect all nearby pools from all shops
+                const allNearbyPools: any[] = [];
+
+                for (const shop of shops) {
+                    try {
+                        const { data: nearbyPools, error: nearbyError } = await supabase.rpc("find_nearby_pools", {
+                            p_shop_id: shop.id,
+                            p_lat: userLat,
+                            p_lng: userLng,
+                            p_max_radius_km: maxRadiusKm,
+                        });
+
+                        if (nearbyError) {
+                            console.error(`Error finding nearby pools for shop ${shop.id}:`, nearbyError);
+                            continue;
+                        }
+
+                        if (nearbyPools) {
+                            // Add shop info to each pool
+                            for (const pool of nearbyPools) {
+                                allNearbyPools.push({
+                                    ...pool,
+                                    shop_id: shop.id
+                                });
+                            }
+                        }
+                    } catch (err) {
+                        console.error(`Error calling find_nearby_pools for shop ${shop.id}:`, err);
+                        continue;
+                    }
+                }
+
+                if (allNearbyPools.length === 0) {
+                    setFeaturedPool(null);
+                    return;
+                }
+
+                // Get shop details for the pools we found
+                const shopIds = Array.from(new Set(allNearbyPools.map(p => p.shop_id)));
+                const { data: shopDetails, error: shopDetailsError } = await supabase
+                    .from("shop")
+                    .select("id, name, logo_url")
+                    .in("id", shopIds);
+
+                if (shopDetailsError) {
+                    console.error("Error fetching shop details:", shopDetailsError);
+                    setFeaturedPool(null);
+                    return;
+                }
+
+                const shopMap = new Map(shopDetails?.map(s => [s.id, s]) || []);
 
                 // Find the pool with minimum remaining CHF
                 let bestPool: any = null;
                 let minRemaining = Infinity;
 
-                for (const pool of data) {
-                    if (!pool.shop || !pool.location) continue;
-
-                    const shop: any = pool.shop;
-                    const location: any = pool.location;
-
-                    if (!shop.name) continue;
+                for (const pool of allNearbyPools) {
+                    const shop = shopMap.get(pool.shop_id);
+                    if (!shop?.name) continue;
 
                     const currentAmount = pool.current_amount || 0;
                     const remaining = pool.min_amount - currentAmount;
@@ -112,14 +141,14 @@ export default function FeaturedShopCard({ className }: FeaturedShopCardProps) {
                     if (remaining < minRemaining && remaining > 0) { // Only show pools that need more money
                         minRemaining = remaining;
                         bestPool = {
-                            id: pool.id,
+                            id: pool.pool_id,
                             shop_id: pool.shop_id,
                             shop_name: shop.name || "Unknown Shop",
                             shop_logo_url: shop.logo_url || null,
-                            location_name: location.name || "Unknown Location",
+                            location_name: `${pool.distance_km.toFixed(1)} km away`,
                             current_amount: currentAmount,
                             min_amount: pool.min_amount,
-                            location_id: pool.location_id,
+                            location_id: "", // Not needed for nearby pools
                             remaining_chf: remaining
                         };
                     }
@@ -138,8 +167,23 @@ export default function FeaturedShopCard({ className }: FeaturedShopCardProps) {
     }, [user, authLoading]);
 
     const handleClick = () => {
-        // TODO: Use router.push(`/shops?type=meetup&meetupLocation=${featuredPool.location_id}`) for direct meetup selection
-        router.push('/shops');
+        // Save draft with the featured shop pre-selected
+        const draft = {
+            shopId: featuredPool?.shop_id || null,
+            location: null,
+            basketLink: "",
+            basketNote: "",
+            basketAmount: "",
+            step: 1,
+        };
+
+        try {
+            localStorage.setItem("pendingAlphaBasket", JSON.stringify(draft));
+        } catch (err) {
+            console.error("Failed to save draft:", err);
+        }
+
+        router.push('/alpha?restored=true');
     };
 
     if (loading) {

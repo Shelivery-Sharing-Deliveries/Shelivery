@@ -13,11 +13,15 @@ interface Props {
   onPoolSelect: (poolId: string | null) => void;
   onConfirm: (poolId: string | null) => void;
   onBack: () => void;
+  onExpandSearch?: () => void;
+  expandedSearchLoading?: boolean;
+  currentSearchRadius?: number;
 }
 
 export function PoolSelectionStep({
   selectedShop, userLocation, nearbyPools, selectedPool, totalAmount,
   loading, error, success, onPoolSelect, onConfirm, onBack,
+  onExpandSearch, expandedSearchLoading = false, currentSearchRadius = 5,
 }: Props) {
   return (
     <div className="bg-white rounded-shelivery-lg p-4 mb-6 border border-gray-200">
@@ -37,18 +41,49 @@ export function PoolSelectionStep({
         </div>
       </div>
 
-      <p className="text-sm text-shelivery-text-secondary mb-4">
-        {nearbyPools.length > 0
-          ? `Found ${nearbyPools.length} nearby pool${nearbyPools.length > 1 ? "s" : ""} for ${selectedShop.name}:`
-          : `No nearby pools found for ${selectedShop.name}.`}
-      </p>
+      <div className="mb-4">
+        <p className="text-sm text-shelivery-text-secondary">
+          {nearbyPools.length > 0
+            ? `Found ${nearbyPools.length} nearby pool${nearbyPools.length > 1 ? "s" : ""} for ${selectedShop.name}:`
+            : `No nearby pools found for ${selectedShop.name} within ${currentSearchRadius} km.`}
+        </p>
+        {nearbyPools.length === 0 && (
+          <p className="text-xs text-shelivery-text-tertiary mt-1">
+            💡 Try expanding the search range to find more options
+          </p>
+        )}
+      </div>
 
       <div className="space-y-3">
-        {/* No pools message */}
-        {nearbyPools.length === 0 && (
-          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-shelivery-sm text-sm">
-            You'll create a new pool with your location as the anchor point.
-          </div>
+        {/* Expand search button when no pools found */}
+        {nearbyPools.length === 0 && onExpandSearch && (
+          <button
+            onClick={onExpandSearch}
+            disabled={expandedSearchLoading}
+            className={`
+              w-full py-3 px-4 rounded-shelivery-lg font-medium text-sm transition-all duration-200
+              ${expandedSearchLoading
+                ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                : "bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-900 shadow-sm hover:shadow-md"
+              }
+              flex items-center justify-center gap-2
+            `}
+          >
+            {expandedSearchLoading ? (
+              <>
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Expanding Search...
+              </>
+            ) : (
+              <>
+                <span className="text-base">🔍</span>
+                Expand Search Range
+              </>
+            )}
+          </button>
         )}
 
         {/* Existing pools */}

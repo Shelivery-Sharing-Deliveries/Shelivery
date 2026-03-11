@@ -87,6 +87,8 @@ export default function AlphaTrialPage() {
   // ── Pool matching state
   const [nearbyPools, setNearbyPools] = useState<NearbyPool[]>([]);
   const [selectedPool, setSelectedPool] = useState<string | null>(null);
+  const [expandedSearchLoading, setExpandedSearchLoading] = useState(false);
+  const [currentSearchRadius, setCurrentSearchRadius] = useState<number>(5);
 
   // ── UI state
   const [currentStep, setCurrentStep] = useState(1);
@@ -251,11 +253,42 @@ export default function AlphaTrialPage() {
       if (rpcError) throw rpcError;
       setNearbyPools(data || []);
       setSelectedPool(null);
+      setCurrentSearchRadius(userPreferedKm); // Set current search radius
       setCurrentStep(4);
     } catch (err: any) {
       setError(err.message || "Failed to find nearby pools");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  // Expand search range when no pools found
+  async function handleExpandSearch() {
+    if (!selectedShop || !userLocation) return;
+
+    setExpandedSearchLoading(true);
+    setError(null);
+
+    try {
+      // Double the search radius for expanded search, but cap at 20km
+      // If current search radius is already >= 20km, don't expand further
+      const expandedRadius = Math.min(Math.max(currentSearchRadius * 2, currentSearchRadius), 20);
+
+      const { data, error: rpcError } = await supabase.rpc("find_nearby_pools", {
+        p_shop_id: selectedShop.id,
+        p_lat: userLocation.latitude,
+        p_lng: userLocation.longitude,
+        p_max_radius_km: expandedRadius,
+      });
+      if (rpcError) throw rpcError;
+
+      setNearbyPools(data || []);
+      setSelectedPool(null);
+      setCurrentSearchRadius(expandedRadius); // Update current search radius
+    } catch (err: any) {
+      setError(err.message || "Failed to expand search");
+    } finally {
+      setExpandedSearchLoading(false);
     }
   }
 
@@ -420,6 +453,9 @@ export default function AlphaTrialPage() {
           onPoolSelect={setSelectedPool}
           onConfirm={handleConfirmPool}
           onBack={() => { setError(null); setCurrentStep(3); }}
+          onExpandSearch={handleExpandSearch}
+          expandedSearchLoading={expandedSearchLoading}
+          currentSearchRadius={currentSearchRadius}
         />
       )}
 
