@@ -6,6 +6,22 @@ import { supabase } from "@/lib/supabase";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { useAuth } from "@/hooks/useAuth";
 
+// Default towns with their coordinates and preferred km
+const DEFAULT_TOWNS = [
+  {
+    name: "Lausanne",
+    lat: 46.5196535,
+    lng: 6.6322734,
+    preferedKm: 10
+  },
+  // {
+  //   name: "Zurich",
+  //   lat: 47.3768866,
+  //   lng: 8.541694,
+  //   preferedKm: 10
+  // }
+];
+
 interface FeaturedPool {
     id: string;
     shop_id: string;
@@ -39,8 +55,10 @@ export default function FeaturedShopCard({ className }: FeaturedShopCardProps) {
                 let userLat: number | null = null;
                 let userLng: number | null = null;
                 let maxRadiusKm = 5; // Default radius
+                let locationName = "";
 
                 if (user) {
+                    // Authenticated user - get their location from database
                     const { data: userData } = await supabase
                         .from("user")
                         .select("lat, lng, prefered_km")
@@ -53,10 +71,23 @@ export default function FeaturedShopCard({ className }: FeaturedShopCardProps) {
                         if (userData.prefered_km) {
                             maxRadiusKm = userData.prefered_km;
                         }
+                        locationName = "Your location";
+                    }
+                } else {
+                    // Unauthenticated user - use random default town
+                    if (DEFAULT_TOWNS.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * DEFAULT_TOWNS.length);
+                        const randomTown = DEFAULT_TOWNS[randomIndex];
+                        if (randomTown) {
+                            userLat = randomTown.lat;
+                            userLng = randomTown.lng;
+                            maxRadiusKm = randomTown.preferedKm;
+                            locationName = randomTown.name;
+                        }
                     }
                 }
 
-                // If user has no location, don't show any featured pool
+                // If no location available, don't show any featured pool
                 if (!userLat || !userLng) {
                     setFeaturedPool(null);
                     return;
@@ -140,12 +171,18 @@ export default function FeaturedShopCard({ className }: FeaturedShopCardProps) {
 
                     if (remaining < minRemaining && remaining > 0) { // Only show pools that need more money
                         minRemaining = remaining;
+                        
+                        // Set location name based on authentication status
+                        const poolLocationName = user 
+                            ? `${pool.distance_km.toFixed(1)} km away`
+                            : locationName;
+                        
                         bestPool = {
                             id: pool.pool_id,
                             shop_id: pool.shop_id,
                             shop_name: shop.name || "Unknown Shop",
                             shop_logo_url: shop.logo_url || null,
-                            location_name: `${pool.distance_km.toFixed(1)} km away`,
+                            location_name: poolLocationName,
                             current_amount: currentAmount,
                             min_amount: pool.min_amount,
                             location_id: "", // Not needed for nearby pools
