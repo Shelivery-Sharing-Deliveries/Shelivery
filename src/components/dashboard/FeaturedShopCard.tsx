@@ -43,6 +43,7 @@ export default function FeaturedShopCard({ className }: FeaturedShopCardProps) {
                         location_id,
                         current_amount,
                         min_amount,
+                        dormitory_id,
                         shop:shop (
                             name,
                             logo_url,
@@ -54,12 +55,9 @@ export default function FeaturedShopCard({ className }: FeaturedShopCardProps) {
                         )
                     `);
 
-                // Filter for meetup locations (type = 'other')
-                query = query.eq("location.type", "other");
-
                 // Filter based on user auth status
                 if (user) {
-                    // For authenticated users: public pools OR pools matching their dormitory
+                    // For authenticated users: pools with "other" location type OR pools matching their dormitory
                     const { data: userData } = await supabase
                         .from("user")
                         .select("dormitory_id")
@@ -67,15 +65,15 @@ export default function FeaturedShopCard({ className }: FeaturedShopCardProps) {
                         .single();
 
                     if (userData?.dormitory_id) {
-                        // Include public pools OR private pools matching user's dormitory
-                        query = query.or(`dormitory_id.is.null,dormitory_id.eq.${userData.dormitory_id}`);
+                        // Include pools with location.type = "other" OR pools with dormitory_id matching user's dormitory
+                        query = query.or(`location.type.eq.other,dormitory_id.eq.${userData.dormitory_id}`);
                     } else {
-                        // User has no dormitory - only public pools
-                        query = query.is("dormitory_id", null);
+                        // User has no dormitory - only pools with location.type = "other"
+                        query = query.eq("location.type", "other");
                     }
                 } else {
-                    // For guest users: only public pools
-                    query = query.is("dormitory_id", null);
+                    // For guest users: only pools with location.type = "other"
+                    query = query.eq("location.type", "other");
                 }
 
                 // Only active shops
