@@ -8,27 +8,36 @@ import TermsOfServiceContent from "./TermsOfServiceContent";
 interface PrivacyPopupProps {
   onAccept: (termsAccepted: boolean, privacyAccepted: boolean) => void;
   onBack?: () => void;
+  isOpen?: boolean;
 }
 
 type ViewMode = 'checkboxes' | 'terms' | 'privacy';
 
-const PrivacyPopup: React.FC<PrivacyPopupProps> = ({ onAccept, onBack }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const PrivacyPopup: React.FC<PrivacyPopupProps> = ({ onAccept, onBack, isOpen: externalIsOpen }) => {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('checkboxes');
 
+  // Use external isOpen if provided, otherwise use internal state
+  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
+
   useEffect(() => {
-    const accepted = localStorage.getItem("privacyAccepted");
-    if (!accepted) {
-      setIsOpen(true);
+    // Only auto-open if no external control is provided
+    if (externalIsOpen === undefined) {
+      const accepted = localStorage.getItem("privacyAccepted");
+      if (!accepted) {
+        setInternalIsOpen(true);
+      }
     }
-  }, []);
+  }, [externalIsOpen]);
 
   const handleSave = () => {
     if (termsAccepted && privacyAccepted) {
       localStorage.setItem("privacyAccepted", "true");
-      setIsOpen(false);
+      if (externalIsOpen === undefined) {
+        setInternalIsOpen(false);
+      }
       onAccept(termsAccepted, privacyAccepted);
     }
   };
@@ -81,7 +90,7 @@ const PrivacyPopup: React.FC<PrivacyPopupProps> = ({ onAccept, onBack }) => {
         return (
           <>
             <div className="flex items-center justify-between w-full mb-6">
-              {onBack && (
+              {onBack && externalIsOpen !== undefined && (
                 <button
                   onClick={onBack}
                   className="text-blue-600 hover:text-blue-800 font-medium flex items-center"

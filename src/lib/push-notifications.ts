@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
 
 // VAPID key conversion utility
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding)
     .replace(/\-/g, '+')
@@ -119,7 +119,7 @@ export class PushNotificationManager {
           
           subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: applicationServerKey,
+            applicationServerKey: applicationServerKey as BufferSource,
           });
           console.log('New subscription created:', subscription);
         } catch (subscribeError) {
