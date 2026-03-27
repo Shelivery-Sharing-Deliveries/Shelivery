@@ -35,95 +35,170 @@ export default function FeaturedShopCard({ className }: FeaturedShopCardProps) {
             try {
                 setLoading(true);
 
-                let query = supabase
-                    .from("pool")
-                    .select(`
-                        id,
-                        shop_id,
-                        location_id,
-                        current_amount,
-                        min_amount,
-                        dormitory_id,
-                        shop:shop (
-                            name,
-                            logo_url,
-                            is_active
-                        ),
-                        location:location (
-                            name,
-                            type
-                        )
-                    `);
-
                 // Filter based on user auth status
+                let allPools: any[] = [];
+
                 if (user) {
-                    // For authenticated users: pools with "other" location type OR pools matching their dormitory
+                    // For authenticated users: get user dormitory info
                     const { data: userData } = await supabase
                         .from("user")
                         .select("dormitory_id")
                         .eq("id", user.id)
                         .single();
 
+                    // Query 1: Get pools with location.type = "other"
+                    const otherLocationQuery = supabase
+                        .from("pool")
+                        .select(`
+                            id,
+                            shop_id,
+                            location_id,
+                            current_amount,
+                            min_amount,
+                            dormitory_id,
+                            shop:shop (
+                                name,
+                                logo_url,
+                                is_active
+                            ),
+                            location:location (
+                                name,
+                                type
+                            ),
+                            dormitory:dormitory (
+                                name
+                            )
+                        `)
+                        .eq("location.type", "other")
+                        .eq("shop.is_active", true);
+
+                    const { data: otherLocationPools, error: otherError } = await otherLocationQuery;
+
+                    if (!otherError && otherLocationPools) {
+                        allPools = [...allPools, ...otherLocationPools];
+                    }
+
+                    // Query 2: Get pools matching user's dormitory (if they have one)
                     if (userData?.dormitory_id) {
-                        // Include pools with location.type = "other" OR pools with dormitory_id matching user's dormitory
-                        query = query.or(`location.type.eq.other,dormitory_id.eq.${userData.dormitory_id}`);
-                    } else {
-                        // User has no dormitory - only pools with location.type = "other"
-                        query = query.eq("location.type", "other");
+                        const dormitoryQuery = supabase
+                            .from("pool")
+                            .select(`
+                                id,
+                                shop_id,
+                                location_id,
+                                current_amount,
+                                min_amount,
+                                dormitory_id,
+                                shop:shop (
+                                    name,
+                                    logo_url,
+                                    is_active
+                                ),
+                                location:location (
+                                    name,
+                                    type
+                                ),
+                                dormitory:dormitory (
+                                    name
+                                )
+                            `)
+                            .eq("dormitory_id", userData.dormitory_id)
+                            .eq("shop.is_active", true);
+
+                        const { data: dormitoryPools, error: dormError } = await dormitoryQuery;
+
+                        if (!dormError && dormitoryPools) {
+                            // Filter out duplicates (pools that are already in otherLocationPools)
+                            const uniqueDormitoryPools = dormitoryPools.filter(
+                                dormPool => !allPools.some(pool => pool.id === dormPool.id)
+                            );
+                            allPools = [...allPools, ...uniqueDormitoryPools];
+                        }
                     }
                 } else {
                     // For guest users: only pools with location.type = "other"
-                    query = query.eq("location.type", "other");
+                    const guestQuery = supabase
+                        .from("pool")
+                        .select(`
+                            id,
+                            shop_id,
+                            location_id,
+                            current_amount,
+                            min_amount,
+                            dormitory_id,
+                            shop:shop (
+                                name,
+                                logo_url,
+                                is_active
+                            ),
+                            location:location (
+                                name,
+                                type
+                            )
+                        `)
+                        .eq("location.type", "other")
+                        .eq("shop.is_active", true);
+
+                    const { data, error } = await guestQuery;
+                    if (!error && data) {
+                        allPools = data;
+                    }
                 }
 
-                // Only active shops
-                query = query.eq("shop.is_active", true);
-
-                const { data, error } = await query;
-
-                if (error) {
-                    console.error("Error fetching featured pool:", error);
-                    setFeaturedPool(null);
-                    return;
-                }
+                // Use the data we collected
+                const data = allPools;
 
                 if (!data || data.length === 0) {
                     setFeaturedPool(null);
                     return;
                 }
 
-                // Find the pool with minimum remaining CHF
-                let bestPool: any = null;
-                let minRemaining = Infinity;
+                // Find the pool with minimum remaining CHF using database calculation
+                // First, enrich pools with calculated remaining amounts
+                const poolsWithRemaining = data
+                    .filter(pool => pool.shop && pool.shop.name) // Require shop data, but location is optional for dorm pools
+                    .map(pool => {
+                        const shop: any = pool.shop;
+                        const location: any = pool.location;
+                        const dormitory: any = pool.dormitory;
+                        const currentAmount = pool.current_amount || 0;
+                        const remaining = pool.min_amount - currentAmount;
 
-                for (const pool of data) {
-                    if (!pool.shop || !pool.location) continue;
+                        // Use dormitory name if available, otherwise location name
+                        const location_name = dormitory?.name || location?.name || "Unknown Location";
 
-                    const shop: any = pool.shop;
-                    const location: any = pool.location;
-
-                    if (!shop.name) continue;
-
-                    const currentAmount = pool.current_amount || 0;
-                    const remaining = pool.min_amount - currentAmount;
-
-                    if (remaining < minRemaining && remaining > 0) { // Only show pools that need more money
-                        minRemaining = remaining;
-                        bestPool = {
-                            id: pool.id,
-                            shop_id: pool.shop_id,
+                        return {
+                            ...pool,
                             shop_name: shop.name || "Unknown Shop",
                             shop_logo_url: shop.logo_url || null,
-                            location_name: location.name || "Unknown Location",
+                            location_name: location_name,
                             current_amount: currentAmount,
-                            min_amount: pool.min_amount,
-                            location_id: pool.location_id,
                             remaining_chf: remaining
                         };
-                    }
+                    })
+                    .filter(pool => pool.remaining_chf > 0); // Only pools that still need money
+
+                if (poolsWithRemaining.length === 0) {
+                    setFeaturedPool(null);
+                    return;
                 }
 
-                setFeaturedPool(bestPool);
+                // Find the pool with minimum remaining CHF
+                const bestPool = poolsWithRemaining.reduce((best, current) =>
+                    current.remaining_chf < best.remaining_chf ? current : best
+                );
+
+                setFeaturedPool({
+                    id: bestPool.id,
+                    shop_id: bestPool.shop_id,
+                    shop_name: bestPool.shop_name,
+                    shop_logo_url: bestPool.shop_logo_url,
+                    location_name: bestPool.location_name,
+                    current_amount: bestPool.current_amount,
+                    min_amount: bestPool.min_amount,
+                    location_id: bestPool.location_id,
+                    remaining_chf: bestPool.remaining_chf
+                });
             } catch (err) {
                 console.error("Error fetching featured pool:", err);
                 setFeaturedPool(null);
