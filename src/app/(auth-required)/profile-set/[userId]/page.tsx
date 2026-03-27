@@ -24,7 +24,7 @@ interface ProfileFormData {
 }
 
 interface Dormitory {
-    id: string;
+    id: number;
     name: string;
 }
 
@@ -542,7 +542,7 @@ export default function ProfileSetupPage() { // Renamed to ProfileSetupPage
                                 </div>
 
                                 <div className="border-t pt-3 space-y-2">
-                                    <p><span className="font-medium">Location:</span> {dormitories.find(d => d.id === formData.dormitoryId)?.name || 'Not selected'}</p>
+                                    <p><span className="font-medium">Location:</span> {dormitories.find(d => d.id === Number(formData.dormitoryId))?.name || 'Not selected'}</p>
                                     <p><span className="font-medium">Favorite Store:</span> {formData.favoriteStore || 'Not selected'}</p>
                                 </div>
                             </div>
