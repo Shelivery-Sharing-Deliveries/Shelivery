@@ -132,7 +132,19 @@ export default function AlphaTrialPage() {
             longitude: data.lng,
             address: data.address || undefined,
           };
-          setUserLocation(locationData);
+
+          // Check for draft during restoration and prioritize it over user location
+          const isRestored = typeof window !== 'undefined' && window.location.search.includes('restored=true');
+          if (isRestored) {
+            const draft = loadDraft();
+            if (draft && draft.location) {
+              setUserLocation(draft.location);
+            } else {
+              setUserLocation(locationData);
+            }
+          } else {
+            setUserLocation(locationData);
+          }
 
           // Also set the user's preferred distance for pool finding
           if (data.prefered_km) {
@@ -162,7 +174,7 @@ export default function AlphaTrialPage() {
       // Restore draft after shops are loaded so we can match shopId → Shop object
       // ONLY restore if we came back from an auth redirect
       const isRestored = typeof window !== 'undefined' && window.location.search.includes('restored=true');
-      
+      console.log('Checking the isRestored', isRestored);
       if (isRestored) {
         const draft = loadDraft();
         if (draft) {
@@ -170,7 +182,6 @@ export default function AlphaTrialPage() {
             const match = fetchedShops.find((s) => s.id === draft.shopId);
             if (match) setSelectedShop(match);
           }
-          if (draft.location) setUserLocation(draft.location);
           if (draft.basketLink) setBasketLink(draft.basketLink);
           if (draft.basketNote) setBasketNote(draft.basketNote);
           if (draft.basketAmount) setBasketAmount(draft.basketAmount);
