@@ -34,12 +34,12 @@ export function TimeExtensionModal({
     chatroomState,
 }: TimeExtensionModalProps) {
     // Add console logs here to inspect props
-    console.log("TimeExtensionModal Props Debug:");
-    console.log("  isOpen:", isOpen);
-    console.log("  chatroomState:", chatroomState);
-    console.log("  hasExtendedOnceBeforeOrdered:", hasExtendedOnceBeforeOrdered);
-    console.log("  currentTotalExtendedDaysInOrderedState:", currentTotalExtendedDaysInOrderedState);
-    console.log("  currentTotalExtendedDaysInDeliveredState:", currentTotalExtendedDaysInDeliveredState);
+    // console.log("TimeExtensionModal Props Debug:");
+    // console.log("  isOpen:", isOpen);
+    // console.log("  chatroomState:", chatroomState);
+    // console.log("  hasExtendedOnceBeforeOrdered:", hasExtendedOnceBeforeOrdered);
+    // console.log("  currentTotalExtendedDaysInOrderedState:", currentTotalExtendedDaysInOrderedState);
+    // console.log("  currentTotalExtendedDaysInDeliveredState:", currentTotalExtendedDaysInDeliveredState);
     
     if (!isOpen) return null;
 
@@ -72,10 +72,10 @@ export function TimeExtensionModal({
     const canDoMultiDayExtensionDelivered = chatroomState === 'delivered' && remainingExtensionDays > 0;
 
     // Add console logs for calculated flags
-    console.log("  remainingExtensionDays:", remainingExtensionDays);
-    console.log("  canDoOneTimeExtensionLogic:", canDoOneTimeExtensionLogic);
-    console.log("  canDoMultiDayExtensionOrdered:", canDoMultiDayExtensionOrdered);
-    console.log("  canDoMultiDayExtensionDelivered:", canDoMultiDayExtensionDelivered);
+    // console.log("  remainingExtensionDays:", remainingExtensionDays);
+    // console.log("  canDoOneTimeExtensionLogic:", canDoOneTimeExtensionLogic);
+    // console.log("  canDoMultiDayExtensionOrdered:", canDoMultiDayExtensionOrdered);
+    // console.log("  canDoMultiDayExtensionDelivered:", canDoMultiDayExtensionDelivered);
 
 
     // Calculate dynamic message for current time left display

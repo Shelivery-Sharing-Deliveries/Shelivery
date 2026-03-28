@@ -216,7 +216,7 @@ export default function DashboardPage() {
             return;
         }
 
-        console.log(`Basket clicked: ${basket.id}, Status: ${basket.status}, Chatroom ID: ${basket.chatroomId}`);
+        // console.log(`Basket clicked: ${basket.id}, Status: ${basket.status}, Chatroom ID: ${basket.chatroomId}`);
 
         if (basket.status === "in_chat" && basket.chatroomId) {
             router.push(`/chatrooms/${basket.chatroomId}`);

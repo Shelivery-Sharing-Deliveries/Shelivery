@@ -422,7 +422,7 @@ export default function BasketCreationPage() {
                 if (updateError) {
                     throw updateError;
                 }
-                console.log("Basket updated successfully.");
+                // console.log("Basket updated successfully.");
                 // NEW: Redirect to the actual pool_id of the updated basket
                 if (currentBasketPoolId) {
                     router.push(`/pool/${existingBasketId}` as any);
@@ -460,7 +460,7 @@ export default function BasketCreationPage() {
                     },
                 });
 
-                console.log("New basket created and joined pool successfully.");
+                // console.log("New basket created and joined pool successfully.");
                 router.push(`/pool/${data.basket_id}` as any);
             }
         } catch (err: any) {

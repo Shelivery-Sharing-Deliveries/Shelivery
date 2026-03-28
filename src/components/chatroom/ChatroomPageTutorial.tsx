@@ -85,7 +85,7 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
         // Initialize step index based on starting view
         if (currentView === 'orderDetails') {
             const firstOrderDetailsStepIndex = tutorialSteps.findIndex(step => step.view === 'orderDetails');
-            console.log("Tutorial: Initializing in orderDetails view, starting at step", firstOrderDetailsStepIndex);
+            // console.log("Tutorial: Initializing in orderDetails view, starting at step", firstOrderDetailsStepIndex);
             return firstOrderDetailsStepIndex !== -1 ? firstOrderDetailsStepIndex : 0;
         }
         return 0;
@@ -100,24 +100,24 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
     // This useEffect handles the highlight and tooltip positioning
     const updateHighlightAndTooltip = useCallback(() => {
         if (typeof document === 'undefined' || !document.body) {
-            console.log("Tutorial: Document or document.body not ready yet.");
+            // console.log("Tutorial: Document or document.body not ready yet.");
             return;
         }
 
         const currentStep = tutorialSteps[currentStepIndex];
         if (!currentStep) {
-            console.log("Tutorial: No more steps, calling onComplete.");
+            // console.log("Tutorial: No more steps, calling onComplete.");
             onComplete();
             return;
         }
 
         // Crucial check: if the current step is not meant for the current view, don't try to highlight
         if (currentStep.view !== currentView) {
-            console.log(`Tutorial: Current step (${currentStep.id}, view: ${currentStep.view}) does not match currentView (${currentView}). Not highlighting.`);
+            // console.log(`Tutorial: Current step (${currentStep.id}, view: ${currentStep.view}) does not match currentView (${currentView}). Not highlighting.`);
             
             // If we're in orderDetails view but the tutorial expects chat view, skip to the first orderDetails step
             if (currentView === 'orderDetails' && currentStep.view === 'chat') {
-                console.log("Tutorial: Skipping to first orderDetails step since we're already in orderDetails view.");
+                // console.log("Tutorial: Skipping to first orderDetails step since we're already in orderDetails view.");
                 const firstOrderDetailsStepIndex = tutorialSteps.findIndex(step => step.view === 'orderDetails');
                 if (firstOrderDetailsStepIndex !== -1) {
                     setCurrentStepIndex(firstOrderDetailsStepIndex);
@@ -130,7 +130,7 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
         }
 
         const targetElement = document.getElementById(currentStep.id);
-        console.log(`Tutorial: Attempting to find element with ID: "${currentStep.id}" in view "${currentView}"`);
+        // console.log(`Tutorial: Attempting to find element with ID: "${currentStep.id}" in view "${currentView}"`);
 
         if (!targetElement) {
             console.warn(`Tutorial: Element with ID "${currentStep.id}" NOT FOUND in view "${currentView}". Skipping step.`);
@@ -145,7 +145,7 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
             }
             return;
         } else {
-            console.log(`Tutorial: Element with ID "${currentStep.id}" FOUND. Highlighting.`);
+            // console.log(`Tutorial: Element with ID "${currentStep.id}" FOUND. Highlighting.`);
         }
 
         const rect = targetElement.getBoundingClientRect();
@@ -237,7 +237,7 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
     }, [currentStepIndex, onComplete, currentView]);
 
     useEffect(() => {
-        console.log("Tutorial: Main useEffect triggered. currentStepIndex:", currentStepIndex, "currentView:", currentView);
+        // console.log("Tutorial: Main useEffect triggered. currentStepIndex:", currentStepIndex, "currentView:", currentView);
         const timer = setTimeout(updateHighlightAndTooltip, 50); // Small delay to ensure DOM is ready
 
         const handleResizeOrScroll = () => {
@@ -248,7 +248,7 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
         window.addEventListener('scroll', handleResizeOrScroll);
 
         return () => {
-            console.log("Tutorial: Cleaning up event listeners and z-index.");
+            // console.log("Tutorial: Cleaning up event listeners and z-index.");
             clearTimeout(timer); // Clear the timeout on unmount
             window.removeEventListener('resize', handleResizeOrScroll);
             window.removeEventListener('scroll', handleResizeOrScroll);
@@ -269,7 +269,7 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
             currentStep?.action === 'clickMenuButton' && 
             currentStep.id === 'chat-menu-button' && 
             currentView === 'orderDetails') {
-            console.log("Tutorial: View changed to orderDetails after menu button click, advancing step.");
+            // console.log("Tutorial: View changed to orderDetails after menu button click, advancing step.");
             setTimeout(() => {
                 setCurrentStepIndex(prev => prev + 1);
                 setIsProcessingViewChange(false); // Reset the flag
@@ -279,7 +279,7 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
 
     const handleNext = () => {
         const currentStep = tutorialSteps[currentStepIndex];
-        console.log("Tutorial: Next button clicked. Current step index:", currentStepIndex);
+        // console.log("Tutorial: Next button clicked. Current step index:", currentStepIndex);
 
         if (currentStep?.action === 'clickMenuButton') {
             // Set flag to indicate we're processing a view change
@@ -289,7 +289,7 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
             const menuButton = document.getElementById('chat-menu-button');
             if (menuButton) {
                 menuButton.click(); // Simulate click to change view in parent
-                console.log("Tutorial: Simulating click on chat menu button. Waiting for view change to advance step.");
+                // console.log("Tutorial: Simulating click on chat menu button. Waiting for view change to advance step.");
             }
             // Do NOT increment step here. The view change useEffect will handle it once view changes.
         } else if (currentStepIndex < tutorialSteps!.length - 1) { // Non-null assertion for tutorialSteps.length
@@ -320,18 +320,18 @@ export default function ChatroomPageTutorial({ onComplete, currentView, setCurre
     };
 
     const handleSkip = () => {
-        console.log("Tutorial: Skip button clicked.");
+        // console.log("Tutorial: Skip button clicked.");
         onComplete(); // End tutorial
     };
 
     const currentStep = tutorialSteps[currentStepIndex];
     // Only render if there's a current step AND its view matches the current actual view
     if (!currentStep || currentStep.view !== currentView) {
-        console.log(`Tutorial: Not rendering. currentStep: ${currentStep?.id || 'N/A'}, currentView: ${currentView}, expectedView: ${currentStep?.view || 'N/A'}`);
+        // console.log(`Tutorial: Not rendering. currentStep: ${currentStep?.id || 'N/A'}, currentView: ${currentView}, expectedView: ${currentStep?.view || 'N/A'}`);
         return null;
     }
 
-    console.log(`Tutorial: Rendering step ${currentStepIndex + 1}/${tutorialSteps.length} - ${currentStep.title}`);
+    // console.log(`Tutorial: Rendering step ${currentStepIndex + 1}/${tutorialSteps.length} - ${currentStep.title}`);
 
     return (
         <>

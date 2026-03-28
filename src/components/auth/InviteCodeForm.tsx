@@ -27,7 +27,7 @@ export default function InviteCodeForm({
     const storedCode = getStoredInviteCode();
     if (storedCode) {
       setInviteCode(storedCode);
-      console.log("InviteCodeForm: Auto-populated invite code from localStorage:", storedCode);
+      // console.log("InviteCodeForm: Auto-populated invite code from localStorage:", storedCode);
     }
   }, []);
 

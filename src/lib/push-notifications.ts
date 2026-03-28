@@ -90,38 +90,38 @@ export class PushNotificationManager {
   // Subscribe to push notifications
   async subscribe(): Promise<PushSubscriptionData | null> {
     try {
-      console.log('Starting subscription process...');
+      // console.log('Starting subscription process...');
       
       // Check permission first
       const permission = await this.requestPermission();
-      console.log('Permission status:', permission);
+      // console.log('Permission status:', permission);
       if (permission !== 'granted') {
         throw new Error('Push notification permission denied');
       }
 
       // Get service worker registration
-      console.log('Getting service worker registration...');
+      // console.log('Getting service worker registration...');
       const registration = await this.getServiceWorkerRegistration();
-      console.log('Service worker registration:', registration);
+      // console.log('Service worker registration:', registration);
 
       // Check if already subscribed
-      console.log('Checking existing subscription...');
+      // console.log('Checking existing subscription...');
       let subscription = await registration.pushManager.getSubscription();
-      console.log('Existing subscription:', subscription);
+      // console.log('Existing subscription:', subscription);
 
       if (!subscription) {
-        console.log('Creating new subscription with VAPID key...');
-        console.log('VAPID key:', this.vapidPublicKey);
+        // console.log('Creating new subscription with VAPID key...');
+        // console.log('VAPID key:', this.vapidPublicKey);
         
         try {
           const applicationServerKey = urlBase64ToUint8Array(this.vapidPublicKey);
-          console.log('Converted VAPID key:', applicationServerKey);
+          // console.log('Converted VAPID key:', applicationServerKey);
           
           subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: applicationServerKey as BufferSource,
           });
-          console.log('New subscription created:', subscription);
+          // console.log('New subscription created:', subscription);
         } catch (subscribeError) {
           console.error('Failed to create subscription:', subscribeError);
           throw new Error(`Subscription creation failed: ${subscribeError instanceof Error ? subscribeError.message : String(subscribeError)}`);
@@ -132,11 +132,11 @@ export class PushNotificationManager {
         throw new Error('Failed to create push subscription - subscription is null');
       }
 
-      console.log('Processing subscription keys...');
+      // console.log('Processing subscription keys...');
       // Convert subscription to our format using the helper function
       const p256dhKey = subscription.getKey('p256dh');
       const authKey = subscription.getKey('auth');
-      console.log('Keys extracted:', { p256dh: !!p256dhKey, auth: !!authKey });
+      // console.log('Keys extracted:', { p256dh: !!p256dhKey, auth: !!authKey });
 
       if (!p256dhKey || !authKey) {
         throw new Error('Missing subscription keys');
@@ -150,16 +150,16 @@ export class PushNotificationManager {
         },
       };
 
-      console.log('Subscription data created:', {
+      // console.log('Subscription data created:', {
         endpoint: subscriptionData.endpoint.substring(0, 50) + '...',
         p256dhLength: subscriptionData.keys.p256dh.length,
         authLength: subscriptionData.keys.auth.length
       });
 
       // Save subscription to database
-      console.log('Saving subscription to database...');
+      // console.log('Saving subscription to database...');
       await this.saveSubscription(subscriptionData);
-      console.log('Subscription saved successfully');
+      // console.log('Subscription saved successfully');
 
       return subscriptionData;
     } catch (error) {
@@ -188,7 +188,7 @@ export class PushNotificationManager {
         throw new Error('User not authenticated');
       }
 
-      console.log('Saving subscription for user:', user.id);
+      // console.log('Saving subscription for user:', user.id);
 
       const subscriptionRecord = {
         user_id: user.id,
@@ -198,7 +198,7 @@ export class PushNotificationManager {
         user_agent: navigator.userAgent,
       };
 
-      console.log('Subscription record:', subscriptionRecord);
+      // console.log('Subscription record:', subscriptionRecord);
 
       // Double-check the record before saving
       if (!subscriptionRecord.endpoint || !subscriptionRecord.p256dh || !subscriptionRecord.auth) {
@@ -216,7 +216,7 @@ export class PushNotificationManager {
         throw error;
       }
 
-      console.log('Push subscription saved successfully');
+      // console.log('Push subscription saved successfully');
     } catch (error) {
       console.error('Error saving push subscription:', error);
       throw error;
@@ -273,7 +273,7 @@ export class PushNotificationManager {
         throw error;
       }
 
-      console.log('Push subscription removed successfully');
+      // console.log('Push subscription removed successfully');
     } catch (error) {
       console.error('Error removing push subscription:', error);
       throw error;

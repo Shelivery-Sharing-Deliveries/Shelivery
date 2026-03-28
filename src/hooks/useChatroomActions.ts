@@ -104,7 +104,7 @@ export const useChatroomActions = ({
 
             // Compress image if it's an image file
             if (folder === 'images' && canCompressImage(file)) {
-                console.log('Compressing image before upload...');
+                // console.log('Compressing image before upload...');
                 try {
                     const compressionOptions = getCompressionOptions('chat');
                     fileToUpload = await compressImage(file, compressionOptions);
@@ -158,7 +158,7 @@ export const useChatroomActions = ({
         content: string | { type: "audio" | "image"; url: string }
     ) => {
         if (!currentUser || !content) {
-            console.log("sendMessage: Cannot send message, user or content missing.");
+            // console.log("sendMessage: Cannot send message, user or content missing.");
             return;
         }
 
@@ -167,7 +167,7 @@ export const useChatroomActions = ({
 
         if (typeof content === "string") {
             if (!content.trim()) {
-                console.log("sendMessage: Empty text message. Not sending.");
+                // console.log("sendMessage: Empty text message. Not sending.");
                 return;
             }
             messageContent = content.trim();
@@ -176,7 +176,7 @@ export const useChatroomActions = ({
             messageType = content.type;
         }
 
-        console.log(`sendMessage: Sending ${messageType} message...`);
+        // console.log(`sendMessage: Sending ${messageType} message...`);
 
         try {
             const { error } = await supabase.from("message").insert({
@@ -190,7 +190,7 @@ export const useChatroomActions = ({
                 console.error("sendMessage: Error inserting message:", error);
                 setNotification(`Failed to send message: ${error.message}`);
             } else {
-                console.log("sendMessage: Message inserted successfully.");
+                // console.log("sendMessage: Message inserted successfully.");
             }
         } catch (error) {
             console.error("sendMessage: Caught error during message send:", error);
@@ -204,7 +204,7 @@ export const useChatroomActions = ({
             setNotification('You are not the admin. Cannot mark as ordered.');
             return;
         }
-        console.log("markAsOrdered: Attempting to mark as ordered...");
+        // console.log("markAsOrdered: Attempting to mark as ordered...");
         try {
             const { error } = await supabase
                 .from("chatroom")
@@ -220,7 +220,7 @@ export const useChatroomActions = ({
             } else {
                 await refreshChatroom();
                 setNotification("Order has been marked as placed!");
-                console.log("markAsOrdered: Chatroom state updated to 'ordered'.");
+                // console.log("markAsOrdered: Chatroom state updated to 'ordered'.");
             }
         } catch (error) {
             console.error(
@@ -237,7 +237,7 @@ export const useChatroomActions = ({
             setNotification('Only the admin can mark the order as delivered.');
             return;
         }
-        console.log("markAsDeliveredByAdmin: Attempting to mark chatroom as delivered by admin...");
+        // console.log("markAsDeliveredByAdmin: Attempting to mark chatroom as delivered by admin...");
 
         try {
             // Step 1: Mark the chatroom as 'delivered'
@@ -252,7 +252,7 @@ export const useChatroomActions = ({
                 return;
             }
 
-            console.log("markAsDeliveredByAdmin: Chatroom marked as delivered, now confirming admin delivery...");
+            // console.log("markAsDeliveredByAdmin: Chatroom marked as delivered, now confirming admin delivery...");
 
             // Step 2: Use the confirm_user_delivery function to confirm admin's delivery and check if all confirmed
             const { data, error } = await supabase.rpc('confirm_user_delivery', {
@@ -270,10 +270,10 @@ export const useChatroomActions = ({
             if (data && typeof data === 'object') {
                 if (data.success) {
                     setNotification(data.message);
-                    console.log("markAsDeliveredByAdmin: Backend response:", data);
+                    // console.log("markAsDeliveredByAdmin: Backend response:", data);
                     
                     if (data.chatroom_resolved) {
-                        console.log("markAsDeliveredByAdmin: Chatroom has been resolved by backend (all members confirmed).");
+                        // console.log("markAsDeliveredByAdmin: Chatroom has been resolved by backend (all members confirmed).");
                     }
                 } else {
                     setNotification(data.message || 'Failed to confirm admin delivery.');
@@ -282,7 +282,7 @@ export const useChatroomActions = ({
             } else {
                 // Fallback for non-JSON response
                 setNotification('Order marked as delivered! Waiting for members to confirm receipt.');
-                console.log("markAsDeliveredByAdmin: Non-JSON response from backend:", data);
+                // console.log("markAsDeliveredByAdmin: Non-JSON response from backend:", data);
             }
 
             await refreshChatroom();
@@ -299,7 +299,7 @@ export const useChatroomActions = ({
             return;
         }
 
-        console.log("confirmDelivery: Initiating delivery confirmation for user:", currentUser.id);
+        // console.log("confirmDelivery: Initiating delivery confirmation for user:", currentUser.id);
 
         try {
             // Call the new backend function that handles all confirmation logic
@@ -318,10 +318,10 @@ export const useChatroomActions = ({
             if (data && typeof data === 'object') {
                 if (data.success) {
                     setNotification(data.message);
-                    console.log("confirmDelivery: Backend response:", data);
+                    // console.log("confirmDelivery: Backend response:", data);
                     
                     if (data.chatroom_resolved) {
-                        console.log("confirmDelivery: Chatroom has been resolved by backend.");
+                        // console.log("confirmDelivery: Chatroom has been resolved by backend.");
                     }
                 } else {
                     setNotification(data.message || 'Failed to confirm delivery.');
@@ -330,7 +330,7 @@ export const useChatroomActions = ({
             } else {
                 // Fallback for non-JSON response
                 setNotification('Delivery confirmation processed.');
-                console.log("confirmDelivery: Non-JSON response from backend:", data);
+                // console.log("confirmDelivery: Non-JSON response from backend:", data);
             }
 
             // Refresh chatroom data to reflect all changes
@@ -348,7 +348,7 @@ export const useChatroomActions = ({
             setNotification('You are not logged in.');
             return;
         }
-        console.log("leaveGroup: Attempting to leave group via backend function...");
+        // console.log("leaveGroup: Attempting to leave group via backend function...");
         try {
             const { error } = await supabase.rpc("leave_chatroom", {
                 chatroom_id_param: chatroomId,
@@ -360,7 +360,7 @@ export const useChatroomActions = ({
             } else {
                 setNotification('You have left the group.');
                 router.push("/dashboard");
-                console.log("leaveGroup: Successfully left group, redirecting to dashboard.");
+                // console.log("leaveGroup: Successfully left group, redirecting to dashboard.");
             }
         } catch (error) {
             console.error("leaveGroup: Caught unexpected error during leave group RPC call:", error);
@@ -374,7 +374,7 @@ export const useChatroomActions = ({
             setNotification('Only the current admin can transfer the admin role.');
             return;
         }
-        console.log("makeAdmin: Attempting to make user", userId, "admin.");
+        // console.log("makeAdmin: Attempting to make user", userId, "admin.");
         try {
             const { error } = await supabase
                 .from("chatroom")
@@ -400,7 +400,7 @@ export const useChatroomActions = ({
             setNotification('You cannot remove yourself or you are not the admin.');
             return;
         }
-        console.log("removeMember: Attempting to remove member:", userId);
+        // console.log("removeMember: Attempting to remove member:", userId);
         try {
             const { error } = await supabase
                 .from("chat_membership")

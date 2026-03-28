@@ -112,9 +112,9 @@ export function OrderDetailsView({
     tutorialStepIds,
 }: OrderDetailsViewProps) {
     // 🔍 DEBUG LOGS: Moved outside of the JSX render block to prevent errors.
-    console.log("Current chatroom state:", state);
-    console.log("isAdmin:", isAdmin);
-    console.log("Condition for Mark as Delivered:", state === "ordered" && !!onMarkDelivered);
+    // console.log("Current chatroom state:", state);
+    // console.log("isAdmin:", isAdmin);
+    // console.log("Condition for Mark as Delivered:", state === "ordered" && !!onMarkDelivered);
 
     const isOrderPlaced = state === "ordered" || state === "delivered" || state === "resolved";
     const isOrderDelivered = state === "resolved";

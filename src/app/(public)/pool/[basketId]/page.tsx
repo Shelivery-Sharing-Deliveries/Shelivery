@@ -73,7 +73,7 @@ const mockParticipants = [
 
 
 export default function PoolPage({ params }: PoolPageProps) {
-    console.log("PoolPage component rendering..."); // Debugging log
+    // console.log("PoolPage component rendering..."); // Debugging log
     const router = useRouter();
     const [poolData, setPoolData] = useState<DisplayPoolData | null>(null);
     const [isReady, setIsReady] = useState(false);
@@ -132,7 +132,7 @@ export default function PoolPage({ params }: PoolPageProps) {
 
             // CRITICAL: Check for chatroom_id and status to redirect immediately
             if (fetchedBasket.status === 'in_chat' && fetchedBasket.chatroom_id) {
-                console.log(`REDIRECT_TRIGGER: Basket ${basketId} is in chat state. Redirecting to chatroom ${fetchedBasket.chatroom_id}`);
+                // console.log(`REDIRECT_TRIGGER: Basket ${basketId} is in chat state. Redirecting to chatroom ${fetchedBasket.chatroom_id}`);
                 router.replace(`/chatrooms/${fetchedBasket.chatroom_id}`);
                 return null; // Indicate that a redirect is happening
             }
@@ -174,9 +174,9 @@ export default function PoolPage({ params }: PoolPageProps) {
 
     // --- useEffect for Initial Data Fetch ---
     useEffect(() => {
-        console.log("useEffect for initial data fetch triggered."); // Debugging log
+        // console.log("useEffect for initial data fetch triggered."); // Debugging log
         const loadInitialData = async () => {
-            console.log("FETCH_INIT: Starting initial data load for basket ID:", params.basketId);
+            // console.log("FETCH_INIT: Starting initial data load for basket ID:", params.basketId);
             setIsPageLoading(true);
             setError(null);
 
@@ -187,21 +187,21 @@ export default function PoolPage({ params }: PoolPageProps) {
             }
 
             const result = await fetchAndProcessBasketData(params.basketId);
-            console.log("Result from fetchAndProcessBasketData:", result); // Debugging log
+            // console.log("Result from fetchAndProcessBasketData:", result); // Debugging log
             if (result) {
                 setPoolData(result.structuredData);
                 setIsReady(result.fetchedBasket.is_ready);
-                console.log("FETCH_INIT_SUCCESS: Initial poolData set.");
+                // console.log("FETCH_INIT_SUCCESS: Initial poolData set.");
 
                 // NEW: Only show tutorial if data loaded successfully and not seen before
                 const hasSeenTutorial = localStorage.getItem('hasSeenPoolPageTutorial');
-                console.log("hasSeenPoolPageTutorial from localStorage:", hasSeenTutorial); // Debugging log
+                // console.log("hasSeenPoolPageTutorial from localStorage:", hasSeenTutorial); // Debugging log
                 if (!hasSeenTutorial) {
                     setShowTutorial(true);
-                    console.log("setShowTutorial(true) called."); // Debugging log
+                    // console.log("setShowTutorial(true) called."); // Debugging log
                 }
             } else {
-                console.log("FETCH_INIT_COMPLETE: No data set, possibly redirected or error occurred.");
+                // console.log("FETCH_INIT_COMPLETE: No data set, possibly redirected or error occurred.");
             }
             setIsPageLoading(false);
         };
@@ -211,15 +211,15 @@ export default function PoolPage({ params }: PoolPageProps) {
 
     // Debugging log for showTutorial state
     useEffect(() => {
-        console.log("Current showTutorial state:", showTutorial);
-        console.log("Current poolData state:", poolData);
+        // console.log("Current showTutorial state:", showTutorial);
+        // console.log("Current poolData state:", poolData);
     }, [showTutorial, poolData]);
 
 
     // --- useEffect for Realtime Pool Subscription (for progress bar) and Basket Polling (for status/redirect) ---
     useEffect(() => {
         if (!params.basketId) {
-            console.log("REALTIME_POLLING_INIT: Subscriptions/Polling skipped - basketId not available yet.");
+            // console.log("REALTIME_POLLING_INIT: Subscriptions/Polling skipped - basketId not available yet.");
             return;
         }
 
@@ -228,14 +228,14 @@ export default function PoolPage({ params }: PoolPageProps) {
         // Only subscribe to pool channel if poolData and pool_id are available
         // This will re-run if poolData.pool_id changes (e.g., on initial fetch)
         if (poolData?.pool_id) {
-            console.log(`REALTIME_INIT: Starting realtime subscription for pool ID: ${poolData.pool_id}`);
+            // console.log(`REALTIME_INIT: Starting realtime subscription for pool ID: ${poolData.pool_id}`);
             poolSubscription = supabase
                 .channel(`pool_updates:${poolData.pool_id}`) // Unique channel name
                 .on(
                     'postgres_changes',
                     { event: 'UPDATE', schema: 'public', table: 'pool', filter: `id=eq.${poolData.pool_id}` }, // Use singular 'pool'
                     (payload) => {
-                        console.log("REALTIME_POOL_UPDATE: RECEIVED payload:", payload.new);
+                        // console.log("REALTIME_POOL_UPDATE: RECEIVED payload:", payload.new);
                         setPoolData(prevData => {
                             if (prevData) {
                                 return {
@@ -250,41 +250,41 @@ export default function PoolPage({ params }: PoolPageProps) {
                 )
                 .subscribe((status, err) => {
                     if (status === 'SUBSCRIBED') {
-                        console.log(`REALTIME_POOL_STATUS: Channel '${poolSubscription.topic}' SUBSCRIBED.`);
+                        // console.log(`REALTIME_POOL_STATUS: Channel '${poolSubscription.topic}' SUBSCRIBED.`);
                     } else if (status === 'CHANNEL_ERROR') {
                         console.error(`REALTIME_POOL_STATUS_ERROR: Channel '${poolSubscription.topic}' encountered an error:`, err);
                     } else {
-                        console.log(`REALTIME_POOL_STATUS: Channel '${poolSubscription.topic}' status: ${status}`);
+                        // console.log(`REALTIME_POOL_STATUS: Channel '${poolSubscription.topic}' status: ${status}`);
                     }
                 });
         }
 
         // 2. Basket Polling Fallback (for status change and redirect)
-        console.log("POLLING_INIT: Starting polling for basket status...");
+        // console.log("POLLING_INIT: Starting polling for basket status...");
         const pollingInterval = setInterval(async () => {
-            console.log("POLLING: Fetching latest basket status via poll...");
+            // console.log("POLLING: Fetching latest basket status via poll...");
             const result = await fetchAndProcessBasketData(params.basketId);
             if (result) {
                 // If result is not null, it means no redirect happened yet (or error was handled)
                 setPoolData(result.structuredData);
                 setIsReady(result.fetchedBasket.is_ready);
-                console.log(`POLLING_SUCCESS: Basket status: ${result.fetchedBasket.status}`);
+                // console.log(`POLLING_SUCCESS: Basket status: ${result.fetchedBasket.status}`);
             } else {
                 // If result is null, it means fetchAndProcessBasketData either redirected or hit an error.
                 // In case of redirect, this interval will be cleared by the cleanup function.
-                console.log("POLLING_INFO: Fetch result was null (possibly redirected or error handled).");
+                // console.log("POLLING_INFO: Fetch result was null (possibly redirected or error handled).");
             }
         }, 3000); // Poll every 3 seconds (adjust as needed)
 
 
         // Cleanup function for both subscriptions and polling interval
         return () => {
-            console.log('CLEANUP: Cleaning up Realtime subscriptions and polling interval...');
+            // console.log('CLEANUP: Cleaning up Realtime subscriptions and polling interval...');
             if (poolSubscription) {
                 supabase.removeChannel(poolSubscription);
             }
             clearInterval(pollingInterval); // Clear the polling interval
-            console.log('CLEANUP: Realtime subscriptions and polling stopped.');
+            // console.log('CLEANUP: Realtime subscriptions and polling stopped.');
         };
     }, [params.basketId, router, poolData?.pool_id]); // poolData?.pool_id is kept as a dependency
     // to ensure the pool subscription is correctly
@@ -318,11 +318,11 @@ export default function PoolPage({ params }: PoolPageProps) {
 
             if (data) {
                 setIsReady(newIsReadyState);
-                console.log(`UPDATE_SUCCESS: Basket ${basketIdToUpdate} 'is_ready' set to ${newIsReadyState}. New status from direct update response: ${data.status}`);
+                // console.log(`UPDATE_SUCCESS: Basket ${basketIdToUpdate} 'is_ready' set to ${newIsReadyState}. New status from direct update response: ${data.status}`);
 
                 // Immediate redirect check after the update operation
                 if (data.status === 'in_chat' && data.chatroom_id) {
-                    console.log("REDIRECT_IMMEDIATE: Basket status immediately became in_chat after direct update. Redirecting.");
+                    // console.log("REDIRECT_IMMEDIATE: Basket status immediately became in_chat after direct update. Redirecting.");
                     router.replace(`/chatrooms/${data.chatroom_id}`);
                 }
             } else {
@@ -340,7 +340,7 @@ export default function PoolPage({ params }: PoolPageProps) {
     // --- handleGoToChat for navigating to chatroom ---
     const handleGoToChat = () => {
         if (poolData?.userBasket.chatroomId) {
-            console.log(`NAVIGATE_CHAT: Going to chatroom ${poolData.userBasket.chatroomId}`);
+            // console.log(`NAVIGATE_CHAT: Going to chatroom ${poolData.userBasket.chatroomId}`);
             router.push(`/chatrooms/${poolData.userBasket.chatroomId}`);
         } else {
             console.warn("NAVIGATE_CHAT_WARNING: Chatroom ID not available for navigation.");
@@ -352,7 +352,7 @@ export default function PoolPage({ params }: PoolPageProps) {
         if (!poolData) return;
 
         const editUrl = `/shops/${poolData.shop_id}/basket?basketId=${params.basketId}`;
-        console.log("NAVIGATE: Navigating to edit URL:", editUrl);
+        // console.log("NAVIGATE: Navigating to edit URL:", editUrl);
         router.push(editUrl as any);
     };
 
@@ -366,7 +366,7 @@ export default function PoolPage({ params }: PoolPageProps) {
         if (!confirmed) {
             return;
         }
-        console.log("Simulating: User confirmed deletion."); // Log for demo
+        // console.log("Simulating: User confirmed deletion."); // Log for demo
 
         setIsButtonLoading(true);
         setError(null);
@@ -385,7 +385,7 @@ export default function PoolPage({ params }: PoolPageProps) {
                 return;
             }
 
-            console.log(`DELETE_SUCCESS: Basket ${basketIdToDelete} deleted successfully.`);
+            // console.log(`DELETE_SUCCESS: Basket ${basketIdToDelete} deleted successfully.`);
             router.push('/dashboard');
 
         } catch (generalError) {
@@ -400,7 +400,7 @@ export default function PoolPage({ params }: PoolPageProps) {
     const handleTutorialComplete = () => {
         setShowTutorial(false);
         localStorage.setItem('hasSeenPoolPageTutorial', 'true'); // Mark tutorial as seen
-        console.log("DEBUG: handleTutorialComplete called. hasSeenPoolPageTutorial set to true.");
+        // console.log("DEBUG: handleTutorialComplete called. hasSeenPoolPageTutorial set to true.");
     };
 
     // --- Loading, Error, Not Found States (outside PageLayout) ---

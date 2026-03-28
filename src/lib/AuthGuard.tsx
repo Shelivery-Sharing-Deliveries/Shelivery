@@ -18,19 +18,19 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   useEffect(() => {
     const checkAuthAndDormitory = async () => {
       // Log the initial state of AuthGuard's checks
-      console.log("AuthGuard: Running checkAuthAndDormitory. Auth Loading:", authLoading, "User ID:", user?.id);
+      // console.log("AuthGuard: Running checkAuthAndDormitory. Auth Loading:", authLoading, "User ID:", user?.id);
 
       if (authLoading) {
         // If the authentication process from useAuth is still loading,
         // keep `isCheckingDormitory` true to ensure the overall loading spinner is shown.
         setIsCheckingDormitory(true);
-        console.log("AuthGuard: Auth is loading, showing loading state.");
+        // console.log("AuthGuard: Auth is loading, showing loading state.");
         return; // Exit and re-run effect when authLoading changes
       }
 
       // Case 1: No user is authenticated after authentication has finished loading.
       if (!user) {
-        console.log("AuthGuard: No user found after auth loaded, redirecting to /auth.");
+        // console.log("AuthGuard: No user found after auth loaded, redirecting to /auth.");
         router.push("/auth"); // Redirect to the authentication page
         setIsCheckingDormitory(false); // Turn off internal loading as a redirect action is being taken
         checkedUserIdRef.current = null; // Reset the ref since no user is logged in
@@ -40,7 +40,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
       // Case 2: A user is authenticated. Now, check if their dormitory ID has been verified
       // for this session to prevent redundant Supabase calls.
       if (user.id !== checkedUserIdRef.current) {
-        console.log("AuthGuard: User present, checking dormitory ID for user:", user.id);
+        // console.log("AuthGuard: User present, checking dormitory ID for user:", user.id);
         setIsCheckingDormitory(true); // Indicate that the dormitory check is in progress
 
         try {
@@ -58,11 +58,11 @@ export default function AuthGuard({ children }: AuthGuardProps) {
               "AuthGuard: Error fetching user data from 'user' table:",
               userError.message
             );
-            console.log("AuthGuard: Redirecting to /profile-set due to fetch error.");
+            // console.log("AuthGuard: Redirecting to /profile-set due to fetch error.");
             router.push(`/profile-set/${user.id}`); // Redirect to profile setup
           } else {
             // User is authenticated. All checks passed.
-            console.log("AuthGuard: User authenticated. Allowing access.");
+            // console.log("AuthGuard: User authenticated. Allowing access.");
             checkedUserIdRef.current = user.id; // Store this user's ID to avoid re-checking
           }
         } catch (error) {
@@ -71,18 +71,18 @@ export default function AuthGuard({ children }: AuthGuardProps) {
             "AuthGuard: Unexpected error during dormitory_id check in AuthGuard:",
             error
           );
-          console.log("AuthGuard: Redirecting to /profile-set due to unexpected error.");
+          // console.log("AuthGuard: Redirecting to /profile-set due to unexpected error.");
           router.push(`/profile-set/${user.id}`); // Redirect to profile setup as a fallback
         } finally {
           // Ensure `isCheckingDormitory` is always set to false after the check
           // completes, whether successfully or with an error/redirect.
           setIsCheckingDormitory(false);
-          console.log("AuthGuard: Dormitory check finished, isCheckingDormitory set to false.");
+          // console.log("AuthGuard: Dormitory check finished, isCheckingDormitory set to false.");
         }
       } else {
         // User is present, and their dormitory_id has already been successfully checked
         // during this session (e.g., navigating between protected routes).
-        console.log("AuthGuard: User already checked, no dormitory check needed.");
+        // console.log("AuthGuard: User already checked, no dormitory check needed.");
         setIsCheckingDormitory(false); // No check needed, so turn off internal loading
       }
     };
@@ -101,7 +101,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     if (authLoading || isCheckingDormitory) {
       // Start timeout to detect if user is stuck
       stuckTimeoutRef.current = setTimeout(() => {
-        console.log("AuthGuard: User appears stuck in auth checking, starting auto-refresh...");
+        // console.log("AuthGuard: User appears stuck in auth checking, starting auto-refresh...");
         setIsStuck(true);
         startAutoRefresh();
       }, 10000); // 10 seconds timeout
@@ -124,18 +124,18 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   }, [authLoading, isCheckingDormitory]);
 
   const startAutoRefresh = async () => {
-    console.log("AuthGuard: Starting automatic progressive refresh...");
+    // console.log("AuthGuard: Starting automatic progressive refresh...");
     
     // Step 1: Soft refresh (re-authenticate)
     setAutoRefreshState('soft');
     refreshTimeoutRef.current = setTimeout(async () => {
       try {
-        console.log("AuthGuard: Attempting soft refresh - re-authentication...");
+        // console.log("AuthGuard: Attempting soft refresh - re-authentication...");
         const { data, error } = await supabase.auth.getSession();
         if (error) throw error;
         
         if (data.session) {
-          console.log("AuthGuard: Soft refresh successful");
+          // console.log("AuthGuard: Soft refresh successful");
           setAutoRefreshState('idle');
           setIsStuck(false);
           return;
@@ -148,11 +148,11 @@ export default function AuthGuard({ children }: AuthGuardProps) {
       setAutoRefreshState('auth');
       refreshTimeoutRef.current = setTimeout(async () => {
         try {
-          console.log("AuthGuard: Attempting auth refresh...");
+          // console.log("AuthGuard: Attempting auth refresh...");
           const { error } = await supabase.auth.refreshSession();
           if (error) throw error;
           
-          console.log("AuthGuard: Auth refresh successful");
+          // console.log("AuthGuard: Auth refresh successful");
           setAutoRefreshState('idle');
           setIsStuck(false);
           return;
@@ -163,7 +163,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         // Step 3: Hard refresh
         setAutoRefreshState('hard');
         refreshTimeoutRef.current = setTimeout(() => {
-          console.log("AuthGuard: Performing hard refresh...");
+          // console.log("AuthGuard: Performing hard refresh...");
           window.location.reload();
         }, 2000);
       }, 3000);
@@ -171,7 +171,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   };
 
   const handleEmergencyRefresh = () => {
-    console.log("AuthGuard: Emergency refresh triggered...");
+    // console.log("AuthGuard: Emergency refresh triggered...");
     if (stuckTimeoutRef.current) {
       clearTimeout(stuckTimeoutRef.current);
       stuckTimeoutRef.current = null;
@@ -199,7 +199,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
   // Render a loading spinner if authentication is in progress or if the dormitory check is ongoing.
   if (authLoading || isCheckingDormitory) {
-    console.log("AuthGuard: Rendering loading spinner (authLoading:", authLoading, "isCheckingDormitory:", isCheckingDormitory, ")");
+    // console.log("AuthGuard: Rendering loading spinner (authLoading:", authLoading, "isCheckingDormitory:", isCheckingDormitory, ")");
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white p-4">
         <div className="text-center">
@@ -226,6 +226,6 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   }
 
   // If all checks pass (user authenticated and dormitory_id confirmed), render children.
-  console.log("AuthGuard: All checks passed, rendering children.");
+  // console.log("AuthGuard: All checks passed, rendering children.");
   return <>{children}</>;
 }

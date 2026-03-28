@@ -164,7 +164,7 @@ export default function ProfileEditPage() {
 
             // Update UI
             setProfileImage(result.url);
-            console.log("Profile image updated successfully!");
+            // console.log("Profile image updated successfully!");
         } catch (error) {
             console.error('Upload error:', error);
         }
@@ -173,7 +173,7 @@ export default function ProfileEditPage() {
     // Handle avatar upload completion
     const handleAvatarUploadComplete = (url: string) => {
         setProfileImage(url);
-        console.log("Profile image updated successfully!");
+        // console.log("Profile image updated successfully!");
     };
 
 
@@ -198,7 +198,7 @@ export default function ProfileEditPage() {
             // alert("Failed to save profile. Please try again."); // Removed alert
         } else {
             // alert("Profile saved successfully!"); // Success feedback - Removed alert
-            console.log("Profile saved successfully!"); // Added console log for feedback
+            // console.log("Profile saved successfully!"); // Added console log for feedback
             router.back();
         }
     };
@@ -213,7 +213,7 @@ export default function ProfileEditPage() {
 
         const unsubscribeSuccess = await unsubscribe(); 
         if (unsubscribeSuccess) {
-            console.log("Successfully unsubscribed from push notifications on logout.");
+            // console.log("Successfully unsubscribed from push notifications on logout.");
         } else {
             console.warn("Failed to unsubscribe from push notifications on logout, but proceeding with logout.");
         }

@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
 
     // Compress image if it's compressible
     if (canCompressImage(file)) {
-      console.log('Compressing shop logo image before upload...')
+      // console.log('Compressing shop logo image before upload...')
       try {
         const compressionOptions = getCompressionOptions('logo')
         fileToUpload = await compressImage(file, compressionOptions)

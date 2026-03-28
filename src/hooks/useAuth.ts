@@ -28,7 +28,7 @@ export function useAuth() {
                 posthog.identify(user.id, {
                     email: user.email || undefined,
                 });
-                console.log("useAuth: PostHog identify called for user:", user.id);
+                // console.log("useAuth: PostHog identify called for user:", user.id);
             }
         } catch (error) {
             console.error("useAuth: Error calling posthog.identify:", error);

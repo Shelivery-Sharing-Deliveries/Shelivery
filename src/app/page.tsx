@@ -26,16 +26,16 @@ function HomePageContent() {
     const invite = getInviteCodeFromUrlOrStorage(searchParams);
 
     if (invite) {
-      console.log("HomePage: Using invite code:", invite);
+      // console.log("HomePage: Using invite code:", invite);
 
       // Increment counter only if we haven't already done it for this invite code
       if (counterIncrementedRef.current !== invite) {
         counterIncrementedRef.current = invite;
         incrementInviteCounter(invite).then((success) => {
           if (success) {
-            console.log(`HomePage: Successfully incremented counter for invite code: ${invite}`);
+            // console.log(`HomePage: Successfully incremented counter for invite code: ${invite}`);
           } else {
-            console.log(`HomePage: Failed to increment counter for invite code: ${invite} (code may not exist in database)`);
+            // console.log(`HomePage: Failed to increment counter for invite code: ${invite} (code may not exist in database)`);
           }
         }).catch((error) => {
           console.error(`HomePage: Error incrementing counter for invite code ${invite}:`, error);

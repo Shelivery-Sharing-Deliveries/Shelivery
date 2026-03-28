@@ -139,34 +139,14 @@ export default function ShopsPage() {
 
                             // Filter pools based on location type
                             if (locationType === 'residence' && userWithDormitory?.dormitory_id) {
-                                // For residence mode, find pools for user's dormitory location
-                                const { data: locationData } = await supabase
-                                    .from("location")
-                                    .select("id")
-                                    .eq("dormitory_id", userWithDormitory.dormitory_id)
-                                    .single();
-
-                                if (locationData) {
-                                    poolQuery = poolQuery.eq("location_id", locationData.id);
-                                } else {
-                                    // No location found for user's dormitory
-                                    return {
-                                        ...shop,
-                                        poolProgress: {
-                                            current: 0,
-                                            target: shop.min_amount || 100,
-                                            percentage: 0,
-                                        },
-                                    };
-                                }
+                                // For residence mode, find pools for user's dormitory location                                
+                                   poolQuery = poolQuery.eq("dormitory_id", userWithDormitory.dormitory_id);
                             } else if (locationType === 'meetup' && selectedMeetupLocationId) {
                                 // For meetup mode, filter by selected location
                                 poolQuery = poolQuery.eq("location_id", selectedMeetupLocationId);
-                            }
-                            // For meetup mode without selection or other cases, show all pools
+                            } 
 
                             const { data: poolsData, error: poolsError } = await poolQuery;
-
                             if (poolsError) {
                                 console.error(`Error fetching pools for shop ${shop.id}:`, poolsError.message);
                                 // Return shop with zero progress if pool fetch fails

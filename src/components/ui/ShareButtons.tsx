@@ -28,7 +28,7 @@ const ShareButton = ({ content }: ShareButtonProps) => {
         // Verify the data can be shared before attempting
         if (navigator.canShare(shareData)) {
           await navigator.share(shareData);
-          console.log("Shared successfully!");
+          // console.log("Shared successfully!");
           return;
         }
       } catch (err: unknown) {

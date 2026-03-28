@@ -103,8 +103,8 @@ export default function ChatroomPage() {
     const { user, loading: authLoading } = useAuth();
     const chatroomId = params.chatroomId as string;
 
-    console.log("ChatroomPage: Component Rendered");
-    console.log("ChatroomPage: chatroomId from params:", chatroomId);
+    // console.log("ChatroomPage: Component Rendered");
+    // console.log("ChatroomPage: chatroomId from params:", chatroomId);
 
     const [chatroom, setChatroom] = useState<Chatroom | null>(null);
     const [members, setMembers] = useState<ChatMember[]>([]);
@@ -127,7 +127,7 @@ export default function ChatroomPage() {
     const notify = useNotify();
 
     const refreshChatroom = useCallback(async () => {
-        console.log("Realtime: Refreshing full chatroom data...");
+        // console.log("Realtime: Refreshing full chatroom data...");
         const { data, error } = await supabase
             .from("chatroom")
             .select( // REQUIRED: Fetch total_extension_days_delivered_state for delivered state extension
@@ -156,7 +156,7 @@ export default function ChatroomPage() {
         } else {
             setChatroom(data);
             setIsAdmin(data.admin_id === user?.id);
-            console.log("Realtime: Chatroom data refreshed. New state:", data.state, "Admin ID:", data.admin_id);
+            // console.log("Realtime: Chatroom data refreshed. New state:", data.state, "Admin ID:", data.admin_id);
             const { data: membershipsData, error: membershipsError } = await supabase
                 .from("chat_membership")
                 .select("user_id")
@@ -196,7 +196,7 @@ export default function ChatroomPage() {
                             basketsData?.find((basket) => basket.user_id === user.id) || null,
                     })) || [];
                 setMembers(processedMembers);
-                console.log("Realtime: Members data refreshed with updated basket statuses.");
+                // console.log("Realtime: Members data refreshed with updated basket statuses.");
             } else {
                 setMembers([]);
             }
@@ -226,10 +226,10 @@ export default function ChatroomPage() {
     useEffect(() => {
         const getCurrentUser = async () => {
             if (authLoading || !user) {
-                console.log("getCurrentUser: Waiting for auth or no user found");
+                // console.log("getCurrentUser: Waiting for auth or no user found");
                 return;
             }
-            console.log("getCurrentUser: Auth user found:", user.id);
+            // console.log("getCurrentUser: Auth user found:", user.id);
             const { data: profile, error: profileError } = await supabase
                 .from("user")
                 .select("*")
@@ -241,7 +241,7 @@ export default function ChatroomPage() {
                 setLoading(false);
                 return;
             }
-            console.log("getCurrentUser: User profile set:", profile?.id);
+            // console.log("getCurrentUser: User profile set:", profile?.id);
             setCurrentUser(profile);
         };
         getCurrentUser();
@@ -249,13 +249,13 @@ export default function ChatroomPage() {
 
     useEffect(() => {
         if (!currentUser || authLoading || !chatroomId) {
-            console.log("loadChatroomData: Waiting for currentUser or chatroomId...");
+            // console.log("loadChatroomData: Waiting for currentUser or chatroomId...");
             return;
         }
 
         const loadChatroomData = async () => {
-            console.log("loadChatroomData: Starting data fetch for chatroom:", chatroomId);
-            console.log("loadChatroomData: Current User ID:", currentUser?.id);
+            // console.log("loadChatroomData: Starting data fetch for chatroom:", chatroomId);
+            // console.log("loadChatroomData: Current User ID:", currentUser?.id);
             setLoading(true);
 
             try {
@@ -291,9 +291,9 @@ export default function ChatroomPage() {
                     setLoading(false);
                     return;
                 }
-                console.log("loadChatroomData: Chatroom data fetched:", chatroomData);
-                console.log("loadChatroomData: Chatroom state is now:", chatroomData.state);
-                console.log("loadChatroomData: Chatroom admin ID is:", chatroomData.admin_id);
+                // console.log("loadChatroomData: Chatroom data fetched:", chatroomData);
+                // console.log("loadChatroomData: Chatroom state is now:", chatroomData.state);
+                // console.log("loadChatroomData: Chatroom admin ID is:", chatroomData.admin_id);
                 setChatroom(chatroomData);
                 setIsAdmin(chatroomData.admin_id === currentUser.id);
 
@@ -327,7 +327,7 @@ export default function ChatroomPage() {
                                 basketsData?.find((basket) => basket.user_id === user.id) || null,
                         })) || [];
                     setMembers(processedMembers);
-                    console.log("loadChatroomData: Members data fetched with all basket statuses.");
+                    // console.log("loadChatroomData: Members data fetched with all basket statuses.");
                 } else {
                     setMembers([]);
                 }
@@ -360,7 +360,7 @@ export default function ChatroomPage() {
                     } else {
                         setMessages(messagesData.map(message => ({ ...message, user: { id: message.user_id, email: "Unknown", dormitory_id: null, profile: {}, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), first_name: null, last_name: null, favorite_store: null, image: null, } })));
                     }
-                    console.log("loadChatroomData: Messages data fetched.");
+                    // console.log("loadChatroomData: Messages data fetched.");
                 } else {
                     setMessages([]);
                 }
@@ -380,10 +380,10 @@ export default function ChatroomPage() {
 
     useEffect(() => {
         if (!chatroomId || authLoading || !currentUser) {
-            console.log("Realtime: chatroomId not available for subscriptions or auth loading.");
+            // console.log("Realtime: chatroomId not available for subscriptions or auth loading.");
             return;
         }
-        console.log("Realtime: Setting up Supabase real-time subscriptions for chatroom:", chatroomId);
+        // console.log("Realtime: Setting up Supabase real-time subscriptions for chatroom:", chatroomId);
 
         const messagesSubscription = supabase
             .channel(`messages:${chatroomId}`)
@@ -396,7 +396,7 @@ export default function ChatroomPage() {
                     filter: `chatroom_id=eq.${chatroomId}`,
                 },
                 async (payload) => {
-                    console.log("Realtime: New message received:", payload.new);
+                    // console.log("Realtime: New message received:", payload.new);
                     const { data: userData, error: userDataError } = await supabase
                         .from("user")
                         .select("*")
@@ -420,12 +420,12 @@ export default function ChatroomPage() {
                         setMessages((prev) => {
                             const isDuplicate = prev.some(msg => msg.id === newMessage.id);
                             if (isDuplicate) {
-                                console.log("Realtime: Skipping duplicate message:", newMessage.id);
+                                // console.log("Realtime: Skipping duplicate message:", newMessage.id);
                                 return prev;
                             }
                             return [...prev, newMessage];
                         });
-                        console.log("Realtime: Messages updated with new message.");
+                        // console.log("Realtime: Messages updated with new message.");
                     }
                 }
             )
@@ -443,7 +443,7 @@ export default function ChatroomPage() {
                     filter: `id=eq.${chatroomId}`,
                 },
                 async (payload) => {
-                    console.log("Realtime: Chatroom update received:", payload);
+                    // console.log("Realtime: Chatroom update received:", payload);
                     refreshChatroom();
                 }
             )
@@ -456,7 +456,7 @@ export default function ChatroomPage() {
                     filter: `chatroom_id=eq.${chatroomId}`,
                 },
                 async (payload) => {
-                    console.log("Realtime: Basket update received:", payload);
+                    // console.log("Realtime: Basket update received:", payload);
                     refreshChatroom();
                 }
             )
@@ -473,7 +473,7 @@ export default function ChatroomPage() {
                     filter: `chatroom_id=eq.${chatroomId}`,
                 },
                 async (payload) => {
-                    console.log("Realtime: New member joined:", payload.new);
+                    // console.log("Realtime: New member joined:", payload.new);
                     if (payload.new.user_id === currentUser?.id) return;
 
                     const { data: userData } = await supabase
@@ -495,7 +495,7 @@ export default function ChatroomPage() {
             .subscribe();
 
         return () => {
-            console.log("Realtime: Unsubscribing from real-time channels.");
+            // console.log("Realtime: Unsubscribing from real-time channels.");
             messagesSubscription.unsubscribe();
             mainChatroomSubscription.unsubscribe(); // Changed this to the new subscription variable
             membershipSubscription.unsubscribe();
@@ -521,7 +521,7 @@ export default function ChatroomPage() {
         }
 
         setLoading(true);
-        console.log(`handleExtendTime: Attempting to extend by ${days} days for chatroom: ${chatroomId}`);
+        // console.log(`handleExtendTime: Attempting to extend by ${days} days for chatroom: ${chatroomId}`);
         try {
             const { data, error: rpcError } = await supabase.rpc('extend_chatroom_expire_at', { p_chatroom_id: chatroomId, p_days_to_extend: days });
 
@@ -531,7 +531,7 @@ export default function ChatroomPage() {
                 return;
             }
 
-            console.log("handleExtendTime: Chatroom extension RPC result:", data);
+            // console.log("handleExtendTime: Chatroom extension RPC result:", data);
             notify({ type: "success", title: "Success!", message: data });
             await refreshChatroom();
         } catch (err: any) {
@@ -576,7 +576,7 @@ export default function ChatroomPage() {
         );
     }
 
-    console.log("Render: Displaying Chatroom content. Current chatroom state:", chatroom.state);
+    // console.log("Render: Displaying Chatroom content. Current chatroom state:", chatroom.state);
     const isOrderedState = chatroom.state === "ordered";
     const timeLeftDisplay = calculateTimeLeft(chatroom.expire_at);
 

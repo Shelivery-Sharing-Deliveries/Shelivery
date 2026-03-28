@@ -73,7 +73,7 @@ export async function uploadToR2(
     // This bypasses R2 public access requirements
     const publicUrl = `/api/images/${key}`
 
-    console.log('Generated R2 proxy URL:', publicUrl)
+    // console.log('Generated R2 proxy URL:', publicUrl)
     return { url: publicUrl, error: null }
   } catch (error) {
     console.error('R2 upload error:', error)
@@ -132,7 +132,7 @@ async function cleanupOldFiles(prefix: string, keepLatest = 1): Promise<void> {
     for (const file of filesToDelete) {
       if (file.Key) {
         await deleteFromR2(file.Key)
-        console.log(`Cleaned up old file: ${file.Key}`)
+        // console.log(`Cleaned up old file: ${file.Key}`)
       }
     }
   } catch (error) {

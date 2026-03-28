@@ -22,7 +22,7 @@ export default function InviteFriendPage() {
 
     if (!user) {
       //router.push("/auth"); // ✅ redirect to your actual auth flow
-      console.log("No user found, redirecting to auth flow."); // Replaced alert
+      // console.log("No user found, redirecting to auth flow."); // Replaced alert
       return;
     }
 
@@ -38,7 +38,7 @@ export default function InviteFriendPage() {
   const handleCopyCode = () => { // Keep this for now, even though the direct 'copy' button is gone, in case onCopyCode is used elsewhere.
     if (!inviteCode) return;
     navigator.clipboard.writeText(inviteCode);
-    console.log("Invite code copied!"); // Replaced alert
+    // console.log("Invite code copied!"); // Replaced alert
     // In a real app, you might show a toast notification here
   };
 
@@ -47,7 +47,7 @@ export default function InviteFriendPage() {
     // MODIFIED: Generate link to the main page with invite code
     const fullUrl = `${window.location.origin}/?invite=${inviteCode}`;
     navigator.clipboard.writeText(fullUrl);
-    console.log("Invite link copied! Send it to your friend."); // Replaced alert
+    // console.log("Invite link copied! Send it to your friend."); // Replaced alert
     // In a real app, you might show a toast notification here
   };
 

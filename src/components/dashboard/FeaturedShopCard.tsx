@@ -37,7 +37,6 @@ export default function FeaturedShopCard({ className }: FeaturedShopCardProps) {
 
                 // Filter based on user auth status
                 let allPools: any[] = [];
-
                 if (user) {
                     // For authenticated users: get user dormitory info
                     const { data: userData } = await supabase
@@ -89,12 +88,12 @@ export default function FeaturedShopCard({ className }: FeaturedShopCardProps) {
                                 current_amount,
                                 min_amount,
                                 dormitory_id,
-                                shop:shop (
+                                shop!inner (
                                     name,
                                     logo_url,
                                     is_active
                                 ),
-                                location:location (
+                                location!inner (
                                     name,
                                     type
                                 ),
@@ -126,12 +125,12 @@ export default function FeaturedShopCard({ className }: FeaturedShopCardProps) {
                             current_amount,
                             min_amount,
                             dormitory_id,
-                            shop:shop (
+                            shop!inner (
                                 name,
                                 logo_url,
                                 is_active
                             ),
-                            location:location (
+                            location!inner (
                                 name,
                                 type
                             )
@@ -147,7 +146,6 @@ export default function FeaturedShopCard({ className }: FeaturedShopCardProps) {
 
                 // Use the data we collected
                 const data = allPools;
-
                 if (!data || data.length === 0) {
                     setFeaturedPool(null);
                     return;

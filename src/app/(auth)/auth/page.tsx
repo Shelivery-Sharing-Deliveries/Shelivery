@@ -55,7 +55,7 @@ function AuthPageContent() {
             // Only proceed if user is logged in and authLoading is complete
             if (!authLoading && user) {
                 setIsProfileCheckLoading(true); // Start loading for profile check
-                console.log("AuthPage: User logged in. Checking profile completeness...");
+                // console.log("AuthPage: User logged in. Checking profile completeness...");
 
                 // Check for redirect parameter first
                 const redirectTo = searchParams.get("redirect");
@@ -82,17 +82,17 @@ function AuthPageContent() {
                     userData?.favorite_store; // Checks for non-null/non-empty string
 
                 if (isProfileComplete) {
-                    console.log("AuthPage: Profile is complete.");
+                    // console.log("AuthPage: Profile is complete.");
                     // If there's a redirect parameter, use it; otherwise go to dashboard
                     if (redirectTo) {
-                        console.log("AuthPage: Redirecting to:", redirectTo);
+                        // console.log("AuthPage: Redirecting to:", redirectTo);
                         router.replace(redirectTo as any);
                     } else {
-                        console.log("AuthPage: Redirecting to dashboard.");
+                        // console.log("AuthPage: Redirecting to dashboard.");
                         router.replace("/dashboard");
                     }
                 } else {
-                    console.log("AuthPage: Profile is NOT complete. Redirecting to profile setup.");
+                    // console.log("AuthPage: Profile is NOT complete. Redirecting to profile setup.");
                     // Store redirect parameter for after profile setup
                     if (redirectTo) {
                         localStorage.setItem('postProfileRedirect', redirectTo);
@@ -113,7 +113,7 @@ function AuthPageContent() {
     useEffect(() => {
         const confirmedParam = searchParams.get("confirmed");
         if (confirmedParam === "true") {
-            console.log("AuthPage: Detected confirmed=true parameter in URL.");
+            // console.log("AuthPage: Detected confirmed=true parameter in URL.");
             setMessage("Your email has been successfully confirmed! You can now log in.");
             setStep("login"); // Ensure the login form is visible
             // Removed: router.replace('/auth');
@@ -127,14 +127,14 @@ function AuthPageContent() {
         const urlInviteCode = searchParams.get("invite");
 
         if (urlInviteCode) {
-            console.log("AuthPage: Detected invite code in URL:", urlInviteCode);
+            // console.log("AuthPage: Detected invite code in URL:", urlInviteCode);
             setInviteCode(urlInviteCode); // Set the invite code state
 
             // If an invite code is present, still start at login to get the user's email.
             // The handleEmailSubmit will then use the pre-filled inviteCode to skip the manual invite step.
             setStep("login");
             setMessage("Invitation code detected. Please enter your email to proceed with registration.");
-            console.log("AuthPage: Invite code found. User needs to enter email first.");
+            // console.log("AuthPage: Invite code found. User needs to enter email first.");
 
             // Clear the invite parameter from the URL to prevent re-processing on refresh
             // and keep the URL clean.
@@ -166,7 +166,7 @@ function AuthPageContent() {
 
         try {
             const userExists = await checkUserExists(submittedEmail);
-            console.log("User exists:", userExists);
+            // console.log("User exists:", userExists);
 
             if (userExists) {
                 setStep("password");
@@ -273,7 +273,7 @@ function AuthPageContent() {
     };
 
     const sendOTP = async (email: string) => {
-        console.log("Sending OTP to email:", email);
+        // console.log("Sending OTP to email:", email);
         const { error } = await supabase.auth.signInWithOtp({
             email: email,
             options: {
@@ -285,7 +285,7 @@ function AuthPageContent() {
             console.error("Error sending OTP:", error);
             throw new Error(error.message);
         }
-        console.log("OTP sent successfully");
+        // console.log("OTP sent successfully");
     };
 
     const handleOTPSubmit = async (code: string) => {
@@ -342,19 +342,19 @@ function AuthPageContent() {
 
     // NEW: Forgot Password Handlers
     const handleForgotPasswordClick = () => {
-        console.log("Forgot password button clicked! Current email:", email); // DEBUG LOG
+        // console.log("Forgot password button clicked! Current email:", email); // DEBUG LOG
         setForgotPasswordEmail(email); // Pre-fill email if available from login form
         setStep("forgotPassword");
         setError(null); // Clear any previous errors
         setMessage(null); // Clear any previous messages
-        console.log("Step set to:", "forgotPassword"); // DEBUG LOG
+        // console.log("Step set to:", "forgotPassword"); // DEBUG LOG
     };
 
     const handleForgotPasswordRequest = async (submittedEmail: string) => {
         setLoading(true);
         setError(null);
         setMessage(null); // Clear messages on new submit
-        console.log("Sending password reset link for:", submittedEmail); // DEBUG LOG
+        // console.log("Sending password reset link for:", submittedEmail); // DEBUG LOG
 
         try {
             const { error: resetError } = await supabase.auth.resetPasswordForEmail(submittedEmail, {
@@ -366,7 +366,7 @@ function AuthPageContent() {
                 console.error("Password reset error:", resetError); // DEBUG LOG
             } else {
                 setMessage("Password reset link sent! Check your email inbox (and spam folder).");
-                console.log("Password reset link sent successfully."); // DEBUG LOG
+                // console.log("Password reset link sent successfully."); // DEBUG LOG
             }
         } catch (err: any) {
             setError(err.message || "An unexpected error occurred during password reset.");
@@ -377,7 +377,7 @@ function AuthPageContent() {
     };
 
     const handleBackToLoginFromForgot = () => {
-        console.log("Back to login from forgot password."); // DEBUG LOG
+        // console.log("Back to login from forgot password."); // DEBUG LOG
         setStep("login");
         setError(null);
         setMessage(null); // Clear messages
@@ -399,7 +399,7 @@ function AuthPageContent() {
     }
 
     // DEBUG LOG: Log the current step before rendering forms
-    console.log("AuthPageContent current rendering step:", step);
+    // console.log("AuthPageContent current rendering step:", step);
 
     // If user is null (not authenticated) and not loading, render the appropriate auth form.
     return (

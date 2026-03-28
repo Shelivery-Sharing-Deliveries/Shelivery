@@ -17,7 +17,7 @@ export async function generateInvite(userId: string): Promise<string | null> {
         // The 'expires_in_days' parameter can be passed to the SQL function.
         const expiresInDays = 7; // Default validity for 7 days, consistent with previous client-side logic
 
-        console.log(`Calling PostgreSQL function 'create_invitation' for userId: ${userId}`);
+        // console.log(`Calling PostgreSQL function 'create_invitation' for userId: ${userId}`);
 
         // Supabase RPC call to your PostgreSQL function
         const { data: inviteCode, error: rpcError } = await supabase.rpc('create_invitation', {
@@ -37,7 +37,7 @@ export async function generateInvite(userId: string): Promise<string | null> {
             return null;
         }
 
-        console.log("Successfully retrieved invite code from RPC:", inviteCode);
+        // console.log("Successfully retrieved invite code from RPC:", inviteCode);
         return inviteCode;
     } catch (err) {
         console.error("Unexpected error in generateInvite (RPC call):", err);
@@ -88,7 +88,7 @@ export async function markInviteAsUsed(code: string, userId: string) {
         if (error) {
             console.error("Failed to mark invite as used:", error.message);
         } else {
-            console.log(`Invite code ${code} marked as used by ${userId}`);
+            // console.log(`Invite code ${code} marked as used by ${userId}`);
         }
     } catch (err) {
         console.error("Unexpected error in markInviteAsUsed:", err);
@@ -115,7 +115,7 @@ export async function incrementInviteCounter(code: string): Promise<boolean> {
         }
 
         if (!existingInvites || existingInvites.length === 0) {
-            console.log(`Invite code ${code} not found in database, skipping counter increment`);
+            // console.log(`Invite code ${code} not found in database, skipping counter increment`);
             return false;
         }
 
@@ -123,7 +123,7 @@ export async function incrementInviteCounter(code: string): Promise<boolean> {
         const existingInvite = existingInvites[0];
         
         if (!existingInvite) {
-            console.log(`Invite code ${code} not found in database, skipping counter increment`);
+            // console.log(`Invite code ${code} not found in database, skipping counter increment`);
             return false;
         }
 
@@ -141,7 +141,7 @@ export async function incrementInviteCounter(code: string): Promise<boolean> {
             return false;
         }
 
-        //console.log(`Successfully incremented counter for invite code ${code} to ${newCounterValue}`);
+        //// console.log(`Successfully incremented counter for invite code ${code} to ${newCounterValue}`);
         return true;
     } catch (err) {
         console.error("Unexpected error in incrementInviteCounter:", err);

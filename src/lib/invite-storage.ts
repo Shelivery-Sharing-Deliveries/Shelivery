@@ -18,7 +18,7 @@ export function storeInviteCode(code: string): boolean {
     localStorage.setItem(INVITE_CODE_KEY, code);
     localStorage.setItem(INVITE_CODE_TIMESTAMP_KEY, timestamp.toString());
     
-    console.log(`Stored invite code: ${code}`);
+    // console.log(`Stored invite code: ${code}`);
     return true;
   } catch (error) {
     console.error('Failed to store invite code:', error);
@@ -44,12 +44,12 @@ export function getStoredInviteCode(): string | null {
     const expiryTime = timestamp + (INVITE_CODE_EXPIRY_HOURS * 60 * 60 * 1000);
     
     if (now > expiryTime) {
-      console.log('Invite code expired, clearing storage');
+      // console.log('Invite code expired, clearing storage');
       clearStoredInviteCode();
       return null;
     }
     
-    console.log(`Retrieved stored invite code: ${code}`);
+    // console.log(`Retrieved stored invite code: ${code}`);
     return code;
   } catch (error) {
     console.error('Failed to retrieve invite code:', error);
@@ -67,7 +67,7 @@ export function clearStoredInviteCode(): void {
     localStorage.removeItem(INVITE_CODE_KEY);
     localStorage.removeItem(INVITE_CODE_TIMESTAMP_KEY);
     
-    console.log('Cleared stored invite code');
+    // console.log('Cleared stored invite code');
   } catch (error) {
     console.error('Failed to clear invite code:', error);
   }

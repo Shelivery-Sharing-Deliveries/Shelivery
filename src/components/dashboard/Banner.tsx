@@ -86,7 +86,7 @@ export default function Banner({ className = "", id }: BannerProps) {
             localStorage.removeItem('hasSeenPoolPageTutorial');
             localStorage.removeItem('hasSeenShopBasketTutorial');
             localStorage.removeItem('hasSeenChatroomPageTutorial');
-            console.log('All tutorial data cleared from localStorage.');
+            // console.log('All tutorial data cleared from localStorage.');
         }
     };
 

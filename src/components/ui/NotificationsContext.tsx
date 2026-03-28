@@ -116,7 +116,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       try {
         // Check if push notifications are supported
         if (!pushNotificationManager.isSupported()) {
-          console.log('Push notifications not supported on this device');
+          // console.log('Push notifications not supported on this device');
           return;
         }
 
@@ -165,7 +165,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             duration: 5000,
           });
           }, 0);
-          console.log("New notification received:", notif);
+          // console.log("New notification received:", notif);
         }
       )
       .subscribe();

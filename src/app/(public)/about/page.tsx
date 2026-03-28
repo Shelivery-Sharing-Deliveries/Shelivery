@@ -18,7 +18,7 @@ function AboutPageContent() {
 
     if (invite) {
       setInviteCodeFromUrl(invite);
-      console.log("AboutPage: Using invite code:", invite);
+      // console.log("AboutPage: Using invite code:", invite);
     }
   }, [searchParams]); // Depend on searchParams to re-run if URL changes
 

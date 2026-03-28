@@ -25,20 +25,20 @@ export function PushNotificationSettings() {
   const handleSubscribe = async () => {
     const success = await subscribe();
     if (success) {
-      console.log('Successfully subscribed to push notifications');
+      // console.log('Successfully subscribed to push notifications');
     }
   };
 
   const handleUnsubscribe = async () => {
     const success = await unsubscribe();
     if (success) {
-      console.log('Successfully unsubscribed from push notifications');
+      // console.log('Successfully unsubscribed from push notifications');
     }
   };
 
   const handleRequestPermission = async () => {
     const newPermission = await requestPermission();
-    console.log('Permission status:', newPermission);
+    // console.log('Permission status:', newPermission);
   };
 
   const handleTestNotification = async () => {
@@ -46,7 +46,7 @@ export function PushNotificationSettings() {
     try {
       const success = await testNotification();
       if (success) {
-        console.log('Test notification sent');
+        // console.log('Test notification sent');
       }
     } finally {
       setIsTesting(false);

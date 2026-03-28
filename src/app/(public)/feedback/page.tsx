@@ -92,7 +92,7 @@ function FeedbackForm() {
         return;
       }
 
-      console.log("Feedback saved to Supabase:", data);
+      // console.log("Feedback saved to Supabase:", data);
 
       setSubmitMessage(
         "Thank you for your message! We have received your ticket and will get back to you shortly."
