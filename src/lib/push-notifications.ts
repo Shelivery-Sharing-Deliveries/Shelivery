@@ -151,10 +151,10 @@ export class PushNotificationManager {
       };
 
       // console.log('Subscription data created:', {
-        endpoint: subscriptionData.endpoint.substring(0, 50) + '...',
-        p256dhLength: subscriptionData.keys.p256dh.length,
-        authLength: subscriptionData.keys.auth.length
-      });
+      //  endpoint: subscriptionData.endpoint.substring(0, 50) + '...',
+      //  p256dhLength: subscriptionData.keys.p256dh.length,
+      //  authLength: subscriptionData.keys.auth.length
+      // });
 
       // Save subscription to database
       // console.log('Saving subscription to database...');
