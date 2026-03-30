@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { PageLayout } from '@/components/ui/PageLayout';
 import { notFound } from 'next/navigation';
@@ -32,6 +32,7 @@ interface ShopBlog {
 
 export default function ShopBlogPage() {
   const params = useParams();
+  const router = useRouter();
   const shopId = params.shopId as string;
   const [data, setData] = useState<ShopBlog | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,28 +79,50 @@ export default function ShopBlogPage() {
   const blog = data.blog;
 
   const headerContent = (
-    <div className="text-center pb-6">
-      <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-[12px] flex items-center justify-center">
-        {data.shop.logo_url ? (
-          <Image
-            src={data.shop.logo_url}
-            alt={data.shop.name}
-            width={80}
-            height={80}
-            className="w-full h-full object-cover rounded-[12px]"
+    <div>
+      <button
+        onClick={() => router.back()}
+        className="flex items-center gap-2 text-shelivery-text-secondary hover:text-shelivery-text-primary mb-4"
+      >
+        <svg
+          className="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 19l-7-7 7-7"
           />
-        ) : (
-          <div className="w-12 h-12 bg-gray-300 rounded-lg flex items-center justify-center">
-            <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-4L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
-          </div>
-        )}
+        </svg>
+        Back
+      </button>
+
+      <div className="text-center pb-6">
+        <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-[12px] flex items-center justify-center">
+          {data.shop.logo_url ? (
+            <Image
+              src={data.shop.logo_url}
+              alt={data.shop.name}
+              width={80}
+              height={80}
+              className="w-full h-full object-cover rounded-[12px]"
+            />
+          ) : (
+            <div className="w-12 h-12 bg-gray-300 rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-4L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+          )}
+        </div>
+        <h1 className="text-2xl font-bold text-shelivery-text-primary mb-2">
+          {data.shop.name}
+        </h1>
+        <p className="text-lg text-shelivery-text-secondary">Blog</p>
       </div>
-      <h1 className="text-2xl font-bold text-shelivery-text-primary mb-2">
-        {data.shop.name}
-      </h1>
-      <p className="text-lg text-shelivery-text-secondary">Blog</p>
     </div>
   );
 
