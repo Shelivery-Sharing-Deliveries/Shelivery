@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/Button";
 import { Shop, LocationData } from "./types";
+import { useEffect, useState, useRef } from "react";
 
 interface Props {
   selectedShop: Shop;
@@ -17,13 +18,74 @@ interface Props {
   onBack: () => void;
 }
 
+
+
+
 export function OrderDetailsStep({
   selectedShop, userLocation, basketLink, basketNote, basketAmount,
   canSubmit, submitting, error, onLinkChange, onNoteChange, onAmountChange, onSubmit, onBack,
 }: Props) {
+      // Info tooltip state & helpers
+    const [infoOpen, setInfoOpen] = useState(false);
+    const hideTooltipTimerRef = useRef<number | null>(null);
+
+    const showInfo = () => {
+        if (hideTooltipTimerRef.current) {
+            clearTimeout(hideTooltipTimerRef.current);
+            hideTooltipTimerRef.current = null;
+        }
+        setInfoOpen(true);
+    };
+
+    const hideInfo = () => {
+        if (hideTooltipTimerRef.current) clearTimeout(hideTooltipTimerRef.current);
+        hideTooltipTimerRef.current = window.setTimeout(() => {
+            setInfoOpen(false);
+            hideTooltipTimerRef.current = null;
+        }, 300);
+    };
   return (
     <div className="bg-white rounded-shelivery-lg p-4 mb-6 border border-gray-200">
-      <h2 className="text-lg font-semibold text-shelivery-text-primary mb-4">Step 3: Enter Order Details</h2>
+       <h2 className="text-lg font-semibold text-shelivery-text-primary mb-4 flex justify-between items-center relative">
+                    <span>Step 3: Enter Order Details</span>
+
+                    <div
+                        className="relative"
+                        onMouseEnter={showInfo}
+                        onMouseLeave={hideInfo}
+                    >
+                        <button
+                            type="button"
+                            onFocus={showInfo}
+                            onBlur={hideInfo}
+                            className="ml-4 p-1"
+                            aria-label="Basket details help"
+                        >
+                            <svg className="w-4 h-4 text-shelivery-text-tertiary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                                <text x="12" y="16" fontSize="12" textAnchor="middle" fill="currentColor">i</text>
+                            </svg>
+                        </button>
+                      </div>
+
+                      {infoOpen && (
+                        <div
+                            role="dialog"
+                            tabIndex={0}
+                            onMouseEnter={showInfo}
+                            onMouseLeave={hideInfo}
+                            onFocus={showInfo}
+                            onBlur={hideInfo}
+                            className="absolute left-1/2 top-full mt-2 -translate-x-1/2 w-[320px] bg-white p-3 border rounded shadow"
+                        >
+                            <p className="text-sm text-shelivery-text-secondary">
+                                <strong>Provide order details:</strong> You can use a basket link, write a note, or use both to describe your order.</p>  
+                                <p className="text-sm text-shelivery-text-secondary mt-2">
+                                For more information about how to provide your order efficiently, you can visit the {selectedShop.name} blog <a href={`/shops/${selectedShop.id}/blog`} className="text-shelivery-primary underline">here</a>.
+                            </p>
+                        </div>
+                    )}
+            </h2>
 
       {/* Summary */}
       <div className="bg-gray-50 rounded-shelivery-sm p-3 mb-4 space-y-2">
