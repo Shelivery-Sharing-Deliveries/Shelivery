@@ -153,10 +153,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    fontWeight: fontWeights.semibold,
   },
   textBase: {
-    fontWeight: fontWeights.semibold,
+    fontWeight: fontWeights.semibold as TextStyle["fontWeight"],
     textAlign: "center",
   },
   disabled: {

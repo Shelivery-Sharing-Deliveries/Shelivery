@@ -26,6 +26,13 @@ export const colors = {
   'shelivery-badge-green-bg': '#ECFDF3',
   'shelivery-badge-green-border': '#D1FADF',
   'shelivery-badge-green-text': '#027A48',
+  'shelivery-badge-waiting': '#FFDB0D', // Example color, adjust as needed
+  'shelivery-badge-ordering': '#245B7B', // Example color, adjust as needed
+  'shelivery-badge-delivered': '#34C759', // Example color, adjust as needed
+  'shelivery-shadow-color': '#000', // Example color, adjust as needed
+  'shelivery-border-gray': '#E5E8EB', // Example color, adjust as needed
+  'shelivery-error-red-bg': '#FEF3F2', // Example color, adjust as needed
+  'shelivery-button-secondary-text': '#175CD3', // Example color, adjust as needed
 
   // Shadcn/ui colors (from globals.css)
   background: 'hsl(var(--background))',
