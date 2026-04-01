@@ -42,7 +42,7 @@ export default function ShopBlogPage() {
     async function fetchBlog() {
       try {
         const response = await fetch(`/api/shops/${shopId}/blog`, {
-          cache: 'no-store',
+          next: { revalidate: 60 }, // cache for 60s
         });
 
         if (!response.ok) {
