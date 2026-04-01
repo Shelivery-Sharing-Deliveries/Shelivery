@@ -148,7 +148,7 @@ export default function ShopBlogPage() {
                         alt=""
                         width={600}
                         height={300}
-                        className="w-full h-auto max-h-[400px] object-cover rounded-shelivery-lg shadow-lg"
+                        className="w-full h-auto max-h-[400px] object-contain rounded-shelivery-lg shadow-lg"
                       />
                     </div>
                   )}
