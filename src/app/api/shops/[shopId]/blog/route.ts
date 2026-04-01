@@ -38,6 +38,8 @@ export async function GET(
       .limit(1)
       .single()
 
+    console.log('API HIT:', Date.now());
+
     if (blogError || !blog) {
       const noBlogResponse = NextResponse.json({ shop, blog: null })
       noBlogResponse.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
