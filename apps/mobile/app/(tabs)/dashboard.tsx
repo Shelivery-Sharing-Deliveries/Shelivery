@@ -14,10 +14,9 @@ import SquareBanner from "@/components/dashboard/SquareBanner";
 import FeaturedShopCard from "@/components/dashboard/FeaturedShopCard";
 import { ChevronDownIcon, ChevronUpIcon } from 'react-native-heroicons/solid';
 import { TicketIcon } from 'react-native-heroicons/outline';
+import { useAuth } from "@/hooks/useAuth";
 
-// Mock user for now, as authentication is postponed
-const mockUser = {
-};
+
 
 // Loading component that matches the app's design
 function DashboardLoading() {
@@ -107,9 +106,7 @@ export default function DashboardScreen() {
     // const [showTutorial, setShowTutorial] = useState(false); // Tutorial skipped
 
     const router = useRouter();
-    // const { user, loading: authLoading } = useAuth(); // Authentication postponed
-    const user = null; //mockUser; // Use mock user for now
-    const authLoading = false; // Mock auth loading
+    const { user, loading: authLoading } = useAuth(); // Authentication postponed
 
     useEffect(() => {
         const fetchData = async () => {
@@ -186,11 +183,11 @@ export default function DashboardScreen() {
     }, [user, authLoading]);
 
     const handleAddBasket = () => {
-        router.push("/alpha" as any);
+        router.push("/stores" as any);
     };
 
     const handleInviteFriend = () => {
-        router.push("/alpha" as any); // Temporary: use alpha since invite-friend doesn't exist yet
+        router.push("/invite-friend" as any); 
     };
 
     const handleBasketClick = (basketId: string) => {
@@ -202,8 +199,7 @@ export default function DashboardScreen() {
 
         console.log(`Basket clicked: ${basket.id}, Status: ${basket.status}, Chatroom ID: ${basket.chatroomId}`);
 
-        // Temporary: navigate to alpha for all basket clicks since other routes don't exist yet
-        router.push('/alpha' as any);
+        router.push('/stores' as any);
     };
 
     // Tutorial skipped, no handleTutorialComplete function needed

@@ -91,7 +91,7 @@ export default function FeaturedShopCard({ }: FeaturedShopCardProps) {
                     .from("shop")
                     .select("id")
                     .eq("is_active", true);
-
+                console .log("Fetched shops:", shops);
                 if (shopsError || !shops) {
                     console.error("Error fetching shops:", shopsError);
                     setFeaturedPool(null);

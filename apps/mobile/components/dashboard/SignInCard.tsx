@@ -10,7 +10,7 @@ export default function SignInCard({ id }: SignInCardProps) {
   const router = useRouter();
 
   const handleSignInClick = () => {
-    router.push('/alpha' as any); // Temporary: use alpha since auth doesn't exist yet
+    router.push('/auth' as any); // Temporary: use alpha since auth doesn't exist yet
   };
 
   return (
