@@ -4,13 +4,14 @@ import { Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from "@expo-google-fonts/inter";
 import { SplashScreen } from "expo-router";
 import { useEffect } from "react";
-import { useColorScheme } from 'react-native';
+import { View } from 'react-native';
+import { Navigation } from "../components/ui/Navigation"; // Import the Navigation component
+import { colors } from "@/lib/theme";
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   const [fontsLoaded, fontError] = useFonts({
     Poppins_400Regular,
     Poppins_500Medium,
@@ -32,9 +33,14 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="alpha" options={{ headerShown: false }} />
-    </Stack>
+    <View style={{ flex: 1, backgroundColor: colors['shelivery-primary-blue'] }}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="alpha" options={{ headerShown: false }} />
+        <Stack.Screen name="choose-shop" options={{ headerShown: false }} />
+      </Stack>
+      <Navigation />
+    </View>
   );
 }
