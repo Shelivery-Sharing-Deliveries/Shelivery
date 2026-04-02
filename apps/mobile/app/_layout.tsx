@@ -4,8 +4,6 @@ import { Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from "@expo-google-fonts/inter";
 import { SplashScreen } from "expo-router";
 import { useEffect } from "react";
-import { TamaguiProvider } from 'tamagui';
-import { tamaguiConfig } from '../tamagui.config';
 import { useColorScheme } from 'react-native';
 
 // Prevent the splash screen from auto-hiding
@@ -21,9 +19,6 @@ export default function RootLayout() {
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
-    // Tamagui Inter font
-    Inter: require('@tamagui/font-inter/otf/Inter-Medium.otf'),
-    InterBold: require('@tamagui/font-inter/otf/Inter-Bold.otf'),
   });
 
   useEffect(() => {
@@ -37,11 +32,9 @@ export default function RootLayout() {
   }
 
   return (
-    <TamaguiProvider config={tamaguiConfig} defaultTheme={(colorScheme ?? 'light') as any}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="alpha" options={{ headerShown: false }} />
-      </Stack>
-    </TamaguiProvider>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="alpha" options={{ headerShown: false }} />
+    </Stack>
   );
 }

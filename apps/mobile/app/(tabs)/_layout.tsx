@@ -1,33 +1,17 @@
 import { Tabs } from "expo-router";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePathname } from "expo-router";
 import { useState } from "react";
-import { IconSymbol, getNavIconName } from "@/components/ui";
+import { IconSymbol } from "@/components/ui";
 import { colors } from "@/lib/theme";
+import { navItems, NavItem } from "../../constants/navigation";
+import { tabBarStyles as styles } from "../../styles/tabBarStyles";
 
 function CustomTabBar(props: any) {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<string | null>(null);
-
-  const navItems = [
-    {
-      name: "Dashboard",
-      route: "dashboard",
-      iconName: getNavIconName("dashboard"),
-    },
-    {
-      name: "Stores",
-      route: "stores",
-      iconName: getNavIconName("stores"),
-    },
-    {
-      name: "Chatrooms",
-      route: "chatrooms",
-      iconName: getNavIconName("chatrooms"),
-    },
-  ];
 
   const isActive = (route: string) => {
     return pathname === `/(tabs)/${route}` || pathname.startsWith(`/(tabs)/${route}/`);
@@ -38,7 +22,7 @@ function CustomTabBar(props: any) {
       style={[styles.tabBarContainer, { paddingBottom: insets.bottom }]}
     >
       <View style={styles.navItemsContainer}>
-        {navItems.map((item) => {
+        {navItems.map((item: NavItem) => {
           const active = isActive(item.route);
           const tabActive = activeTab === item.name;
           const iconColor = active || tabActive ? colors['shelivery-primary-yellow'] : 'white';
@@ -98,61 +82,3 @@ export default function TabLayout() {
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  tabBarContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    zIndex: 50,
-    backgroundColor: '#245B7B', // shelivery-primary-blue
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)', // border-white/10
-  },
-  navItemsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingHorizontal: 16, // px-4
-    paddingVertical: 12, // py-3
-  },
-  navItem: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    rowGap: 4, // gap-1
-  },
-  iconWrapper: {
-    position: 'relative',
-    transform: [{ scale: 1 }],
-  },
-  iconWrapperActive: {
-    transform: [{ scale: 1.1 }],
-  },
-  activeIndicatorGlow: {
-    position: 'absolute',
-    inset: 0,
-    borderRadius: 9999, // rounded-full
-    backgroundColor: 'rgba(255, 219, 13, 0.3)', // bg-shelivery-primary-yellow/30
-    // blur-sm is not directly supported, might need a library or custom implementation
-  },
-  navItemText: {
-    fontSize: 11, // text-[11px]
-    fontWeight: '600', // font-semibold
-  },
-  navItemTextActive: {
-    color: '#FFDB0D', // text-shelivery-primary-yellow
-  },
-  navItemTextInactive: {
-    color: 'rgba(255, 255, 255, 0.9)', // text-white/90
-  },
-  activeIndicatorBar: {
-    position: 'absolute',
-    bottom: -4, // -bottom-1
-    width: 16, // w-4
-    height: 2, // h-0.5
-    backgroundColor: '#FFDB0D', // bg-shelivery-primary-yellow
-    borderRadius: 9999, // rounded-full
-  },
-});
-
