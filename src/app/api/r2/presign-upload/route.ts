@@ -13,6 +13,31 @@ const ALLOWED_MIME_PREFIXES = ['audio/', 'image/']
 
 let r2Client: S3Client | null = null
 
+function getCorsOrigin(request: NextRequest): string {
+  const origin = request.headers.get('origin') ?? ''
+  const allowedOrigins = [
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.EXPO_PUBLIC_WEB_URL,
+    'http://localhost:8081',
+    'http://localhost:3000',
+  ].filter(Boolean) as string[]
+
+  if (allowedOrigins.includes(origin)) {
+    return origin
+  }
+
+  return allowedOrigins[0] ?? '*'
+}
+
+function withCors(response: NextResponse, request: NextRequest): NextResponse {
+  const origin = getCorsOrigin(request)
+  response.headers.set('Access-Control-Allow-Origin', origin)
+  response.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  response.headers.set('Vary', 'Origin')
+  return response
+}
+
 function getR2Client(): S3Client {
   if (!r2Client) {
     if (!R2_ENDPOINT || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
@@ -58,15 +83,15 @@ export async function POST(request: NextRequest) {
     const extension = sanitizeExtension(String(body?.extension ?? 'bin'))
 
     if (!chatroomId) {
-      return NextResponse.json({ error: 'chatroomId is required' }, { status: 400 })
+      return withCors(NextResponse.json({ error: 'chatroomId is required' }, { status: 400 }), request)
     }
 
     if (!ALLOWED_MEDIA_TYPES.has(mediaType)) {
-      return NextResponse.json({ error: 'mediaType must be audio or image' }, { status: 400 })
+      return withCors(NextResponse.json({ error: 'mediaType must be audio or image' }, { status: 400 }), request)
     }
 
     if (!contentType || !isValidMimeType(contentType)) {
-      return NextResponse.json({ error: 'Invalid contentType' }, { status: 400 })
+      return withCors(NextResponse.json({ error: 'Invalid contentType' }, { status: 400 }), request)
     }
 
     const uid = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
@@ -83,14 +108,18 @@ export async function POST(request: NextRequest) {
     const uploadUrl = await getSignedUrl(client, command, { expiresIn: 60 })
     const publicUrl = getPublicUrl(key)
 
-    return NextResponse.json({
+    return withCors(NextResponse.json({
       uploadUrl,
       publicUrl,
       key,
       expiresIn: 60,
-    })
+    }), request)
   } catch (error) {
     console.error('Presign upload route error:', error)
-    return NextResponse.json({ error: 'Failed to create upload URL' }, { status: 500 })
+    return withCors(NextResponse.json({ error: 'Failed to create upload URL' }, { status: 500 }), request)
   }
+}
+
+export async function OPTIONS(request: NextRequest) {
+  return withCors(new NextResponse(null, { status: 204 }), request)
 }
