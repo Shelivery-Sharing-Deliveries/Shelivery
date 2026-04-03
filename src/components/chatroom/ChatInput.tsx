@@ -28,6 +28,7 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled, chatroomId }:
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingMimeRef = useRef<string>('audio/webm');
 
   // Cleanup on component unmount
   useEffect(() => {
@@ -85,14 +86,17 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled, chatroomId }:
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
   
+      // Prefer audio/mp4 (AAC) for cross-platform compatibility with iOS.
+      // Safari supports mp4, newer Chrome does too. Fall back to webm/ogg.
       let mimeType = '';
-      if (MediaRecorder.isTypeSupported('audio/webm')) {
-        mimeType = 'audio/webm';
-      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+      if (MediaRecorder.isTypeSupported('audio/mp4')) {
         mimeType = 'audio/mp4';
+      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+        mimeType = 'audio/webm';
       } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
         mimeType = 'audio/ogg';
       }
+      recordingMimeRef.current = mimeType || 'audio/webm';
   
       const mediaRecorder = mimeType
         ? new MediaRecorder(stream, { mimeType })
@@ -106,7 +110,7 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled, chatroomId }:
       };
   
       mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: mimeType || 'audio/webm' });
+        const blob = new Blob(audioChunksRef.current, { type: recordingMimeRef.current });
         const url = URL.createObjectURL(blob);
         setRecordedAudioUrl(url);
       };
@@ -169,7 +173,15 @@ export function ChatInput({ onSendMessage, onUploadFile, disabled, chatroomId }:
     try {
       const response = await fetch(recordedAudioUrl);
       const blob = await response.blob();
-      const file = new File([blob], "voice-message.webm", { type: "audio/webm" });
+      // Use the actual recorded MIME type and matching extension
+      const mime = recordingMimeRef.current;
+      const extMap: Record<string, string> = {
+        'audio/mp4': 'm4a',
+        'audio/webm': 'webm',
+        'audio/ogg': 'ogg',
+      };
+      const ext = extMap[mime] || 'webm';
+      const file = new File([blob], `voice-message.${ext}`, { type: mime });
       const url = await onUploadFile(file, "audio");
       if (url) {
         onSendMessage({ type: "audio", url });
