@@ -1,5 +1,6 @@
-import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { colors } from "@/lib/theme";
+import PlusCircleIcon from "../../public/icons/plus-circle-icon.svg";
 
 interface AddBasketProps {
   onClick?: () => void;
@@ -17,11 +18,7 @@ export default function AddBasket({ onClick, id }: AddBasketProps) {
       <View style={styles.content}>
         {/* Plus Icon */}
         <View style={styles.iconWrapper}>
-          <Image
-            source={require("../../public/icons/plus-circle-icon.svg")}
-            alt="Add"
-            style={styles.icon}
-          />
+          <PlusCircleIcon width={36} height={36} color={colors['shelivery-text-primary']} />
         </View>
 
         {/* Add Basket Text */}
@@ -36,34 +33,29 @@ export default function AddBasket({ onClick, id }: AddBasketProps) {
 const styles = StyleSheet.create({
   container: {
     width: "100%",
-    height: 67, // h-[67px]
-    marginBottom: 18, // mb-[18px]
-    backgroundColor: colors['shelivery-primary-yellow'], // bg-[#FFDB0D]
-    borderRadius: 18, // rounded-[18px]
+    height: 67,
+    marginBottom: 18,
+    backgroundColor: colors['shelivery-primary-yellow'],
+    borderRadius: 18,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16, // px-4
+    paddingHorizontal: 16,
   },
   content: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12, // gap-3 (adjusted for better visual balance in RN)
+    gap: 12,
   },
   iconWrapper: {
-    width: 48, // w-12 (adjusted from 36 for better touch target)
-    height: 48, // h-12 (adjusted from 36 for better touch target)
+    width: 48,
+    height: 48,
     justifyContent: "center",
     alignItems: "center",
   },
-  icon: {
-    width: 36, // Original icon size
-    height: 36, // Original icon size
-    tintColor: colors['shelivery-text-primary'], // text-[#181D27] - apply tintColor for SVG-like behavior
-  },
   text: {
-    fontSize: 16, // text-[16px]
-    fontWeight: "700", // font-bold
-    lineHeight: 24, // leading-[24px]
-    color: colors['shelivery-text-primary'], // text-[#111827]
+    fontSize: 16,
+    fontWeight: "700",
+    lineHeight: 24,
+    color: colors['shelivery-text-primary'],
   },
 });

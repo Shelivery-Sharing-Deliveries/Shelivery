@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import UploadIcon from '../../public/icons/upload-icon.svg';
 
 interface ProfileFormData {
   firstName: string;
@@ -35,10 +36,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
           style={styles.profileImage}
         />
         <View style={styles.uploadOverlay}>
-          <Image
-            source={require('../../public/icons/upload-icon.svg')}
-            style={styles.uploadIcon}
-          />
+          <UploadIcon width={16} height={16} />
           <Text style={styles.uploadText}>
             Upload
           </Text>

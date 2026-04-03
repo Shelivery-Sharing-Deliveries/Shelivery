@@ -1,6 +1,6 @@
 import { Link, usePathname } from "expo-router";
-import { Image } from "expo-image";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import CategoryBoldIcon from "../../public/icons/navbar/category-bold-icon.svg";
 import { LinearGradient } from "expo-linear-gradient";
 import { useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -40,13 +40,7 @@ export function Navigation({}: NavigationProps) {
     const color = isActive ? "#FFDB0D" : "white";
 
     if (iconType === "category") {
-      // For category icon, use Image component and tint it
-      return (
-        <Image
-          source={require("../../public/icons/navbar/category-bold-icon.svg")} // Adjust path as needed
-          style={[styles.icon, { tintColor: color }]}
-        />
-      );
+      return <CategoryBoldIcon width={24} height={24} color={color} />;
     } else if (iconType === "shop") {
       return (
         <Svg

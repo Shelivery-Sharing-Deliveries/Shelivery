@@ -1,5 +1,6 @@
 import React, { use, useEffect, useState } from 'react';
-import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import BackArrow from '../../public/icons/back-arrow.svg';
 import PageLayout from '../../components/ui/PageLayout';
 import { GeneralTab } from '../../components/profile/GeneralTab';
 import { PreferencesTab } from '../../components/profile/PreferencesTab';
@@ -223,7 +224,7 @@ export default function ProfileEditPage() {
   const header = (
     <View style={styles.headerContainer}>
       <TouchableOpacity onPress={() => { router.back(); }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-        <Image source={require('../../public/icons/back-arrow.svg')} style={styles.backIcon} />
+        <BackArrow width={24} height={24} />
       </TouchableOpacity>
       <Text style={styles.headerTitle}>Edit Profile</Text>
     </View>
@@ -278,7 +279,6 @@ export default function ProfileEditPage() {
 
 const styles = StyleSheet.create({
   headerContainer: { flexDirection: 'row', alignItems: 'center', padding: 12 },
-  backIcon: { width: 24, height: 24, tintColor: '#000' },
   headerTitle: { fontSize: 20, fontWeight: 'bold', marginLeft: 8 },
   scrollContent: { paddingBottom: 20 },
   tabContent: { paddingHorizontal: 16 },
