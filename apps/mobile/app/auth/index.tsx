@@ -12,12 +12,18 @@ import {
   ForgotPasswordForm
 } from '@/components/auth';
 
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+
 
 export default function AuthScreen() {
   const [step, setStep] = useState<'login' | 'password' | 'invite' | 'setPassword' | 'awaitingEmailConfirmation' | 'otp' | 'forgotPassword'>('login');
 
   const [email, setEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+
   const { signIn, signUp, checkUserExists, loading, error } = useAuth();
   const router = useRouter();
 
@@ -46,22 +52,39 @@ export default function AuthScreen() {
   };
 
   const handleResetSubmit = async (resetEmail: string) => {
-    // TODO: Implement password reset logic using supabase.auth.resetPasswordForEmail
-    console.log('Reset password for:', resetEmail);
-    // Show success message or error
-    setStep('login');
+    setResetLoading(true);
+    setResetError(null);
+    setResetMessage(null);
+
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail);
+
+    if (error) {
+      setResetError(error.message);
+      console.error("Password reset error:", error);
+    } else {
+      setResetMessage("Password reset request sent to your email.");
+      console.log("Password reset request sent successfully.");
+    }
+
+    setResetLoading(false);
   };
+
+
+
 
   const handleBackFromForgot = () => {
     setStep('password');
   };
 
 
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       {step === 'login' && <LoginForm onEmailSubmit={handleEmailSubmit} loading={loading} error={error || undefined} />}
       {step === 'password' && <PasswordForm email={email} onPasswordSubmit={handlePasswordSubmit} onBackToEmail={() => setStep('login')} onForgotPasswordClick={handleForgotPassword} loading={loading} error={error || undefined} />}
-  {step === 'forgotPassword' && <ForgotPasswordForm initialEmail={email} onSubmit={handleResetSubmit} onBackToLogin={handleBackFromForgot} loading={loading} />}
+      {step === 'forgotPassword' && <ForgotPasswordForm initialEmail={email} onSubmit={handleResetSubmit} onBackToLogin={handleBackFromForgot} loading={resetLoading} error={resetError || undefined} successMessage={resetMessage || undefined} />}
+
+
 
       {step === 'invite' && <InviteCodeForm onCodeSubmit={handleInviteCodeSubmit} loading={loading} error={error || undefined} />}
       {step === 'setPassword' && <SetPasswordForm email={email} onPasswordSubmit={handleSetPasswordSubmit} loading={loading} error={error || undefined} />}

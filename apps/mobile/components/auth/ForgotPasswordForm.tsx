@@ -10,7 +10,9 @@ interface ForgotPasswordFormProps {
   onBackToLogin: () => void;
   loading?: boolean;
   error?: string | undefined;
+  successMessage?: string | null;
 }
+
 
 export default function ForgotPasswordForm({
   initialEmail = "",
@@ -18,7 +20,9 @@ export default function ForgotPasswordForm({
   onBackToLogin,
   loading = false,
   error,
+  successMessage,
 }: ForgotPasswordFormProps) {
+
   const [email, setEmail] = useState(initialEmail);
 
   const handleSubmit = () => {
@@ -36,20 +40,22 @@ export default function ForgotPasswordForm({
         </View>
 
         <View style={styles.form}>
-          <TextField
-            label="Email Address"
-            placeholder="Enter your email"
-            value={email}
-            onChange={setEmail}
-            type="email"
-            required
-          />
+      <TextField
+        label="Email Address"
+        placeholder="Enter your email"
+        value={email}
+        onChange={setEmail}
+        type="email"
+        required
+      />
 
-          {error && <Text style={styles.error}>{error}</Text>}
+      {error && <Text style={styles.error}>{error}</Text>}
+      {successMessage && <Text style={styles.success}>{successMessage}</Text>}
 
-          <Button onPress={handleSubmit} loading={loading} size="lg">
-            Send Reset Link
-          </Button>
+      <Button onPress={handleSubmit} loading={loading} size="lg">
+        Send Reset Link
+      </Button>
+
 
           <Button variant="secondary" onPress={onBackToLogin} size="lg">
             Back to login
@@ -87,4 +93,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
   },
+  success: {
+    color: "#10B981",
+    fontSize: 14,
+    fontWeight: "500",
+  },
 });
+
