@@ -31,6 +31,11 @@ export function Navigation({}: NavigationProps) {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<string | null>(null);
 
+  // Hide navigation bar on chatroom detail pages
+  if (pathname.startsWith('/chatrooms/')) {
+    return null;
+  }
+
   const renderIcon = (iconType: string, isActive: boolean) => {
     const color = isActive ? "#FFDB0D" : "white";
 

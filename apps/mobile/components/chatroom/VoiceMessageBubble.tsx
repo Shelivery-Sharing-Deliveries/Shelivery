@@ -1,94 +1,151 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio, AVPlaybackStatus } from 'expo-av'; // Import AVPlaybackStatus
+import { Audio, AVPlaybackStatus } from 'expo-av';
 import Slider from '@react-native-community/slider';
 
 interface VoiceWaveformBubbleProps {
   src: string;
-  className?: string; // Not directly used in RN, but kept for compatibility
 }
 
 export default function VoiceWaveformBubble({ src }: VoiceWaveformBubbleProps) {
   const soundRef = useRef<Audio.Sound | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+
     const loadSound = async () => {
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync();
+      try {
+        // Unload any previous sound
+        if (soundRef.current) {
+          await soundRef.current.unloadAsync();
+          soundRef.current = null;
+        }
+
+        // Set audio mode so it plays through speaker
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+        });
+
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: src },
+          { shouldPlay: false },
+          (status: AVPlaybackStatus) => {
+            if (!isMounted) return;
+            if (status.isLoaded) {
+              setIsLoaded(true);
+              setPosition(status.positionMillis);
+              setDuration(status.durationMillis ?? 0);
+              setIsPlaying(status.isPlaying);
+              if (status.didJustFinish) {
+                setIsPlaying(false);
+                setPosition(0);
+                sound.setPositionAsync(0);
+              }
+            }
+          }
+        );
+
+        if (isMounted) {
+          soundRef.current = sound;
+          setIsLoaded(true);
+          setLoadError(false);
+        } else {
+          // Component unmounted while loading — clean up
+          await sound.unloadAsync();
+        }
+      } catch (e) {
+        console.warn('VoiceMessageBubble: failed to load audio', e);
+        if (isMounted) setLoadError(true);
       }
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: src },
-        { shouldPlay: false },
-        onPlaybackStatusUpdate
-      );
-      soundRef.current = sound;
     };
 
     loadSound();
 
     return () => {
+      isMounted = false;
       if (soundRef.current) {
-        soundRef.current.unloadAsync();
+        soundRef.current.unloadAsync().catch(() => {});
         soundRef.current = null;
       }
+      setIsLoaded(false);
     };
   }, [src]);
 
-  const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => { // Use AVPlaybackStatus
-    if (status.isLoaded) {
-      setPosition(status.positionMillis);
-      setDuration(status.durationMillis || 0);
-      setIsPlaying(status.isPlaying);
-      if (status.didJustFinish) {
-        setIsPlaying(false);
-        setPosition(0);
-        soundRef.current?.setPositionAsync(0);
-      }
-    }
-  };
-
   const togglePlayback = async () => {
-    if (!soundRef.current) return;
+    if (!soundRef.current || !isLoaded) return;
 
-    if (isPlaying) {
-      await soundRef.current.pauseAsync();
-    } else {
-      await soundRef.current.playAsync();
+    try {
+      if (isPlaying) {
+        await soundRef.current.pauseAsync();
+      } else {
+        await soundRef.current.playAsync();
+      }
+    } catch (e) {
+      console.warn('VoiceMessageBubble: playback error', e);
     }
   };
 
-  const getFormattedTime = (millis: number) => { // Corrected function name
+  const handleSeek = async (value: number) => {
+    if (!soundRef.current || !isLoaded) return;
+    try {
+      await soundRef.current.setPositionAsync(value);
+    } catch (e) {
+      // ignore seek errors
+    }
+  };
+
+  const formatTime = (millis: number) => {
     const totalSeconds = Math.floor(millis / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
   };
 
+  if (loadError) {
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="alert-circle-outline" size={16} color="#ef4444" />
+        <Text style={styles.errorText}>Audio unavailable</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={togglePlayback} style={styles.playButton}>
-        <Ionicons name={isPlaying ? 'pause' : 'play'} size={16} color="#374151" />
+      <TouchableOpacity
+        onPress={togglePlayback}
+        style={[styles.playButton, !isLoaded && styles.playButtonDisabled]}
+        disabled={!isLoaded}
+      >
+        {!isLoaded ? (
+          <Ionicons name="hourglass-outline" size={16} color="#9ca3af" />
+        ) : (
+          <Ionicons name={isPlaying ? 'pause' : 'play'} size={16} color="#374151" />
+        )}
       </TouchableOpacity>
+
       <View style={styles.sliderContainer}>
         <Slider
           style={styles.slider}
           minimumValue={0}
-          maximumValue={duration}
+          maximumValue={duration > 0 ? duration : 1}
           value={position}
-          onSlidingComplete={async (value) => {
-            if (soundRef.current) {
-              await soundRef.current.setPositionAsync(value);
-            }
-          }}
+          onSlidingComplete={handleSeek}
           minimumTrackTintColor="#ffdb0d"
           maximumTrackTintColor="#d1d5db"
           thumbTintColor="#ffdb0d"
+          disabled={!isLoaded}
         />
-        <Text style={styles.timeText}>{getFormattedTime(position)} / {getFormattedTime(duration)}</Text>
+        <Text style={styles.timeText}>
+          {formatTime(position)} / {formatTime(duration)}
+        </Text>
       </View>
     </View>
   );
@@ -98,7 +155,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    minWidth: 120,
+    minWidth: 180,
     flex: 1,
   },
   playButton: {
@@ -111,11 +168,12 @@ const styles = StyleSheet.create({
     shadowRadius: 1.41,
     elevation: 2,
   },
+  playButtonDisabled: {
+    backgroundColor: '#e5e7eb',
+  },
   sliderContainer: {
     flex: 1,
     marginLeft: 10,
-    flexDirection: 'column',
-    justifyContent: 'center',
   },
   slider: {
     width: '100%',
@@ -125,6 +183,16 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#6b7280',
     alignSelf: 'flex-end',
-    marginTop: -5,
+    marginTop: -4,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#ef4444',
   },
 });

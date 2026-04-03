@@ -239,7 +239,7 @@ export default function DashboardScreen() {
                                     </Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
-                                    onPress={() => router.push("/alpha" as any)} // Temporary: use alpha since feedback doesn't exist yet
+                                    onPress={() => router.push("/feedback" as any)} // Temporary: use alpha since feedback doesn't exist yet
                                     style={styles.supportTicketButton}
                                     accessibilityLabel="Support Ticket"
                                 >
