@@ -1,8 +1,7 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Button, Avatar } from "@/components/ui";
-import { globalStyles, mergeStyles, commonStyles } from "@/lib/globalStyles";
+import PageLayout from "@/components/ui/PageLayout";
 import { colors, spacing } from "@/lib/theme";
 
 export default function AlphaScreen() {
@@ -18,109 +17,71 @@ export default function AlphaScreen() {
   ];
 
   return (
-    <SafeAreaView style={globalStyles.safeArea}>
-      <ScrollView style={globalStyles.scrollContainer}>
+    <PageLayout>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.headerContainer}>
-          <Text style={globalStyles.heading1}>
-            Shelivery Alpha
-          </Text>
-          <Text style={[globalStyles.body, styles.mt2]}>
+          <Text style={styles.heading1}>Shelivery Alpha</Text>
+          <Text style={[styles.body, { marginTop: spacing['shelivery-2'] }]}>
             Welcome to the mobile app alpha version
           </Text>
-          <Text style={globalStyles.bodySmall}>
+          <Text style={styles.bodySmall}>
             This is a placeholder for future features. Auth will be added later.
           </Text>
         </View>
 
-        {/* Test Section for Migrated Components */}
-        <View style={styles.testSection}>
-          <Text style={styles.testSectionTitle}>
-            Migrated Components Test
-          </Text>
-          
-          <View style={styles.testComponents}>
-            <View style={styles.testComponentGroup}>
-              <Text style={styles.testComponentLabel}>Avatar Component:</Text>
-              <View style={styles.avatarRow}>
-                <Avatar size="sm" name="John Doe" />
-                <Avatar size="md" name="Jane Smith" />
-                <Avatar size="lg" name="Alex Johnson" />
-                <Avatar size="xl" name="Sam Wilson" />
-              </View>
-            </View>
+        {/* Test Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Migrated Components Test</Text>
 
-            <View style={styles.testComponentGroup}>
-              <Text style={styles.testComponentLabel}>Button Components:</Text>
-              <View style={styles.buttonColumn}>
-                <Button variant="primary" size="md" style={styles.testButton}>
-                  Primary Button
-                </Button>
-                <Button variant="secondary" size="md" style={styles.testButton}>
-                  Secondary Button
-                </Button>
-                <Button variant="error" size="md" style={styles.testButton}>
-                  Error Button
-                </Button>
-                <Button variant="success" size="md" style={styles.testButton}>
-                  Success Button
-                </Button>
-                <Button variant="primary" size="sm" style={styles.testButton}>
-                  Small Button
-                </Button>
-                <Button variant="primary" size="lg" style={styles.testButton}>
-                  Large Button
-                </Button>
-                <Button variant="primary" loading style={styles.testButton}>
-                  Loading Button
-                </Button>
-                <Button variant="primary" disabled style={styles.testButton}>
-                  Disabled Button
-                </Button>
-              </View>
+          <View style={styles.componentGroup}>
+            <Text style={styles.componentLabel}>Avatar Component:</Text>
+            <View style={styles.avatarRow}>
+              <Avatar size="sm" name="John Doe" />
+              <Avatar size="md" name="Jane Smith" />
+              <Avatar size="lg" name="Alex Johnson" />
+              <Avatar size="xl" name="Sam Wilson" />
+            </View>
+          </View>
+
+          <View style={styles.componentGroup}>
+            <Text style={styles.componentLabel}>Button Components:</Text>
+            <View style={styles.buttonColumn}>
+              <Button variant="primary" size="md">Primary Button</Button>
+              <Button variant="secondary" size="md">Secondary Button</Button>
+              <Button variant="error" size="md">Error Button</Button>
+              <Button variant="success" size="md">Success Button</Button>
+              <Button variant="primary" size="sm">Small Button</Button>
+              <Button variant="primary" size="lg">Large Button</Button>
+              <Button variant="primary" loading>Loading Button</Button>
+              <Button variant="primary" disabled>Disabled Button</Button>
             </View>
           </View>
         </View>
 
-        <View style={styles.migrationProgressCard}>
-          <Text style={styles.migrationProgressTitle}>
-            Migration Progress
-          </Text>
-          <View style={styles.migrationProgressList}>
-            <View style={styles.migrationProgressItem}>
-              <View style={styles.migrationProgressBullet} />
-              <Text style={styles.migrationProgressText}>Navigation Bar ✓</Text>
+        {/* Migration Progress */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Migration Progress</Text>
+          {[
+            { label: "Navigation Bar ✓", done: true },
+            { label: "Tab Structure ✓", done: true },
+            { label: "Design Tokens ✓", done: true },
+            { label: "UI Components (Button, Avatar) ✓", done: true },
+            { label: "Authentication (Coming Soon)", done: false },
+            { label: "Real-time Chat", done: false },
+            { label: "Payment Integration", done: false },
+          ].map((item) => (
+            <View key={item.label} style={styles.progressItem}>
+              <View style={[styles.bullet, item.done ? styles.bulletDone : styles.bulletSoon]} />
+              <Text style={[styles.progressText, !item.done && styles.progressTextSoon]}>
+                {item.label}
+              </Text>
             </View>
-            <View style={styles.migrationProgressItem}>
-              <View style={styles.migrationProgressBullet} />
-              <Text style={styles.migrationProgressText}>Tab Structure ✓</Text>
-            </View>
-            <View style={styles.migrationProgressItem}>
-              <View style={styles.migrationProgressBullet} />
-              <Text style={styles.migrationProgressText}>Design Tokens ✓</Text>
-            </View>
-            <View style={styles.migrationProgressItem}>
-              <View style={styles.migrationProgressBullet} />
-              <Text style={styles.migrationProgressText}>UI Components (Button, Avatar) ✓</Text>
-            </View>
-            <View style={styles.migrationProgressItem}>
-              <View style={styles.migrationProgressBulletComingSoon} />
-              <Text style={styles.migrationProgressTextComingSoon}>Authentication (Coming Soon)</Text>
-            </View>
-            <View style={styles.migrationProgressItem}>
-              <View style={styles.migrationProgressBulletComingSoon} />
-              <Text style={styles.migrationProgressTextComingSoon}>Real-time Chat</Text>
-            </View>
-            <View style={styles.migrationProgressItem}>
-              <View style={styles.migrationProgressBulletComingSoon} />
-              <Text style={styles.migrationProgressTextComingSoon}>Payment Integration</Text>
-            </View>
-          </View>
+          ))}
         </View>
 
-        <View style={styles.featuresContainer}>
-          <Text style={styles.featuresTitle}>
-            Available Features
-          </Text>
+        {/* Available Features */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Available Features</Text>
           <View style={styles.featuresGrid}>
             {features.map((feature) => (
               <TouchableOpacity
@@ -128,220 +89,185 @@ export default function AlphaScreen() {
                 style={styles.featureCard}
                 onPress={() => feature.route && router.push(feature.route as any)}
                 disabled={!feature.route}
+                activeOpacity={0.7}
               >
-                <Text style={styles.featureName}>
-                  {feature.name}
-                </Text>
-                <Text style={styles.featureDescription}>
-                  {feature.description}
-                </Text>
-                {!feature.route && (
-                  <Text style={styles.featureComingSoon}>
-                    Coming soon
-                  </Text>
-                )}
+                <Text style={styles.featureName}>{feature.name}</Text>
+                <Text style={styles.featureDescription}>{feature.description}</Text>
+                {!feature.route && <Text style={styles.featureComingSoon}>Coming soon</Text>}
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
+        {/* Next Steps */}
         <View style={styles.nextStepsCard}>
-          <Text style={styles.nextStepsTitle}>
-            Next Steps
-          </Text>
+          <Text style={styles.nextStepsTitle}>Next Steps</Text>
           <Text style={styles.nextStepsDescription}>
             The following components will be migrated from the web app:
           </Text>
-          <View style={styles.nextStepsList}>
-            <Text style={styles.nextStepsItem}>• Authentication flows</Text>
-            <Text style={styles.nextStepsItem}>• Pool creation wizard</Text>
-            <Text style={styles.nextStepsItem}>• Real-time chat components</Text>
-            <Text style={styles.nextStepsItem}>• Basket management</Text>
-            <Text style={styles.nextStepsItem}>• Order tracking</Text>
-          </View>
+          {["Authentication flows", "Pool creation wizard", "Real-time chat components", "Basket management", "Order tracking"].map((item) => (
+            <Text key={item} style={styles.nextStepsItem}>• {item}</Text>
+          ))}
         </View>
 
-        <View style={styles.footerContainer}>
-          <Text style={styles.footerText}>
-            Shelivery Mobile Alpha v0.1.0
-          </Text>
-          <Text style={styles.footerSubtext}>
-            UI migrated from web app without NativeWind
-          </Text>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Shelivery Mobile Alpha v0.1.0</Text>
+          <Text style={styles.footerSubtext}>UI migrated from web app without NativeWind</Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </PageLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  // Only keep styles that are truly component-specific or not covered by globalStyles
+  scroll: {
+    paddingBottom: 120,
+    gap: 24,
+  },
   headerContainer: {
-    marginBottom: spacing['shelivery-8'],
+    gap: 4,
   },
-  mt2: {
-    marginTop: spacing['shelivery-2'],
+  heading1: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#111827',
+    fontFamily: 'Poppins_700Bold',
   },
-  testSection: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)', // bg-white/10
-    borderRadius: 20, // rounded-shelivery-lg
-    padding: 24, // p-6
-    marginBottom: 24, // mb-6
+  body: {
+    fontSize: 16,
+    color: '#374151',
+    fontFamily: 'Inter_400Regular',
   },
-  testSectionTitle: {
-    fontSize: 20, // text-xl
-    fontWeight: '600', // font-semibold
-    color: 'white',
-    fontFamily: 'Poppins_600SemiBold', // font-poppins
-    marginBottom: 16, // mb-4
+  bodySmall: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontFamily: 'Inter_400Regular',
   },
-  testComponents: {
-    rowGap: 24, // space-y-6
+  section: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    padding: 20,
+    gap: 16,
+    borderWidth: 1,
+    borderColor: '#E5E8EB',
   },
-  testComponentGroup: {
-    rowGap: 12, // space-y-3
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    fontFamily: 'Poppins_600SemiBold',
   },
-  testComponentLabel: {
-    color: 'rgba(255, 255, 255, 0.9)', // text-white/90
-    fontFamily: 'Inter_500Medium', // font-inter
-    fontSize: 16, // text-base
-    marginBottom: 8, // mb-2
+  componentGroup: {
+    gap: 10,
+  },
+  componentLabel: {
+    fontSize: 15,
+    color: '#374151',
+    fontFamily: 'Inter_500Medium',
   },
   avatarRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16, // gap-4
+    gap: 16,
     flexWrap: 'wrap',
   },
   buttonColumn: {
-    rowGap: 12, // space-y-3
+    gap: 10,
   },
-  testButton: {
-    marginBottom: 8, // mb-2
-  },
-  migrationProgressCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)', // bg-white/10
-    borderRadius: 20, // rounded-shelivery-lg
-    padding: 24, // p-6
-    marginBottom: 24, // mb-6
-    // backdrop-blur-sm is not directly supported in React Native, might need a library
-  },
-  migrationProgressTitle: {
-    fontSize: 20, // text-xl
-    fontWeight: '600', // font-semibold
-    color: 'white',
-    fontFamily: 'Poppins_600SemiBold', // font-poppins
-    marginBottom: 12, // mb-3
-  },
-  migrationProgressList: {
-    rowGap: 16, // space-y-4
-  },
-  migrationProgressItem: {
+  progressItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
-  migrationProgressBullet: {
-    width: 12, // w-3
-    height: 12, // h-3
-    borderRadius: 6, // rounded-full
-    backgroundColor: '#FFDB0D', // bg-shelivery-primary-yellow
-    marginRight: 12, // mr-3
+  bullet: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
-  migrationProgressText: {
-    color: 'white',
-    fontFamily: 'Inter_400Regular', // font-inter
+  bulletDone: {
+    backgroundColor: colors['shelivery-primary-blue'],
   },
-  migrationProgressBulletComingSoon: {
-    width: 12, // w-3
-    height: 12, // h-3
-    borderRadius: 6, // rounded-full
-    backgroundColor: 'rgba(255, 255, 255, 0.4)', // bg-white/40
-    marginRight: 12, // mr-3
+  bulletSoon: {
+    backgroundColor: '#D1D5DB',
   },
-  migrationProgressTextComingSoon: {
-    color: 'rgba(255, 255, 255, 0.8)', // text-white/80
-    fontFamily: 'Inter_400Regular', // font-inter
+  progressText: {
+    color: '#374151',
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
   },
-  featuresContainer: {
-    marginBottom: 32, // mb-8
-  },
-  featuresTitle: {
-    fontSize: 20, // text-xl
-    fontWeight: '600', // font-semibold
-    color: 'white',
-    fontFamily: 'Poppins_600SemiBold', // font-poppins
-    marginBottom: 16, // mb-4
+  progressTextSoon: {
+    color: '#9CA3AF',
   },
   featuresGrid: {
-    flexDirection: 'row', // grid
-    flexWrap: 'wrap', // grid-cols-2
-    gap: 16, // gap-4
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
   },
   featureCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)', // bg-white/10
-    borderRadius: 16, // rounded-shelivery-md
-    padding: 16, // p-4
-    flex: 1, // For grid-like behavior
-    minWidth: '48%', // To ensure two columns with gap
-    // backdrop-blur-sm is not directly supported in React Native
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 14,
+    flex: 1,
+    minWidth: '47%',
+    borderWidth: 1,
+    borderColor: '#E5E8EB',
+    gap: 4,
   },
   featureName: {
-    fontWeight: '600', // font-semibold
-    color: 'white',
-    fontFamily: 'Poppins_600SemiBold', // font-poppins
-    marginBottom: 4, // mb-1
+    fontWeight: '600',
+    color: '#111827',
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 14,
   },
   featureDescription: {
-    color: 'rgba(255, 255, 255, 0.7)', // text-white/70
-    fontFamily: 'Inter_400Regular', // font-inter
-    fontSize: 14, // text-sm
+    color: '#6B7280',
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
   },
   featureComingSoon: {
-    color: 'rgba(255, 255, 255, 0.5)', // text-white/50
-    fontFamily: 'Inter_400Regular', // font-inter
-    fontSize: 12, // text-xs
-    marginTop: 8, // mt-2
+    color: '#9CA3AF',
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    marginTop: 4,
   },
   nextStepsCard: {
-    backgroundColor: '#FFDB0D', // bg-shelivery-primary-yellow
-    borderRadius: 20, // rounded-shelivery-lg
-    padding: 24, // p-6
-    marginBottom: 32, // mb-8
+    backgroundColor: colors['shelivery-primary-yellow'],
+    borderRadius: 16,
+    padding: 20,
+    gap: 8,
   },
   nextStepsTitle: {
-    fontSize: 20, // text-xl
-    fontWeight: '600', // font-semibold
-    color: '#245B7B', // text-shelivery-primary-blue
-    fontFamily: 'Poppins_600SemiBold', // font-poppins
-    marginBottom: 12, // mb-3
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors['shelivery-primary-blue'],
+    fontFamily: 'Poppins_600SemiBold',
   },
   nextStepsDescription: {
-    color: 'rgba(36, 91, 123, 0.9)', // text-shelivery-primary-blue/90
-    fontFamily: 'Inter_400Regular', // font-inter
-    marginBottom: 16, // mb-4
-  },
-  nextStepsList: {
-    rowGap: 8, // space-y-2
+    color: colors['shelivery-primary-blue'],
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+    opacity: 0.85,
   },
   nextStepsItem: {
-    color: '#245B7B', // text-shelivery-primary-blue
-    fontFamily: 'Inter_400Regular', // font-inter
+    color: colors['shelivery-primary-blue'],
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
   },
-  footerContainer: {
-    paddingBottom: 32, // pb-8
+  footer: {
     alignItems: 'center',
+    paddingBottom: 8,
+    gap: 4,
   },
   footerText: {
-    color: 'rgba(255, 255, 255, 0.6)', // text-white/60
-    fontFamily: 'Inter_400Regular', // font-inter
+    color: '#9CA3AF',
+    fontFamily: 'Inter_400Regular',
     textAlign: 'center',
-    fontSize: 14, // text-sm
+    fontSize: 13,
   },
   footerSubtext: {
-    color: 'rgba(255, 255, 255, 0.4)', // text-white/40
-    fontFamily: 'Inter_400Regular', // font-inter
+    color: '#D1D5DB',
+    fontFamily: 'Inter_400Regular',
     textAlign: 'center',
-    fontSize: 12, // text-xs
-    marginTop: 4, // mt-1
+    fontSize: 11,
   },
 });

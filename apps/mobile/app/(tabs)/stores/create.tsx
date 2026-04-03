@@ -1,20 +1,18 @@
 import { useState } from "react";
 import { ScrollView, View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { globalStyles } from "../../../lib/globalStyles";
 import { Ionicons } from "@expo/vector-icons";
 import { ShopSelectionStep } from "../../../components/stores/ShopSelectionStep";
 import { LocationStep } from "../../../components/stores/LocationStep";
 import { OrderDetailsStep } from "../../../components/stores/OrderDetailsStep";
 import { PoolSelectionStep } from "../../../components/stores/PoolSelectionStep";
 import { Shop, LocationData, NearbyPool } from "../../../types/stores/types";
+import PageLayout from "@/components/ui/PageLayout";
 
 export default function CreateOrderFlow() {
   const router = useRouter();
   const [step, setStep] = useState(1);
-  
-  // State for the flow
+
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [shopSearchQuery, setShopSearchQuery] = useState("");
   const [userLocation, setUserLocation] = useState<LocationData | null>(null);
@@ -22,8 +20,7 @@ export default function CreateOrderFlow() {
   const [basketNote, setBasketNote] = useState("");
   const [basketAmount, setBasketAmount] = useState("");
   const [selectedPool, setSelectedPool] = useState<string | null>(null);
-  
-  // Mock data
+
   const shops: Shop[] = [
     { id: "1", name: "Migros", min_amount: 50, logo_url: null, is_active: true },
     { id: "2", name: "Coop", min_amount: 100, logo_url: null, is_active: true },
@@ -109,47 +106,46 @@ export default function CreateOrderFlow() {
     }
   };
 
+  const header = (
+    <View style={styles.headerRow}>
+      <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+        <Ionicons name="arrow-back" size={22} color="#111827" />
+      </TouchableOpacity>
+      <Text style={styles.headerTitle}>Create Order</Text>
+    </View>
+  );
+
   return (
-    <SafeAreaView style={globalStyles.safeArea}>
-      <View style={styles.headerContainer}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleBack}
-        >
-          <Ionicons name="arrow-back" size={24} color="black" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Order</Text>
-      </View>
-      
-      <ScrollView style={globalStyles.scrollContainer} contentContainerStyle={{ paddingBottom: 40 }}>
-        <View style={styles.stepContainer}>
-          {renderStep()}
-        </View>
+    <PageLayout header={header}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {renderStep()}
       </ScrollView>
-    </SafeAreaView>
+    </PageLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  headerContainer: {
+  headerRow: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     gap: 12,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#E5E8EB", // A light grey for the button background
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F3F4F6",
     alignItems: "center",
     justifyContent: "center",
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
   },
-  stepContainer: {
-    padding: 16,
+  scroll: {
+    paddingBottom: 120,
   },
 });

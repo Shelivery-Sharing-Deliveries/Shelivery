@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import PageLayout from "@/components/ui/PageLayout";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -205,7 +205,7 @@ export default function DashboardScreen() {
     // Tutorial skipped, no handleTutorialComplete function needed
     
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <PageLayout>
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollViewContent}>
                 {authLoading ? (
                     <DashboardLoading />
@@ -320,22 +320,17 @@ export default function DashboardScreen() {
                     </>
                 )}
             </ScrollView>
-        </SafeAreaView>
+        </PageLayout>
     );
 }
 
 const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: colors['shelivery-background-gray'],
-    },
     scrollView: {
         flex: 1,
     },
     scrollViewContent: {
-        paddingHorizontal: 16,
-        paddingTop: 16,
-        paddingBottom: 32, // Add some bottom padding for scrollability
+        paddingTop: 8,
+        paddingBottom: 120, // clear floating nav bar
     },
     loadingContainer: {
         flex: 1,

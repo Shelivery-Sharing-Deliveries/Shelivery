@@ -1,96 +1,69 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors } from '@/lib/theme';
 
 interface PageLayoutProps {
   children: React.ReactNode;
+  /** Optional header rendered at the top of the white card (e.g. back button + title) */
   header?: React.ReactNode;
-  footer?: React.ReactNode;
+  /** Kept for API compatibility – navigation lives in the root layout */
   showNavigation?: boolean;
-  className?: string;
-  flat?: boolean;
 }
 
-export default function PageLayout({
-  children,
-  header,
-  footer,
-  showNavigation = true,
-  className = "",
-  flat = false
-}: PageLayoutProps) {
+const PageLayout: React.FC<PageLayoutProps> = ({ children, header }) => {
+  const insets = useSafeAreaInsets();
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={[styles.container, { flex: 1 }]}>
+    <View
+      style={[
+        styles.outer,
+        {
+          // Push content below the status bar + a small gap
+          paddingTop: insets.top + 8,
+        },
+      ]}
+    >
+      {/* White rounded card */}
+      <View style={styles.card}>
+        {/* Optional header row (back arrow + title, etc.) */}
         {header && (
-          <View style={[styles.header, flat ? {} : styles.headerShadow]}>
+          <View style={styles.headerWrapper}>
             {header}
           </View>
         )}
-        <View style={[styles.content, header ? {} : styles.contentNoHeader, footer ? styles.contentWithFooter : styles.contentNoFooter, { flex: 1 }, { paddingHorizontal: 16 }]}>
+
+        {/* Page content – padded so nothing hugs the card edges */}
+        <View style={styles.content}>
           {children}
         </View>
-        {footer && (
-          <View style={styles.footer}>
-            {footer}
-          </View>
-        )}
       </View>
-      {/* Navigation will be handled by the main app layout, not here */}
-    </SafeAreaView>
+    </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  safeArea: {
+  outer: {
     flex: 1,
-    backgroundColor: '#245B7B',
+    backgroundColor: colors['shelivery-primary-blue'], // #245B7B
+    paddingHorizontal: 12,
+    paddingBottom: 12,
   },
-  container: {
+  card: {
     flex: 1,
-    backgroundColor: 'white',
-    borderRadius: 30,
-    marginHorizontal: 12.5, // Equivalent to w-[calc(100vw-25px)]
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
     overflow: 'hidden',
   },
-  header: {
-    flexShrink: 0,
-    backgroundColor: 'white',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingTop: 18,
-    zIndex: 10,
-  },
-  headerShadow: {
-    borderBottomWidth: 1,
-    borderColor: '#E5E8EB', // gray-100
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 1,
-    elevation: 1,
+  headerWrapper: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E8EB',
   },
   content: {
     flex: 1,
-    overflow: 'hidden',
-  },
-  contentNoHeader: {
-    paddingTop: 18,
-  },
-  contentWithFooter: {
-    paddingBottom: 80,
-  },
-  contentNoFooter: {
-    paddingBottom: 18,
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    backgroundColor: 'white',
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    // Provides breathing room so content never hugs the card edges
+    padding: 16,
   },
 });
+
+export default PageLayout;
