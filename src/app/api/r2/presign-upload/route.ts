@@ -22,10 +22,7 @@ function getCorsOrigin(request: NextRequest): string {
     'http://localhost:3000',
   ].filter(Boolean) as string[]
 
-  if (allowedOrigins.includes(origin)) {
-    return origin
-  }
-
+  if (allowedOrigins.includes(origin)) return origin
   return allowedOrigins[0] ?? '*'
 }
 
@@ -51,6 +48,11 @@ function getR2Client(): S3Client {
         accessKeyId: R2_ACCESS_KEY_ID,
         secretAccessKey: R2_SECRET_ACCESS_KEY,
       },
+      // Disable automatic checksum injection — required for browser PUT via presigned URLs.
+      // AWS SDK v3 adds CRC32 checksums by default which break browser-side uploads
+      // because the browser cannot reproduce the same signed headers.
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+      responseChecksumValidation: 'WHEN_REQUIRED',
     })
   }
 
