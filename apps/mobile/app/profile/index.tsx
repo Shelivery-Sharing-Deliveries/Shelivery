@@ -52,7 +52,7 @@ export default function ProfileEditPage() {
       setFormData((prev) => ({
         ...prev,
         email: user.email ?? '',
-        firstName: user.first_name || '',
+        firstName: (user as any).first_name || '',
       }));
 
       // Fetch user profile data
@@ -164,7 +164,7 @@ export default function ProfileEditPage() {
               return;
             }
 
-            setProfileImage();
+            setProfileImage(proxyUrl);
 
             console.log("Profile image updated successfully!");
 

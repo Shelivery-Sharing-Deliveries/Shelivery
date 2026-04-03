@@ -21,7 +21,7 @@ export default function PageLayout({
 }: PageLayoutProps) {
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={[styles.container, { height: showNavigation && !footer ? 'calc(100vh - 148px)' : '100vh' }]}>
+      <View style={[styles.container, { flex: 1 }]}>
         {header && (
           <View style={[styles.header, flat ? {} : styles.headerShadow]}>
             {header}

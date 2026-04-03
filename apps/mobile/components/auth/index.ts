@@ -9,3 +9,4 @@ export { default as SetPasswordForm } from './SetPasswordForm';
 export { default as EmailConfirmationForm } from './EmailConfirmationForm';
 export { default as OTPVerificationForm } from './OTPVerificationForm';
 export { default as ForgotPasswordForm } from './ForgotPasswordForm';
+
