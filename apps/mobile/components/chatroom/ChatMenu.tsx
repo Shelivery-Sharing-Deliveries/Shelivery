@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { OrderDetailsModal } from '@/components/chatroom/OrderDetailsModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -23,6 +24,10 @@ interface ChatMember {
     id: string;
     amount: number;
     status: string;
+    link: string | null;
+    note: string | null;
+    is_ready: boolean | null;
+    is_delivered_by_user: boolean | null;
   } | null;
 }
 
@@ -50,7 +55,6 @@ interface ChatMenuProps {
   onMarkOrdered: () => void;
   onExtendTime: () => void;
   onLeaveOrder: () => void;
-  onViewOrderDetails: (memberId: string, basketId: string) => void;
   currentUserId: string;
 }
 
@@ -98,6 +102,21 @@ function getStatusConfig(state: Chatroom['state']) {
   }
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getMemberStatus(
+  member: ChatMember,
+  isOrderDelivered: boolean
+): string {
+  if (isOrderDelivered && member.basket?.is_delivered_by_user) {
+    return 'Delivery Confirmed';
+  }
+  if (member.basket?.is_ready) {
+    return 'Ready to order';
+  }
+  return `${member.basket?.amount ?? 0} CHF order`;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function ChatMenu({
@@ -112,161 +131,201 @@ export function ChatMenu({
   onMarkOrdered,
   onExtendTime,
   onLeaveOrder,
-  onViewOrderDetails,
   currentUserId,
 }: ChatMenuProps) {
+  const [orderDetailsMember, setOrderDetailsMember] = useState<ChatMember | null>(null);
+
   const status = getStatusConfig(chatroom.state);
   const isWaiting = chatroom.state === 'waiting' || chatroom.state === 'active';
+  const isOrderDelivered =
+    chatroom.state === 'delivered' || chatroom.state === 'resolved';
 
   return (
-    <Modal visible={visible} animationType="slide" transparent presentationStyle="overFullScreen">
-      <View style={styles.overlay}>
-        <SafeAreaView style={styles.sheet} edges={['bottom']}>
-          {/* ── Handle & Header ── */}
-          <View style={styles.dragHandle} />
-          <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>{chatroom.pool.shop.name} Basket Chatroom</Text>
-            <Text style={styles.sheetSubtitle}>{members.length} Member{members.length !== 1 ? 's' : ''}</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={22} color="#374151" />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-
-            {/* ── Order Status Card ── */}
-            <View style={[styles.statusCard, { backgroundColor: status.cardBg, borderColor: status.cardBorder }]}>
-              <View style={styles.statusCardHeader}>
-                <View style={[styles.statusIconBg, { backgroundColor: '#ffffff' }]}>
-                  <Ionicons name={status.iconName} size={22} color={status.iconColor} />
-                </View>
-                <View style={styles.statusCardText}>
-                  <Text style={styles.statusTitle}>{status.title}</Text>
-                  <Text style={styles.statusDescription}>{status.description}</Text>
-                </View>
-              </View>
-
-              {/* Stats row */}
-              <View style={styles.statsRow}>
-                <View style={styles.statItem}>
-                  <Ionicons name="cash-outline" size={18} color="#6b7280" />
-                  <Text style={styles.statValue}>{totalAmount} CHF</Text>
-                  <Text style={styles.statLabel}>Total</Text>
-                </View>
-                <View style={styles.statDivider} />
-                <View style={styles.statItem}>
-                  <Ionicons name="people-outline" size={18} color="#6b7280" />
-                  <Text style={styles.statValue}>{members.length}</Text>
-                  <Text style={styles.statLabel}>Members</Text>
-                </View>
-                <View style={styles.statDivider} />
-                <View style={styles.statItem}>
-                  <Ionicons name="time-outline" size={18} color="#6b7280" />
-                  <Text style={styles.statValue}>{timeLeft}</Text>
-                  <Text style={styles.statLabel}>Left</Text>
-                </View>
-              </View>
+    <>
+      <Modal visible={visible} animationType="slide" transparent presentationStyle="overFullScreen">
+        <View style={styles.overlay}>
+          <SafeAreaView style={styles.sheet} edges={['bottom']}>
+            {/* ── Handle & Header ── */}
+            <View style={styles.dragHandle} />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>{chatroom.pool.shop.name} Basket Chatroom</Text>
+              <Text style={styles.sheetSubtitle}>
+                {members.length} Member{members.length !== 1 ? 's' : ''}
+              </Text>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <Ionicons name="close" size={22} color="#374151" />
+              </TouchableOpacity>
             </View>
 
-            {/* ── Group Members ── */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Group Members</Text>
-              <Text style={styles.sectionSubtitle}>Members ({members.length})</Text>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
-              {members.map((member) => {
-                const isYou = member.id === currentUserId;
-                const isThisAdmin = member.id === chatroom.admin_id;
-                const fullName = [member.first_name, member.last_name].filter(Boolean).join(' ') || 'Unknown';
-
-                return (
-                  <View key={member.id} style={styles.memberRow}>
-                    {/* Avatar */}
-                    <View style={styles.avatarWrapper}>
-                      {isThisAdmin && (
-                        <View style={styles.adminCrown}>
-                          <Ionicons name="trophy" size={10} color="#f59e0b" />
-                        </View>
-                      )}
-                      {member.image ? (
-                        <Image source={{ uri: member.image }} style={styles.avatar} />
-                      ) : (
-                        <View style={[styles.avatar, styles.avatarFallback]}>
-                          <Text style={styles.avatarText}>{(member.first_name || '?').charAt(0).toUpperCase()}</Text>
-                        </View>
-                      )}
-                    </View>
-
-                    <View style={styles.memberInfo}>
-                      <View style={styles.memberNameRow}>
-                        <Text style={styles.memberName}>{fullName}</Text>
-                        {isYou && <Text style={styles.youBadge}> (You)</Text>}
-                      </View>
-                      {member.basket ? (
-                        <>
-                          <Text style={styles.memberBasket}>{member.basket.amount} CHF order</Text>
-                          <TouchableOpacity onPress={() => onViewOrderDetails(member.id, member.basket!.id)}>
-                            <Text style={styles.viewOrderLink}>View Order Details</Text>
-                          </TouchableOpacity>
-                        </>
-                      ) : (
-                        <Text style={styles.memberNoBasket}>No order yet</Text>
-                      )}
-                    </View>
+              {/* ── Order Status Card ── */}
+              <View style={[styles.statusCard, { backgroundColor: status.cardBg, borderColor: status.cardBorder }]}>
+                <View style={styles.statusCardHeader}>
+                  <View style={[styles.statusIconBg, { backgroundColor: '#ffffff' }]}>
+                    <Ionicons name={status.iconName} size={22} color={status.iconColor} />
                   </View>
-                );
-              })}
+                  <View style={styles.statusCardText}>
+                    <Text style={styles.statusTitle}>{status.title}</Text>
+                    <Text style={styles.statusDescription}>{status.description}</Text>
+                  </View>
+                </View>
 
-              {members.length === 0 && (
-                <Text style={styles.noMembers}>No members yet.</Text>
-              )}
-            </View>
+                {/* Stats row */}
+                <View style={styles.statsRow}>
+                  <View style={styles.statItem}>
+                    <Ionicons name="cash-outline" size={18} color="#6b7280" />
+                    <Text style={styles.statValue}>{totalAmount} CHF</Text>
+                    <Text style={styles.statLabel}>Total</Text>
+                  </View>
+                  <View style={styles.statDivider} />
+                  <View style={styles.statItem}>
+                    <Ionicons name="people-outline" size={18} color="#6b7280" />
+                    <Text style={styles.statValue}>{members.length}</Text>
+                    <Text style={styles.statLabel}>Members</Text>
+                  </View>
+                  <View style={styles.statDivider} />
+                  <View style={styles.statItem}>
+                    <Ionicons name="time-outline" size={18} color="#6b7280" />
+                    <Text style={styles.statValue}>{timeLeft}</Text>
+                    <Text style={styles.statLabel}>Left</Text>
+                  </View>
+                </View>
+              </View>
 
-            {/* ── Actions (admin only for ordered/extend) ── */}
-            {isAdmin && (
+              {/* ── Group Members ── */}
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Actions</Text>
+                <Text style={styles.sectionTitle}>Group Members</Text>
+                <Text style={styles.sectionSubtitle}>Members ({members.length})</Text>
 
-                {isWaiting && (
+                {members.map((member) => {
+                  const isYou = member.id === currentUserId;
+                  const isThisAdmin = member.id === chatroom.admin_id;
+                  const fullName =
+                    [member.first_name, member.last_name].filter(Boolean).join(' ') || 'Unknown';
+                  const hasOrderDetails =
+                    isAdmin && !!(member.basket?.link || member.basket?.note);
+
+                  return (
+                    <View key={member.id} style={styles.memberRow}>
+                      {/* Avatar */}
+                      <View style={styles.avatarWrapper}>
+                        {isThisAdmin && (
+                          <View style={styles.adminCrown}>
+                            <Ionicons name="trophy" size={10} color="#f59e0b" />
+                          </View>
+                        )}
+                        {member.image ? (
+                          <Image source={{ uri: member.image }} style={styles.avatar} />
+                        ) : (
+                          <View style={[styles.avatar, styles.avatarFallback]}>
+                            <Text style={styles.avatarText}>
+                              {(member.first_name || '?').charAt(0).toUpperCase()}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      <View style={styles.memberInfo}>
+                        {/* Name row */}
+                        <View style={styles.memberNameRow}>
+                          <Text style={styles.memberName}>{fullName}</Text>
+                          {isYou && <Text style={styles.youBadge}> (You)</Text>}
+                          {/* Delivery confirmed icon */}
+                          {isOrderDelivered && member.basket?.is_delivered_by_user && (
+                            <Ionicons
+                              name="checkmark-done"
+                              size={14}
+                              color="#16a34a"
+                              style={styles.deliveredIcon}
+                            />
+                          )}
+                        </View>
+
+                        {/* Status line */}
+                        {member.basket ? (
+                          <>
+                            <Text style={styles.memberBasket}>
+                              {getMemberStatus(member, isOrderDelivered)}
+                            </Text>
+
+                            {/* "View Order Details" — admin only, only when link/note exists */}
+                            {hasOrderDetails && (
+                              <TouchableOpacity
+                                onPress={() => setOrderDetailsMember(member)}
+                                activeOpacity={0.7}
+                              >
+                                <Text style={styles.viewOrderLink}>View Order Details</Text>
+                              </TouchableOpacity>
+                            )}
+                          </>
+                        ) : (
+                          <Text style={styles.memberNoBasket}>No order yet</Text>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })}
+
+                {members.length === 0 && (
+                  <Text style={styles.noMembers}>No members yet.</Text>
+                )}
+              </View>
+
+              {/* ── Actions (admin only) ── */}
+              {isAdmin && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Actions</Text>
+
+                  {isWaiting && (
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.darkBlueBtn]}
+                      onPress={onMarkOrdered}
+                      disabled={actionLoading}
+                    >
+                      {actionLoading ? (
+                        <ActivityIndicator color="#fff" size="small" />
+                      ) : (
+                        <Text style={styles.actionBtnText}>Mark as Ordered</Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
+
                   <TouchableOpacity
-                    style={[styles.actionBtn, styles.darkBlueBtn]}
-                    onPress={onMarkOrdered}
+                    style={[styles.actionBtn, styles.yellowBtn]}
+                    onPress={onExtendTime}
                     disabled={actionLoading}
                   >
                     {actionLoading ? (
                       <ActivityIndicator color="#fff" size="small" />
                     ) : (
-                      <Text style={styles.actionBtnText}>Mark as Ordered</Text>
+                      <Text style={styles.actionBtnText}>Extend Time</Text>
                     )}
                   </TouchableOpacity>
-                )}
+                </View>
+              )}
 
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.yellowBtn]}
-                  onPress={onExtendTime}
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text style={styles.actionBtnText}>Extend Time</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            )}
+              {/* ── Leave Order ── */}
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.redBtn, styles.leaveBtn]}
+                onPress={onLeaveOrder}
+                disabled={actionLoading}
+              >
+                <Text style={styles.actionBtnText}>Leave Order</Text>
+              </TouchableOpacity>
 
-            {/* ── Leave Order (always visible) ── */}
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.redBtn, styles.leaveBtn]}
-              onPress={onLeaveOrder}
-              disabled={actionLoading}
-            >
-              <Text style={styles.actionBtnText}>Leave Order</Text>
-            </TouchableOpacity>
+            </ScrollView>
+          </SafeAreaView>
+        </View>
+      </Modal>
 
-          </ScrollView>
-        </SafeAreaView>
-      </View>
-    </Modal>
+      {/* ── Order Details Modal (nested above ChatMenu overlay) ── */}
+      <OrderDetailsModal
+        visible={orderDetailsMember !== null}
+        onClose={() => setOrderDetailsMember(null)}
+        member={orderDetailsMember}
+      />
+    </>
   );
 }
 
@@ -297,7 +356,7 @@ const styles = StyleSheet.create({
   },
   sheetHeader: {
     paddingVertical: 16,
-    paddingRight: 40, // make room for close button
+    paddingRight: 40,
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
     marginBottom: 4,
@@ -459,6 +518,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6b7280',
   },
+  deliveredIcon: {
+    marginLeft: 4,
+  },
   memberBasket: {
     fontSize: 12,
     color: '#374151',
@@ -472,7 +534,7 @@ const styles = StyleSheet.create({
   viewOrderLink: {
     fontSize: 12,
     color: '#245b7b',
-    marginTop: 2,
+    marginTop: 4,
     textDecorationLine: 'underline',
   },
   noMembers: {

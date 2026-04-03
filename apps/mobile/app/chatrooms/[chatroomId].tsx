@@ -45,6 +45,10 @@ interface ChatMember {
     id: string;
     amount: number;
     status: string;
+    link: string | null;
+    note: string | null;
+    is_ready: boolean | null;
+    is_delivered_by_user: boolean | null;
   } | null;
 }
 
@@ -143,7 +147,7 @@ export default function ChatroomPage() {
 
       const { data: basketsData } = await supabase
         .from('basket')
-        .select('id, amount, status, user_id')
+        .select('id, amount, status, link, note, is_ready, is_delivered_by_user, user_id')
         .in('user_id', userIds)
         .eq('chatroom_id', chatroomId);
 
@@ -363,11 +367,6 @@ export default function ChatroomPage() {
         onMarkOrdered={handleMarkAsOrdered}
         onExtendTime={handleExtendTime}
         onLeaveOrder={handleLeaveOrder}
-        onViewOrderDetails={(memberId, basketId) => {
-          setMenuVisible(false);
-          // Navigate to basket details – adjust the route path as needed
-          router.push(`/basket/${basketId}` as any);
-        }}
         currentUserId={userId || ''}
       />
     </SafeAreaView>
