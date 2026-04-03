@@ -9,10 +9,14 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
+      "bundleIdentifier": "com.soroosh.mobile",
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "This app needs access to your location to help you find nearby pools and set your delivery address."
+        "NSLocationWhenInUseUsageDescription": "This app needs access to your location to help you find nearby pools and set your delivery address.",
+        "ITSAppUsesNonExemptEncryption": false
       }
+
+      
     },
     "android": {
       "adaptiveIcon": {
@@ -54,7 +58,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "YOUR_EAS_PROJECT_ID"
+        "projectId": "2b45d04f-4161-4177-be9f-51aa4552d435"
       }
     }
   }

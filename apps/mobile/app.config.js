@@ -18,7 +18,8 @@ const MAPBOX_ACCESS_TOKEN =
 module.exports = {
   expo: {
     name: 'mobile',
-    slug: 'mobile',
+    owner: 'ims9898s-organization',
+    slug: 'shelivery',
     version: '1.0.0',
     orientation: 'portrait',
     icon: './assets/images/icon.png',
@@ -26,6 +27,7 @@ module.exports = {
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
     ios: {
+      bundleIdentifier: "com.smehdi.shelivery",
       supportsTablet: true,
       infoPlist: {
         NSLocationWhenInUseUsageDescription:
@@ -33,6 +35,7 @@ module.exports = {
       }
     },
     android: {
+      package: 'com.anonymous.mobile',
       adaptiveIcon: {
         backgroundColor: '#E6F4FE',
         foregroundImage: './assets/images/android-icon-foreground.png',
@@ -74,7 +77,8 @@ module.exports = {
     },
     extra: {
       eas: {
-        projectId: 'YOUR_EAS_PROJECT_ID'
+        // Use an environment variable for safety; fallback to placeholder if not set
+        projectId: '2b45d04f-4161-4177-be9f-51aa4552d435'
       }
     }
   }

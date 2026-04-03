@@ -16,7 +16,7 @@ export default function ProfileCard({
   const router = useRouter();
 
   const handleProfileClick = () => {
-    router.push("/alpha" as any); // Temporary: use alpha since profile doesn't exist yet
+    router.push("/profile" as any); // Temporary: use alpha since profile doesn't exist yet
   };
 
   return (
@@ -28,8 +28,8 @@ export default function ProfileCard({
     >
       {/* Avatar */}
       <View style={styles.avatarContainer}>
-        <Image
-          source={{ uri: userAvatar }}
+        <Image   
+          source={{ uri: `https://app.shelivery.com/${userAvatar}` }}
           alt={userName}
           style={styles.avatarImage}
         />

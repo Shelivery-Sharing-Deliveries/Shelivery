@@ -149,11 +149,11 @@ export function Navigation({}: NavigationProps) {
           colors={[
             // Visible pill that still feels like it's on top of the page.
             // (We keep it semi-transparent, but not so transparent that it looks like a faint gradient.)
-            "rgba(36, 91, 123, 0.62)",
-            "rgba(36, 91, 123, 0.72)",
-            "rgba(36, 91, 123, 0.72)",
-            "rgba(36, 91, 123, 0.72)",
-            "rgba(36, 91, 123, 0.62)",
+            "rgba(36, 91, 123, 0.9)",
+            "rgba(36, 91, 123, 0.95)",
+            "rgba(36, 91, 123, 0.95)",
+            "rgba(36, 91, 123, 0.95)",
+            "rgba(36, 91, 123, 0.9)",
           ]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}

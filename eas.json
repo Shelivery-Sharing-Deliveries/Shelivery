@@ -1,0 +1,11 @@
+{
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "withoutCredentials": true,
+      "ios": {
+        "simulator": true
+      }
+    }
+  }
+}
