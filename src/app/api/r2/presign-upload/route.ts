@@ -68,6 +68,15 @@ function sanitizeExtension(extension: string): string {
 }
 
 function getPublicUrl(key: string): string {
+  // Prefer the Next.js image proxy URL so the stored URL is identical
+  // to what the PWA generates — this makes messages renderable on both
+  // the PWA and the native mobile app via the same absolute URL.
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
+  if (appUrl) {
+    return `${appUrl}/api/images/${key}`
+  }
+
+  // Fallback to custom CDN / direct R2 URL if APP_URL not set
   if (R2_PUBLIC_URL) {
     return `${R2_PUBLIC_URL}/${key}`
   }
