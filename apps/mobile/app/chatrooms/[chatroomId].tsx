@@ -17,6 +17,23 @@ import { ChatMessages } from '@/components/chatroom/ChatMessages';
 import { ChatInput } from '@/components/chatroom/ChatInput';
 import { ChatMenu } from '@/components/chatroom/ChatMenu';
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// Base URL of the Next.js server — used to resolve /api/... relative URLs on native.
+// On web (PWA) the browser resolves them automatically from the page origin.
+const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
+
+/** Resolve a stored media URL for native display.
+ *  - Absolute URLs (http/https) are returned as-is.
+ *  - Relative /api/... paths are prefixed with the Next.js server base URL.
+ */
+function getProxiedImageUrl(url: string): string {
+  if (!url) return url;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/') && API_BASE_URL) return `${API_BASE_URL}${url}`;
+  return url;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ChatMember {
@@ -39,6 +56,7 @@ interface Chatroom {
   expire_at: string;
   extended_once_before_ordered: boolean;
   total_extension_days_ordered_state: number;
+  total_extension_days_delivered_state: number; // Added for delivered state extension
   pool: {
     id: string;
     current_amount: number;
@@ -109,17 +127,32 @@ export default function ChatroomPage() {
     if (!chatroomId) return;
 
     // Get members via chat_membership join
-    const { data } = await supabase
+   const { data: membershipsData } = await supabase
       .from('chat_membership')
-      .select('user:user_id(id, first_name, last_name, image), basket:basket_id(id, amount, status)')
+      .select('user_id')
       .eq('chatroom_id', chatroomId)
       .is('left_at', null);
 
-    if (data) {
-      const mapped = data.map((row: any) => ({
-        ...row.user,
-        basket: row.basket || null,
-      }));
+    if (membershipsData) {
+      const userIds = membershipsData.map((m: any) => m.user_id);
+
+      const { data: usersData } = await supabase
+        .from('user')
+        .select('id, first_name, last_name, image')
+        .in('id', userIds);
+
+      const { data: basketsData } = await supabase
+        .from('basket')
+        .select('id, amount, status, user_id')
+        .in('user_id', userIds)
+        .eq('chatroom_id', chatroomId);
+
+      const mapped = usersData?.map((user: any) => ({
+        ...user,
+        image: user.image ? getProxiedImageUrl(user.image) : null,
+        basket: basketsData?.find((basket: any) => basket.user_id === user.id) || null,
+      })) || [];
+
       setMembers(mapped);
     }
   }, [chatroomId]);
@@ -285,7 +318,7 @@ export default function ChatroomPage() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <SimpleChatHeader
         chatroomName={chatroomName}
         memberCount={memberCount}
