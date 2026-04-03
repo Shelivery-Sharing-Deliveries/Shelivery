@@ -37,10 +37,12 @@ export async function GET(
 ) {
   try {
     const imagePath = params.path.join('/')
-    
     if (!imagePath) {
       return NextResponse.json({ error: 'Image path is required' }, { status: 400 })
     }
+
+    const rangeHeader = request.headers.get('range')
+    const isPartial = Boolean(rangeHeader)
 
     // Get the object from R2
     const client = getR2Client()
@@ -49,6 +51,7 @@ export async function GET(
     const command = new GetObjectCommand({
       Bucket: bucket,
       Key: imagePath,
+      Range: rangeHeader ?? undefined,
     })
 
     const response = await client.send(command)
@@ -69,14 +72,22 @@ export async function GET(
     
     const buffer = Buffer.concat(chunks)
 
-    // Return the image with appropriate headers
+    const contentType = response.ContentType || 'application/octet-stream'
+
+    const headers: Record<string, string> = {
+      'Content-Type': contentType,
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'Content-Length': buffer.length.toString(),
+      'Accept-Ranges': 'bytes',
+    }
+
+    if (isPartial && response.ContentRange) {
+      headers['Content-Range'] = response.ContentRange
+    }
+
     return new NextResponse(buffer, {
-      status: 200,
-      headers: {
-        'Content-Type': response.ContentType || 'image/jpeg',
-        'Cache-Control': 'public, max-age=31536000, immutable',
-        'Content-Length': buffer.length.toString(),
-      },
+      status: isPartial ? 206 : 200,
+      headers,
     })
   } catch (error) {
     console.error('Image proxy error:', error)
