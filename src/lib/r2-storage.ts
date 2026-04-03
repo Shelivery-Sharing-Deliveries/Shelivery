@@ -250,7 +250,7 @@ export async function uploadChatMedia(
 
     // Generate key with timestamp for cache busting
     const timestamp = Date.now()
-    const key = `chat-media/${chatroomId}/${messageId}-${timestamp}.${fileExt}`
+    const key = `chat-media/${chatroomId}/${mediaType}/${messageId}-${timestamp}.${fileExt}`
 
     // Convert Blob to Buffer
     const buffer = Buffer.from(await file.arrayBuffer())
