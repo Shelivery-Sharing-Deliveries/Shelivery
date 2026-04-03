@@ -2,6 +2,21 @@ import React, { useRef, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, Image } from 'react-native';
 import VoiceMessageBubble from './VoiceMessageBubble';
 
+// Base URL of the Next.js server — used to resolve /api/... relative URLs on native.
+// On web (PWA) the browser resolves them automatically from the page origin.
+const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
+
+/** Resolve a stored media URL for native display.
+ *  - Absolute URLs (http/https) are returned as-is.
+ *  - Relative /api/... paths are prefixed with the Next.js server base URL.
+ */
+function resolveMediaUrl(url: string): string {
+  if (!url) return url;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/') && API_BASE_URL) return `${API_BASE_URL}${url}`;
+  return url;
+}
+
 // Simple interface based on the structure we see in the database.types.ts
 interface Message {
   id: number;
@@ -73,9 +88,9 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
           )}
 
           {isImage && item.content ? (
-            <Image source={{ uri: item.content }} style={styles.imageMessage} resizeMode="cover" />
+            <Image source={{ uri: resolveMediaUrl(item.content) }} style={styles.imageMessage} resizeMode="cover" />
           ) : isAudio && item.content ? (
-            <VoiceMessageBubble src={item.content} />
+            <VoiceMessageBubble src={resolveMediaUrl(item.content)} />
           ) : (
             <Text style={isOwnMessage ? styles.ownText : styles.otherText}>
               {item.content}

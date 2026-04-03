@@ -6,12 +6,15 @@
  * Flow:
  *   1. Request a presigned PUT URL from the Next.js backend.
  *   2. Upload file bytes directly to R2 using that URL (no SDK / credentials on client).
- *   3. The backend returns a publicUrl in the same format as the PWA
- *      (`https://<app>/api/images/...`) so both platforms can render the same message.
+ *   3. The `key` returned by the backend is used to construct `/api/images/<key>` —
+ *      the same relative path format the PWA stores — so both platforms share the same DB value.
  *
- * Required env variable in apps/mobile/.env:
+ * Required env variables in apps/mobile/.env:
  *   EXPO_PUBLIC_R2_PRESIGN_ENDPOINT — Full URL to your Next.js presign API
  *                                     e.g. https://app.shelivery.com/api/r2/presign-upload
+ *   EXPO_PUBLIC_API_BASE_URL        — Next.js server base URL (no trailing slash)
+ *                                     e.g. https://app.shelivery.com
+ *                                     Used when rendering /api/... URLs on native.
  */
 
 const PRESIGN_ENDPOINT = process.env.EXPO_PUBLIC_R2_PRESIGN_ENDPOINT ?? '';
@@ -117,7 +120,7 @@ export async function uploadChatMedia(
     const ext = mimeToExt(mimeType, fallbackExt);
 
     // 2. Request presigned URL from backend
-    const { uploadUrl, publicUrl } = await getPresignedUpload(chatroomId, mediaType, mimeType, ext);
+    const { uploadUrl, key } = await getPresignedUpload(chatroomId, mediaType, mimeType, ext);
 
     // 3. Upload bytes directly to R2 via presigned URL
     // Use the underlying ArrayBuffer — Uint8Array is not accepted as BodyInit in all TS configs
@@ -135,7 +138,13 @@ export async function uploadChatMedia(
       throw new Error(`Upload failed: ${uploadResponse.status} ${errorText}`);
     }
 
-    return { url: publicUrl, error: null };
+    // 4. Build the stored URL in the same relative format the PWA uses:
+    //    /api/images/<key>
+    //    Both platforms store the same value in the DB; native rendering resolves
+    //    it using EXPO_PUBLIC_API_BASE_URL (see ChatMessages.tsx).
+    const storedUrl = `/api/images/${key}`;
+
+    return { url: storedUrl, error: null };
   } catch (e: any) {
     console.error('uploadChatMedia: R2 upload failed', e);
     return { url: null, error: e?.message ?? 'Upload to R2 failed.' };
