@@ -87,15 +87,42 @@ export function ChatInput({ chatroomId, onSendMessage, disabled }: ChatInputProp
 
   // ─── Audio recording ───────────────────────────────────────────────────────
 
+  /**
+   * Custom recording preset that produces AAC/M4A on iOS and Android.
+   * The default HIGH_QUALITY preset records CAF (Linear PCM) on iOS which
+   * web browsers cannot play. M4A (AAC) is supported on iOS, Android AND web.
+   * Web still records WebM (browser limitation) but that plays fine in browsers.
+   */
+  const RECORDING_OPTIONS: Audio.RecordingOptions = {
+    isMeteringEnabled: true,
+    android: {
+      extension: '.m4a',
+      outputFormat: 3, // MPEG_4
+      audioEncoder: 3, // AAC
+      sampleRate: 44100,
+      numberOfChannels: 1,
+      bitRate: 128000,
+    },
+    ios: {
+      extension: '.m4a',
+      audioQuality: Audio.IOSAudioQuality.HIGH,
+      sampleRate: 44100,
+      numberOfChannels: 1,
+      bitRate: 128000,
+    },
+    web: {
+      mimeType: 'audio/webm',
+      bitsPerSecond: 128000,
+    },
+  };
+
   const startRecording = async () => {
     if (isRecording || isUploadingAudio) return;
 
     try {
       await Audio.requestPermissionsAsync();
       await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
+      const { recording } = await Audio.Recording.createAsync(RECORDING_OPTIONS);
       recordingRef.current = recording;
       setIsRecording(true);
       setRecordingTime(0);

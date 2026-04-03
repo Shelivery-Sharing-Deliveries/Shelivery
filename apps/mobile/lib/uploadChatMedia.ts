@@ -32,39 +32,94 @@ interface PresignUploadResponse {
   key: string;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── MIME / Extension helpers ─────────────────────────────────────────────────
 
-/** Convert local URI (file:// or blob:) → Uint8Array. No Node.js Buffer needed. */
-async function uriToUint8Array(uri: string): Promise<{ bytes: Uint8Array; mimeType: string }> {
+/** Map of file extension → MIME type. Used to fix iOS file:// fetch returning
+ *  "application/octet-stream" which causes presign validation failures and
+ *  AVPlayer -11828 errors on playback. */
+const EXT_TO_MIME: Record<string, string> = {
+  m4a: 'audio/mp4',
+  mp4: 'audio/mp4',
+  mp3: 'audio/mpeg',
+  mpeg: 'audio/mpeg',
+  wav: 'audio/wav',
+  webm: 'audio/webm',
+  ogg: 'audio/ogg',
+  aac: 'audio/aac',
+  caf: 'audio/x-caf',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  gif: 'image/gif',
+  webp: 'image/webp',
+};
+
+const MIME_TO_EXT: Record<string, string> = {
+  'audio/mp4': 'm4a',
+  'audio/m4a': 'm4a',
+  'audio/mpeg': 'mp3',
+  'audio/mp3': 'mp3',
+  'audio/wav': 'wav',
+  'audio/webm': 'webm',
+  'audio/ogg': 'ogg',
+  'audio/aac': 'aac',
+  'audio/x-caf': 'caf',
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+};
+
+/** Extract the file extension from a URI (strip query strings etc.) */
+function extFromUri(uri: string): string {
+  const path = uri.split('?')[0].split('#')[0];
+  const ext = path.split('.').pop()?.toLowerCase() ?? '';
+  return ext;
+}
+
+/** Resolve the best MIME type for a file.
+ *
+ *  Priority:
+ *  1. Infer from the URI file extension (most reliable on native)
+ *  2. Use the Content-Type from fetch (works on web)
+ *  3. Fallback based on mediaType
+ */
+function resolveMimeType(
+  uri: string,
+  fetchContentType: string,
+  mediaType: 'audio' | 'image'
+): string {
+  // 1. Try URI extension
+  const ext = extFromUri(uri);
+  if (ext && EXT_TO_MIME[ext]) {
+    return EXT_TO_MIME[ext];
+  }
+
+  // 2. Use fetch content-type if it's meaningful
+  const baseMime = fetchContentType.split(';')[0].trim().toLowerCase();
+  if (baseMime && baseMime !== 'application/octet-stream') {
+    return baseMime;
+  }
+
+  // 3. Safe defaults per media type
+  return mediaType === 'audio' ? 'audio/mp4' : 'image/jpeg';
+}
+
+/** Derive a file extension from a MIME type */
+function mimeToExt(mimeType: string, fallback: string): string {
+  const baseMime = mimeType.split(';')[0].trim().toLowerCase();
+  return MIME_TO_EXT[baseMime] || baseMime.split('/')[1] || fallback;
+}
+
+// ─── Network helpers ──────────────────────────────────────────────────────────
+
+/** Read a local URI into a Uint8Array and detect its Content-Type from fetch. */
+async function readLocalFile(uri: string): Promise<{ bytes: Uint8Array; fetchMime: string }> {
   const response = await fetch(uri);
   if (!response.ok) throw new Error(`Cannot read local file: ${uri}`);
   const buffer = await response.arrayBuffer();
-  const mimeType = response.headers.get('content-type') ?? 'application/octet-stream';
-  return { bytes: new Uint8Array(buffer), mimeType };
-}
-
-/** Derive a sensible file extension from the MIME type.
- *  Strips codec parameters e.g. "audio/webm;codecs=opus" → "webm"
- */
-function mimeToExt(mimeType: string, fallback: string): string {
-  // Strip codec parameters before lookup: "audio/webm;codecs=opus" → "audio/webm"
-  const baseMime = mimeType.split(';')[0].trim().toLowerCase();
-
-  const map: Record<string, string> = {
-    'audio/m4a': 'm4a',
-    'audio/mp4': 'm4a',
-    'audio/mpeg': 'mp3',
-    'audio/mp3': 'mp3',
-    'audio/wav': 'wav',
-    'audio/webm': 'webm',
-    'audio/ogg': 'ogg',
-    'audio/aac': 'aac',
-    'image/jpeg': 'jpg',
-    'image/png': 'png',
-    'image/gif': 'gif',
-    'image/webp': 'webp',
-  };
-  return map[baseMime] || baseMime.split('/')[1] || fallback;
+  const fetchMime = response.headers.get('content-type') ?? 'application/octet-stream';
+  return { bytes: new Uint8Array(buffer), fetchMime };
 }
 
 async function getPresignedUpload(
@@ -114,16 +169,20 @@ export async function uploadChatMedia(
   mediaType: 'audio' | 'image'
 ): Promise<UploadMediaResult> {
   try {
-    // 1. Read local file into memory as Uint8Array
+    // 1. Read local file into memory
+    const { bytes, fetchMime } = await readLocalFile(uri);
+
+    // 2. Resolve the correct MIME type (URI extension > fetch header > fallback)
+    const mimeType = resolveMimeType(uri, fetchMime, mediaType);
     const fallbackExt = mediaType === 'audio' ? 'm4a' : 'jpg';
-    const { bytes, mimeType } = await uriToUint8Array(uri);
     const ext = mimeToExt(mimeType, fallbackExt);
 
-    // 2. Request presigned URL from backend
+    console.log(`uploadChatMedia: uri=${uri}, fetchMime=${fetchMime}, resolved=${mimeType}, ext=${ext}`);
+
+    // 3. Request presigned URL from backend
     const { uploadUrl, key } = await getPresignedUpload(chatroomId, mediaType, mimeType, ext);
 
-    // 3. Upload bytes directly to R2 via presigned URL
-    // Use the underlying ArrayBuffer — Uint8Array is not accepted as BodyInit in all TS configs
+    // 4. Upload bytes directly to R2 via presigned URL
     const uploadResponse = await fetch(uploadUrl, {
       method: 'PUT',
       headers: {
@@ -138,7 +197,7 @@ export async function uploadChatMedia(
       throw new Error(`Upload failed: ${uploadResponse.status} ${errorText}`);
     }
 
-    // 4. Build the stored URL in the same relative format the PWA uses:
+    // 5. Build the stored URL in the same relative format the PWA uses:
     //    /api/images/<key>
     //    Both platforms store the same value in the DB; native rendering resolves
     //    it using EXPO_PUBLIC_API_BASE_URL (see ChatMessages.tsx).

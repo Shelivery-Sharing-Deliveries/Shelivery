@@ -58,7 +58,21 @@ export function MessageInput({ chatroomId, onSendMessage }: MessageInputProps) {
     } else {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mediaRecorder = new MediaRecorder(stream);
+
+        // Prefer audio/mp4 (AAC) for cross-platform compatibility with iOS.
+        let mimeType = '';
+        if (MediaRecorder.isTypeSupported('audio/mp4')) {
+          mimeType = 'audio/mp4';
+        } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+          mimeType = 'audio/webm';
+        } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
+          mimeType = 'audio/ogg';
+        }
+        const resolvedMime = mimeType || 'audio/webm';
+
+        const mediaRecorder = mimeType
+          ? new MediaRecorder(stream, { mimeType })
+          : new MediaRecorder(stream);
 
         audioChunksRef.current = [];
 
@@ -69,7 +83,7 @@ export function MessageInput({ chatroomId, onSendMessage }: MessageInputProps) {
         };
 
         mediaRecorder.onstop = async () => {
-          const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+          const audioBlob = new Blob(audioChunksRef.current, { type: resolvedMime });
           
           setUploading(true);
           

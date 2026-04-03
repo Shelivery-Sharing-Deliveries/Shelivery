@@ -33,9 +33,11 @@ export default function VoiceWaveformBubble({ src }: VoiceWaveformBubbleProps) {
           playsInSilentModeIOS: true,
         });
 
+        console.log('VoiceMessageBubble: loading audio from', src);
+
         const { sound } = await Audio.Sound.createAsync(
           { uri: src },
-          { shouldPlay: false },
+          { shouldPlay: false, progressUpdateIntervalMillis: 200 },
           (status: AVPlaybackStatus) => {
             if (!isMounted) return;
             if (status.isLoaded) {

@@ -31,38 +31,69 @@ function getR2Bucket(): string {
   return process.env.R2_BUCKET || 'shelivery'
 }
 
+/**
+ * Infer a proper Content-Type from the storage key extension when the stored
+ * metadata is missing or generic ("application/octet-stream").
+ * This fixes iOS AVPlayer -11828 (unsupported format) that occurs when the
+ * wrong/missing MIME type is served for audio files.
+ */
+function resolveContentType(key: string, storedType: string | undefined): string {
+  if (storedType && storedType !== 'application/octet-stream') {
+    return storedType
+  }
+
+  const ext = key.split('.').pop()?.toLowerCase() ?? ''
+  const extMap: Record<string, string> = {
+    'm4a': 'audio/mp4',
+    'mp4': 'audio/mp4',
+    'mp3': 'audio/mpeg',
+    'mpeg': 'audio/mpeg',
+    'wav': 'audio/wav',
+    'webm': 'audio/webm',
+    'ogg': 'audio/ogg',
+    'aac': 'audio/aac',
+    'caf': 'audio/x-caf',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+    'svg': 'image/svg+xml',
+  }
+
+  return extMap[ext] ?? storedType ?? 'application/octet-stream'
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { path: string[] } }
 ) {
   try {
-    const imagePath = params.path.join('/')
-    if (!imagePath) {
-      return NextResponse.json({ error: 'Image path is required' }, { status: 400 })
+    const filePath = params.path.join('/')
+    
+    if (!filePath) {
+      return NextResponse.json({ error: 'Path is required' }, { status: 400 })
     }
 
-    const rangeHeader = request.headers.get('range')
-    const isPartial = Boolean(rangeHeader)
-
-    // Get the object from R2
+    // Fetch the full object from R2 (we handle Range slicing ourselves to
+    // guarantee correct Content-Range headers — required for iOS AVPlayer)
     const client = getR2Client()
     const bucket = getR2Bucket()
 
     const command = new GetObjectCommand({
       Bucket: bucket,
-      Key: imagePath,
-      Range: rangeHeader ?? undefined,
+      Key: filePath,
     })
 
-    const response = await client.send(command)
+    const r2Response = await client.send(command)
     
-    if (!response.Body) {
-      return NextResponse.json({ error: 'Image not found' }, { status: 404 })
+    if (!r2Response.Body) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    // Convert the stream to buffer
+    // Stream full object into memory
     const chunks: Uint8Array[] = []
-    const reader = response.Body.transformToWebStream().getReader()
+    const reader = r2Response.Body.transformToWebStream().getReader()
     
     while (true) {
       const { done, value } = await reader.read()
@@ -70,33 +101,55 @@ export async function GET(
       chunks.push(value)
     }
     
-    const buffer = Buffer.concat(chunks)
+    const fullBuffer = Buffer.concat(chunks)
+    const totalSize = fullBuffer.length
 
-    const contentType = response.ContentType || 'application/octet-stream'
+    // Resolve content-type — infer from extension if R2 stored a generic type
+    const contentType = resolveContentType(filePath, r2Response.ContentType)
 
-    const headers: Record<string, string> = {
-      'Content-Type': contentType,
-      'Cache-Control': 'public, max-age=31536000, immutable',
-      'Content-Length': buffer.length.toString(),
-      'Accept-Ranges': 'bytes',
+    // ── Range request handling ────────────────────────────────────────────────
+    // iOS AVPlayer requires proper 206 responses with Accept-Ranges + Content-Range
+    // to stream audio. Without this it throws -11850 (server not configured).
+    const rangeHeader = request.headers.get('range')
+    if (rangeHeader) {
+      const match = rangeHeader.match(/bytes=(\d*)-(\d*)/)
+      if (match) {
+        const rawStart = match[1]
+        const rawEnd = match[2]
+        const start = rawStart ? parseInt(rawStart, 10) : 0
+        const end = rawEnd ? Math.min(parseInt(rawEnd, 10), totalSize - 1) : totalSize - 1
+        const chunk = fullBuffer.slice(start, end + 1)
+
+        return new NextResponse(chunk, {
+          status: 206,
+          headers: {
+            'Content-Type': contentType,
+            'Content-Range': `bytes ${start}-${end}/${totalSize}`,
+            'Accept-Ranges': 'bytes',
+            'Content-Length': chunk.length.toString(),
+            'Cache-Control': 'public, max-age=31536000, immutable',
+          },
+        })
+      }
     }
 
-    if (isPartial && response.ContentRange) {
-      headers['Content-Range'] = response.ContentRange
-    }
-
-    return new NextResponse(buffer, {
-      status: isPartial ? 206 : 200,
-      headers,
+    // ── Full response ─────────────────────────────────────────────────────────
+    return new NextResponse(fullBuffer, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': totalSize.toString(),
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'public, max-age=31536000, immutable',
+      },
     })
   } catch (error) {
-    console.error('Image proxy error:', error)
+    console.error('Media proxy error:', error)
     
-    // Return a 404 for missing images instead of 500
     if (error && typeof error === 'object' && 'name' in error && error.name === 'NoSuchKey') {
-      return NextResponse.json({ error: 'Image not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
     
-    return NextResponse.json({ error: 'Failed to load image' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to load media' }, { status: 500 })
   }
 }
