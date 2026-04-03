@@ -13,11 +13,15 @@ The migration involves porting existing React Web pages and components to their 
 *   [x] **Home Page:** `src/app/page.tsx` -> `apps/mobile/app/index.tsx`
 *   [x] **Alpha Page:** `src/app/(public)/alpha/page.tsx` -> `apps/mobile/app/alpha.tsx`
 *   [x] **Invite Friend Page:** `src/app/(public)/invite-friend/page.tsx` -> `apps/mobile/app/invite-friend.tsx`
+*   [x] **Chatrooms:** `src/app/(auth-required)/chatrooms/page.tsx`, `src/app/(auth-required)/chatrooms/[chatroomId]/page.tsx` -> `apps/mobile/app/chatrooms/` (Partial migration)
+*   [x] **Authentication Flow:** `src/app/(auth)/auth/page.tsx`, `src/app/(auth)/auth/update-password/page.tsx` -> `apps/mobile/app/auth/` (Partial migration, `apps/mobile/app/auth/index.tsx` exists)
+
+
 
 ### In Progress Pages
 
-*   [ ] **Authentication Flow:** `src/app/(auth)/auth/page.tsx`, `src/app/(auth)/auth/update-password/page.tsx` -> `apps/mobile/app/auth/` (Partial migration, `apps/mobile/app/auth/index.tsx` exists)
-*   [ ] **Chatrooms:** `src/app/(auth-required)/chatrooms/page.tsx`, `src/app/(auth-required)/chatrooms/[chatroomId]/page.tsx` -> `apps/mobile/app/chatrooms/` (Partial migration)
+
+
 *   [ ] **User Profile:** `src/app/(auth-required)/profile/[userId]/page.tsx` and related components -> `apps/mobile/app/profile/` (Partial migration)
 
 ### Remaining Pages (Not yet migrated)
