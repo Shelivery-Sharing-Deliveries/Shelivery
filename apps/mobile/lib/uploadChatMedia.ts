@@ -1,19 +1,17 @@
 /**
  * uploadChatMedia.ts
  *
- * Uploads chat audio/image files DIRECTLY to Cloudflare R2 from the mobile app.
- * Uses @aws-sdk/client-s3 with EXPO_PUBLIC_ credentials (React Native compatible).
+ * Uploads chat audio/image files to Cloudflare R2 via presigned URLs.
  *
- * Uses Uint8Array instead of Node.js Buffer so it works in React Native / Expo.
+ * Flow:
+ *   1. Request a presigned PUT URL from the Next.js backend.
+ *   2. Upload file bytes directly to R2 using that URL (no SDK / credentials on client).
+ *   3. The backend returns a publicUrl in the same format as the PWA
+ *      (`https://<app>/api/images/...`) so both platforms can render the same message.
  *
- * Required env variables in apps/mobile/.env:
- *   EXPO_PUBLIC_R2_ENDPOINT         — e.g. https://<account_id>.r2.cloudflarestorage.com
- *   EXPO_PUBLIC_R2_ACCESS_KEY_ID    — R2 API token access key
- *   EXPO_PUBLIC_R2_SECRET_ACCESS_KEY — R2 API token secret key
- *   EXPO_PUBLIC_R2_BUCKET           — R2 bucket name
- *   EXPO_PUBLIC_R2_PUBLIC_URL       — Public base URL for the bucket
- *                                     e.g. https://<bucket>.<account_id>.r2.cloudflarestorage.com
- *                                     or your custom domain https://assets.yourdomain.com
+ * Required env variable in apps/mobile/.env:
+ *   EXPO_PUBLIC_R2_PRESIGN_ENDPOINT — Full URL to your Next.js presign API
+ *                                     e.g. https://app.shelivery.com/api/r2/presign-upload
  */
 
 const PRESIGN_ENDPOINT = process.env.EXPO_PUBLIC_R2_PRESIGN_ENDPOINT ?? '';
@@ -42,8 +40,13 @@ async function uriToUint8Array(uri: string): Promise<{ bytes: Uint8Array; mimeTy
   return { bytes: new Uint8Array(buffer), mimeType };
 }
 
-/** Derive a sensible file extension from the MIME type. */
+/** Derive a sensible file extension from the MIME type.
+ *  Strips codec parameters e.g. "audio/webm;codecs=opus" → "webm"
+ */
 function mimeToExt(mimeType: string, fallback: string): string {
+  // Strip codec parameters before lookup: "audio/webm;codecs=opus" → "audio/webm"
+  const baseMime = mimeType.split(';')[0].trim().toLowerCase();
+
   const map: Record<string, string> = {
     'audio/m4a': 'm4a',
     'audio/mp4': 'm4a',
@@ -58,7 +61,7 @@ function mimeToExt(mimeType: string, fallback: string): string {
     'image/gif': 'gif',
     'image/webp': 'webp',
   };
-  return map[mimeType] || mimeType.split('/')[1] || fallback;
+  return map[baseMime] || baseMime.split('/')[1] || fallback;
 }
 
 async function getPresignedUpload(
@@ -117,13 +120,14 @@ export async function uploadChatMedia(
     const { uploadUrl, publicUrl } = await getPresignedUpload(chatroomId, mediaType, mimeType, ext);
 
     // 3. Upload bytes directly to R2 via presigned URL
+    // Use the underlying ArrayBuffer — Uint8Array is not accepted as BodyInit in all TS configs
     const uploadResponse = await fetch(uploadUrl, {
       method: 'PUT',
       headers: {
         'Content-Type': mimeType,
         'Cache-Control': 'public, max-age=31536000',
       },
-      body: bytes,
+      body: bytes.buffer as ArrayBuffer,
     });
 
     if (!uploadResponse.ok) {
