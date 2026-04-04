@@ -51,6 +51,7 @@ module.exports = {
       favicon: './assets/images/favicon.png'
     },
     plugins: [
+      'expo-notifications',
       'expo-router',
       [
         'expo-splash-screen',

@@ -15,24 +15,30 @@ The migration involves porting existing React Web pages and components to their 
 *   [x] **Invite Friend Page:** `src/app/(public)/invite-friend/page.tsx` -> `apps/mobile/app/invite-friend.tsx`
 *   [x] **Chatrooms:** `src/app/(auth-required)/chatrooms/page.tsx`, `src/app/(auth-required)/chatrooms/[chatroomId]/page.tsx` -> `apps/mobile/app/chatrooms/` (Partial migration)
 *   [x] **Authentication Flow:** `src/app/(auth)/auth/page.tsx`, `src/app/(auth)/auth/update-password/page.tsx` -> `apps/mobile/app/auth/` (Partial migration, `apps/mobile/app/auth/index.tsx` exists)
+*   [x] **Feedback Page:** `src/app/(public)/feedback/page.tsx`
 
 
 
 ### In Progress Pages
 
+*   [] **Dashboard Page:** `src/app/(public)/dashboard/page.tsx`
+
 
 
 *   [ ] **User Profile:** `src/app/(auth-required)/profile/[userId]/page.tsx` and related components -> `apps/mobile/app/profile/` (Partial migration)
+*   [ ] **Profile Set Page:** `src/app/(auth-required)/profile-set/[userId]/page.tsx`   After User profile 
+
 
 ### Remaining Pages (Not yet migrated)
 
-*   [ ] **Dashboard Page:** `src/app/(public)/dashboard/page.tsx`
-*   [ ] **About Page:** `src/app/(public)/about/page.tsx`
-*   [ ] **Feedback Page:** `src/app/(public)/feedback/page.tsx`
+*   [SKIP] **About Page:** `src/app/(public)/about/page.tsx`
+
+
 *   [ ] **Pool Page:** `src/app/(public)/pool/[basketId]/page.tsx`
-*   [ ] **Shops Blog access page:** `src/app/(public)/shops/[shopId]/basket/page.tsx`, `src/app/(public)/shops/[shopId]/blog/page.tsx`
-*   [ ] **Submit Basket Pages:** `src/app/(public)/submit-basket/page.tsx`, `src/app/(public)/submit-basket/SubmitBasketContent.tsx`
-*   [ ] **Profile Set Page:** `src/app/(auth-required)/profile-set/[userId]/page.tsx`
+*   [ ] **Shops Blog access page:** `src/app/(public)/shops/[shopId]/basket/page.tsx`, `src/app/(public)/shops/[shopId]/blog/page.tsx` Maybe open with browser ??
+
+
+*   [ ] **Submit Basket Pages:** `src/app/(public)/submit-basket/page.tsx`, `src/app/(public)/submit-basket/SubmitBasketContent.tsx` ??? 
 
 ### Layouts and Navigation
 

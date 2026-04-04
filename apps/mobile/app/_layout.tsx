@@ -7,11 +7,16 @@ import { useEffect } from "react";
 import { View } from 'react-native';
 import { Navigation } from "../components/ui/Navigation";
 import { colors } from "@/lib/theme";
+import { useAuth } from "@/hooks/useAuth";
+import { useExpoPushNotifications } from "@/hooks/useExpoPushNotifications";
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const { user } = useAuth();
+  useExpoPushNotifications(user?.id ?? null);
+
   const [fontsLoaded, fontError] = useFonts({
     Poppins_400Regular,
     Poppins_500Medium,
