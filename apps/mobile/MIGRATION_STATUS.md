@@ -16,12 +16,12 @@ The migration involves porting existing React Web pages and components to their 
 *   [x] **Chatrooms:** `src/app/(auth-required)/chatrooms/page.tsx`, `src/app/(auth-required)/chatrooms/[chatroomId]/page.tsx` -> `apps/mobile/app/chatrooms/` (Partial migration)
 *   [x] **Authentication Flow:** `src/app/(auth)/auth/page.tsx`, `src/app/(auth)/auth/update-password/page.tsx` -> `apps/mobile/app/auth/` (Partial migration, `apps/mobile/app/auth/index.tsx` exists)
 *   [x] **Feedback Page:** `src/app/(public)/feedback/page.tsx`
+*   [x] **Dashboard Page:** `src/app/(public)/dashboard/page.tsx`
 
 
 
 ### In Progress Pages
 
-*   [] **Dashboard Page:** `src/app/(public)/dashboard/page.tsx`
 
 
 

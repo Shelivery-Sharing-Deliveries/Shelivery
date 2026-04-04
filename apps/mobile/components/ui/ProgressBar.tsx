@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, ViewStyle } from "react-native";
 import { Avatar } from "./Avatar"; // Assuming Avatar is in the same folder or adjust path
 import { useEffect, useState } from "react";
 import { colors } from "@/lib/theme";
@@ -13,6 +13,7 @@ interface ProgressBarProps {
     amount: number;
   }>;
   className?: string; // Not directly used in RN, but kept for compatibility
+  containerStyle?: ViewStyle; // Override container style (e.g. to remove marginBottom)
   showPercentage?: boolean;
   animated?: boolean; // Animation handled differently in RN
   showAmount?: boolean;
@@ -28,6 +29,7 @@ export function ProgressBar({
   showAmount = true,
   currency = "CHF",
   variant = "default",
+  containerStyle,
 }: ProgressBarProps) {
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -53,7 +55,7 @@ export function ProgressBar({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, containerStyle]}>
       {/* Progress Bar */}
       <View style={styles.progressBarBackground}>
         <View
