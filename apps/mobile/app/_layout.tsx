@@ -7,14 +7,16 @@ import { useEffect } from "react";
 import { View } from 'react-native';
 import { Navigation } from "../components/ui/Navigation";
 import { colors } from "@/lib/theme";
-import { useAuth } from "@/hooks/useAuth";
+import { AuthProvider, useAuthContext } from "@/providers/AuthProvider";
 import { useExpoPushNotifications } from "@/hooks/useExpoPushNotifications";
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
-  const { user } = useAuth();
+// ─── Inner layout (needs auth context) ───────────────────────────────────────
+
+function RootLayoutInner() {
+  const { user } = useAuthContext();
   useExpoPushNotifications(user?.id ?? null);
 
   const [fontsLoaded, fontError] = useFonts({
@@ -50,5 +52,15 @@ export default function RootLayout() {
       {/* Floating pill navigation bar – absolutely positioned over all screens */}
       <Navigation />
     </View>
+  );
+}
+
+// ─── Root layout (provides auth context) ─────────────────────────────────────
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <RootLayoutInner />
+    </AuthProvider>
   );
 }

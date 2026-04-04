@@ -11,22 +11,24 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import NetInfo from '@react-native-community/netinfo';
 import { supabase } from '@/lib/supabase';
+import { useAuthContext } from '@/providers/AuthProvider';
 import { SimpleChatHeader } from '@/components/chatroom/SimpleChatHeader';
 import { ChatMessages } from '@/components/chatroom/ChatMessages';
 import { ChatInput } from '@/components/chatroom/ChatInput';
 import { ChatMenu } from '@/components/chatroom/ChatMenu';
+import {
+  getCachedMessages,
+  setCachedMessages,
+  appendCachedMessages,
+  clearChatCache,
+} from '@/lib/chatCache';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// Base URL of the Next.js server — used to resolve /api/... relative URLs on native.
-// On web (PWA) the browser resolves them automatically from the page origin.
 const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
 
-/** Resolve a stored media URL for native display.
- *  - Absolute URLs (http/https) are returned as-is.
- *  - Relative /api/... paths are prefixed with the Next.js server base URL.
- */
 function getProxiedImageUrl(url: string): string {
   if (!url) return url;
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
@@ -60,7 +62,7 @@ interface Chatroom {
   expire_at: string;
   extended_once_before_ordered: boolean;
   total_extension_days_ordered_state: number;
-  total_extension_days_delivered_state: number; // Added for delivered state extension
+  total_extension_days_delivered_state: number;
   pool: {
     id: string;
     current_amount: number;
@@ -71,19 +73,13 @@ interface Chatroom {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getTimeLeft(expireAt: string): { hours: number; minutes: number } {
+function formatTimeLeft(expireAt: string): string {
   const now = new Date();
   const expire = new Date(expireAt);
   const diffMs = expire.getTime() - now.getTime();
-  if (diffMs <= 0) return { hours: 0, minutes: 0 };
+  if (diffMs <= 0) return 'Expired';
   const hours = Math.floor(diffMs / (1000 * 60 * 60));
   const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-  return { hours, minutes };
-}
-
-function formatTimeLeft(expireAt: string): string {
-  const { hours, minutes } = getTimeLeft(expireAt);
-  if (hours === 0 && minutes === 0) return 'Expired';
   if (hours === 0) return `${minutes}m`;
   return `${hours}h ${minutes}m`;
 }
@@ -93,18 +89,30 @@ function formatTimeLeft(expireAt: string): string {
 export default function ChatroomPage() {
   const { chatroomId } = useLocalSearchParams<{ chatroomId: string }>();
   const router = useRouter();
+  const { user } = useAuthContext();
+  const userId = user?.id ?? null;
 
   const [chatroom, setChatroom] = useState<Chatroom | null>(null);
   const [members, setMembers] = useState<ChatMember[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
   const subscriptionRef = useRef<any>(null);
 
-  // ─── Data Loading ────────────────────────────────────────────────────────
+  // ─── Network state ────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsOffline(!(state.isConnected && state.isInternetReachable));
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // ─── Data Loading ─────────────────────────────────────────────────────────
 
   const loadData = useCallback(async () => {
     if (!chatroomId) return;
@@ -123,15 +131,20 @@ export default function ChatroomPage() {
     ]);
 
     if (chatroomRes.data) setChatroom(chatroomRes.data as any);
-    setMessages(messagesRes.data || []);
+
+    if (messagesRes.data) {
+      setMessages(messagesRes.data);
+      // Persist to cache for offline access
+      await setCachedMessages(chatroomId, messagesRes.data);
+    }
+
     setLoading(false);
   }, [chatroomId]);
 
   const loadMembers = useCallback(async () => {
     if (!chatroomId) return;
 
-    // Get members via chat_membership join
-   const { data: membershipsData } = await supabase
+    const { data: membershipsData } = await supabase
       .from('chat_membership')
       .select('user_id')
       .eq('chatroom_id', chatroomId)
@@ -161,16 +174,35 @@ export default function ChatroomPage() {
     }
   }, [chatroomId]);
 
+  // ─── Bootstrap ────────────────────────────────────────────────────────────
+
   useEffect(() => {
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) setUserId(user.id);
-      await Promise.all([loadData(), loadMembers()]);
+      if (!chatroomId) return;
+
+      // 1. Show cached messages immediately (offline-first)
+      const cached = await getCachedMessages(chatroomId);
+      if (cached) {
+        setMessages(cached.messages);
+        setLoading(false); // unblock UI right away
+      }
+
+      // 2. Fetch fresh data in background (even if cache hit)
+      setIsSyncing(true);
+      try {
+        await Promise.all([loadData(), loadMembers()]);
+      } catch {
+        // Network error — stay on cached data
+        if (!cached) setLoading(false);
+      } finally {
+        setIsSyncing(false);
+      }
     };
+
     init();
   }, [chatroomId]);
 
-  // ─── Real-time subscription ──────────────────────────────────────────────
+  // ─── Real-time subscription ───────────────────────────────────────────────
 
   useEffect(() => {
     if (!chatroomId) return;
@@ -181,7 +213,6 @@ export default function ChatroomPage() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'message', filter: `chatroom_id=eq.${chatroomId}` },
         async (payload) => {
-          // Fetch the user info for the new message
           const { data: msgWithUser } = await supabase
             .from('message')
             .select('*, user:user_id(*)')
@@ -189,6 +220,8 @@ export default function ChatroomPage() {
             .single();
           if (msgWithUser) {
             setMessages((prev) => [...prev, msgWithUser]);
+            // Append to cache so offline users see it next time
+            await appendCachedMessages(chatroomId, [msgWithUser]);
           }
         }
       )
@@ -197,6 +230,12 @@ export default function ChatroomPage() {
         { event: 'UPDATE', schema: 'public', table: 'chatroom', filter: `id=eq.${chatroomId}` },
         (payload) => {
           setChatroom((prev) => prev ? { ...prev, ...payload.new } as any : null);
+
+          // Clear cache when chatroom is resolved or canceled
+          const newState = payload.new.state;
+          if (newState === 'resolved' || newState === 'canceled') {
+            clearChatCache(chatroomId);
+          }
         }
       )
       .subscribe();
@@ -208,7 +247,7 @@ export default function ChatroomPage() {
     };
   }, [chatroomId]);
 
-  // ─── Actions ─────────────────────────────────────────────────────────────
+  // ─── Actions ──────────────────────────────────────────────────────────────
 
   const handleSendMessage = async (content: string | { type: 'audio' | 'image'; url: string }) => {
     if (!userId) return;
@@ -218,7 +257,6 @@ export default function ChatroomPage() {
       : { chatroom_id: chatroomId, user_id: userId, content: content.url, type: content.type };
 
     await supabase.from('message').insert(messageData);
-    // Real-time subscription handles the UI update
   };
 
   const handleMarkAsOrdered = async () => {
@@ -293,7 +331,7 @@ export default function ChatroomPage() {
     );
   };
 
-  // ─── Derived values ──────────────────────────────────────────────────────
+  // ─── Derived values ───────────────────────────────────────────────────────
 
   const isAdmin = chatroom?.admin_id === userId;
   const timeLeft = chatroom ? formatTimeLeft(chatroom.expire_at) : '...';
@@ -303,9 +341,9 @@ export default function ChatroomPage() {
     ? `${chatroom.pool.shop.name} Basket Chatroom`
     : 'Chatroom';
 
-  // ─── Render ──────────────────────────────────────────────────────────────
+  // ─── Render ───────────────────────────────────────────────────────────────
 
-  if (loading) {
+  if (loading && messages.length === 0) {
     return (
       <SafeAreaView style={styles.center}>
         <ActivityIndicator size="large" color="#245b7b" />
@@ -313,7 +351,7 @@ export default function ChatroomPage() {
     );
   }
 
-  if (!chatroom) {
+  if (!chatroom && messages.length === 0) {
     return (
       <SafeAreaView style={styles.center}>
         <Text style={styles.errorText}>Chatroom not found</Text>
@@ -323,10 +361,23 @@ export default function ChatroomPage() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      {/* Status banners — offline takes priority over syncing */}
+      {isOffline ? (
+        <View style={styles.offlineBanner}>
+          <Ionicons name="cloud-offline-outline" size={14} color="#fff" />
+          <Text style={styles.bannerText}>{"You're not connected to the network"}</Text>
+        </View>
+      ) : isSyncing ? (
+        <View style={styles.syncingBanner}>
+          <ActivityIndicator size="small" color="#245b7b" style={{ transform: [{ scale: 0.7 }] }} />
+          <Text style={styles.syncingBannerText}>Updating…</Text>
+        </View>
+      ) : null}
+
       <SimpleChatHeader
         chatroomName={chatroomName}
         memberCount={memberCount}
-        timeLeft={chatroom.expire_at}
+        timeLeft={chatroom?.expire_at ?? ''}
         onBack={() => router.back()}
         onMenuClick={() => setMenuVisible(true)}
         showMenuButton={true}
@@ -338,7 +389,6 @@ export default function ChatroomPage() {
         keyboardVerticalOffset={0}
       >
         {messages.length === 0 ? (
-          // ── Empty state ──────────────────────────────────────────────────
           <View style={styles.emptyState}>
             <View style={styles.emptyIconCircle}>
               <Ionicons name="chatbubble-ellipses" size={28} color="#9ca3af" />
@@ -352,23 +402,29 @@ export default function ChatroomPage() {
           <ChatMessages messages={messages} currentUserId={userId || ''} />
         )}
 
-        <ChatInput chatroomId={chatroomId!} onSendMessage={handleSendMessage} />
+        <ChatInput
+          chatroomId={chatroomId!}
+          onSendMessage={handleSendMessage}
+          disabled={isOffline}
+        />
       </KeyboardAvoidingView>
 
-      <ChatMenu
-        visible={menuVisible}
-        onClose={() => setMenuVisible(false)}
-        chatroom={chatroom}
-        members={members}
-        isAdmin={isAdmin}
-        totalAmount={totalAmount}
-        timeLeft={timeLeft}
-        actionLoading={actionLoading}
-        onMarkOrdered={handleMarkAsOrdered}
-        onExtendTime={handleExtendTime}
-        onLeaveOrder={handleLeaveOrder}
-        currentUserId={userId || ''}
-      />
+      {chatroom && (
+        <ChatMenu
+          visible={menuVisible}
+          onClose={() => setMenuVisible(false)}
+          chatroom={chatroom}
+          members={members}
+          isAdmin={isAdmin}
+          totalAmount={totalAmount}
+          timeLeft={timeLeft}
+          actionLoading={actionLoading}
+          onMarkOrdered={handleMarkAsOrdered}
+          onExtendTime={handleExtendTime}
+          onLeaveOrder={handleLeaveOrder}
+          currentUserId={userId || ''}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -390,6 +446,36 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     color: '#6b7280',
+  },
+  offlineBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#374151',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  bannerText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  syncingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#f0f9ff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#bae6fd',
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+  },
+  syncingBannerText: {
+    color: '#245b7b',
+    fontSize: 11,
+    fontWeight: '500',
   },
   emptyState: {
     flex: 1,

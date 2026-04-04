@@ -1,4 +1,4 @@
-import React, { use, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import BackArrow from '../../public/icons/back-arrow.svg';
 import PageLayout from '../../components/ui/PageLayout';
@@ -9,6 +9,8 @@ import { TabNavigation } from '../../components/profile/TabNavigation';
 import { supabase } from '../../lib/supabase';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { router } from 'expo-router';
+import { useAuthContext } from '@/providers/AuthProvider';
+import { useUserStore } from '@/store/userStore';
 
 type TabType = 'general' | 'preferences' | 'notifications';
 
@@ -24,87 +26,70 @@ interface ProfileFormData {
   preferedKm: number;
 }
 
-export default function ProfileEditPage() {
-  const [activeTab, setActiveTab] = useState<TabType>('general');
-  const [formData, setFormData] = useState<ProfileFormData>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    dormitory: '',
-    favoriteStore: '',
-    address: '',
-    lat: null,
-    lng: null,
-    preferedKm: 5,
-  });
+const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
 
+function resolveImageUrl(url: string | null): string | null {
+  if (!url) return null;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/') && API_BASE_URL) return `${API_BASE_URL}${url}`;
+  return url;
+}
+
+export default function ProfileEditPage() {
+  const { user, profile, refreshProfile, signOut } = useAuthContext();
+  const { updateProfile } = useUserStore();
+
+  const [activeTab, setActiveTab] = useState<TabType>('general');
   const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
   const [dormitories, setDormitories] = useState<string[]>([]);
   const [shops, setShops] = useState<string[]>([]);
 
-  // Fetch options and user data on mount
+  // Initialize form from cached profile (instant, no network call)
+  const [formData, setFormData] = useState<ProfileFormData>({
+    firstName: profile?.firstName ?? '',
+    lastName: profile?.lastName ?? '',
+    email: profile?.email ?? user?.email ?? '',
+    dormitory: profile?.dormitory ?? '',
+    favoriteStore: profile?.favoriteStore ?? '',
+    address: profile?.address ?? '',
+    lat: profile?.lat ?? null,
+    lng: profile?.lng ?? null,
+    preferedKm: profile?.preferedKm ?? 5,
+  });
+
+  // ── Hydrate form when profile loads from cache or refreshes ─────────────────
   useEffect(() => {
-    const load = async () => {
-      const { data: userAuth } = await supabase.auth.getUser();
-      const user = userAuth?.user;
-      if (!user) return;
-      setUserId(user.id);
-      setFormData((prev) => ({
-        ...prev,
-        email: user.email ?? '',
-        firstName: (user as any).first_name || '',
-      }));
+    if (profile) {
+      setFormData({
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        email: profile.email || user?.email || '',
+        dormitory: profile.dormitory,
+        favoriteStore: profile.favoriteStore,
+        address: profile.address,
+        lat: profile.lat,
+        lng: profile.lng,
+        preferedKm: profile.preferedKm,
+      });
+      setProfileImage(resolveImageUrl(profile.imageUrl));
+    }
+  }, [profile]);
 
-      // Fetch user profile data
-       const { data, error } = await supabase
-                .from("user")
-                .select("first_name, last_name, email, favorite_store, dormitory(name), image, address, lat, lng, prefered_km")
-                .eq("id", user.id)
-                .single();
-      console.log("Fetched user profile data:", data, "Error:", error);
-      if (!error && data) {
-        setFormData((prev) => ({
-          ...prev,
-          firstName: data.first_name || prev.firstName,
-          lastName: data.last_name || prev.lastName,
-          email: data.email || prev.email,
-          dormitory: Array.isArray(data.dormitory)
-            ? data.dormitory[0]?.name ?? ''
-            : (data.dormitory as { name: string } | null)?.name ?? '',
-          favoriteStore: data.favorite_store || prev.favoriteStore,
-          address: data.address || prev.address,
-          lat: data.lat ?? prev.lat,
-          lng: data.lng ?? prev.lng,
-          preferedKm: data.prefered_km ?? prev.preferedKm,
-
-        }));
-        if (data.image) setProfileImage("https://app.shelivery.com/" + data.image);
+  // ── Fetch dormitories & shops (static reference data) ───────────────────────
+  useEffect(() => {
+    const loadReferenceData = async () => {
+      const [dormRes, shopRes] = await Promise.all([
+        supabase.from('dormitory').select('name'),
+        supabase.from('shop').select('name'),
+      ]);
+      if (!dormRes.error && dormRes.data) {
+        setDormitories(dormRes.data.map((d) => d.name));
       }
-
-      // Fetch dormitories
-      const { data: dormData, error: dormError } = await supabase
-        .from("dormitory")
-        .select("name");
-
-      if (!dormError && dormData) {
-        setDormitories(dormData.map((d) => d.name));
-      } else if (dormError) {
-        console.error("Error fetching dormitories:", dormError);
-      }
-
-      // Fetch shops
-      const { data: shopData, error: shopError } = await supabase
-        .from("shop")
-        .select("name");
-
-      if (!shopError && shopData) {
-        setShops(shopData.map((s) => s.name));
-      } else if (shopError) {
-        console.error("Error fetching shops:", shopError);
+      if (!shopRes.error && shopRes.data) {
+        setShops(shopRes.data.map((s) => s.name));
       }
     };
-    load();
+    loadReferenceData();
   }, []);
 
   const handleInputChange = (field: keyof ProfileFormData, value: string | number) => {
@@ -121,28 +106,29 @@ export default function ProfileEditPage() {
   };
 
   const handleImageUpload = async () => {
-    if (!userId) return;
+    if (!user?.id) return;
 
     launchImageLibrary({ mediaType: 'photo', quality: 1 }, async (response) => {
-      if (response.didCancel) {
-        console.log('User cancelled image picker');
-      } else if (response.errorMessage) {
+      if (response.didCancel) return;
+      if (response.errorMessage) {
         console.error('ImagePicker Error: ', response.errorMessage);
-      } else if (response.assets && response.assets.length > 0) {
+        return;
+      }
+      if (response.assets && response.assets.length > 0) {
         const asset = response.assets[0];
         if (asset.uri) {
           try {
             const fileExtension = asset.uri.split('.').pop();
-            const fileName = `${userId}-${Date.now()}.${fileExtension}`;
-            const { data, error } = await supabase.storage
+            const fileName = `${user.id}-${Date.now()}.${fileExtension}`;
+            const { error: uploadError } = await supabase.storage
               .from('avatars')
               .upload(fileName, { uri: asset.uri, type: asset.type, name: fileName } as any, {
                 cacheControl: '3600',
                 upsert: true,
               });
 
-            if (error) {
-              console.error('Error uploading image:', error);
+            if (uploadError) {
+              console.error('Error uploading image:', uploadError);
               return;
             }
 
@@ -150,27 +136,24 @@ export default function ProfileEditPage() {
               .from('avatars')
               .getPublicUrl(fileName);
 
-            console.log('Upload publicUrl:', publicUrlData.publicUrl);
-
             const r2Path = publicUrlData.publicUrl.split('public/')[1];
             const proxyUrl = `/api/images/${r2Path}`;
 
             const { error: updateError } = await supabase
               .from('user')
               .update({ image: proxyUrl })
-              .eq('id', userId);
+              .eq('id', user.id);
 
             if (updateError) {
-              console.error('Failed to update user profile in database:', updateError);
+              console.error('Failed to update user profile image:', updateError);
               return;
             }
 
-            setProfileImage(proxyUrl);
-
-            console.log("Profile image updated successfully!");
-
-          } catch (uploadError) {
-            console.error('Upload error:', uploadError);
+            // Update MMKV cache immediately (no re-fetch needed)
+            updateProfile({ imageUrl: resolveImageUrl(proxyUrl) });
+            setProfileImage(resolveImageUrl(proxyUrl));
+          } catch (err) {
+            console.error('Upload error:', err);
           }
         }
       }
@@ -178,7 +161,8 @@ export default function ProfileEditPage() {
   };
 
   const handleSave = async () => {
-    if (!userId) return;
+    if (!user?.id) return;
+
     const { error } = await supabase
       .from('user')
       .update({
@@ -190,35 +174,27 @@ export default function ProfileEditPage() {
         lng: formData.lng,
         prefered_km: formData.preferedKm,
       })
-      .eq('id', userId);
+      .eq('id', user.id);
+
     if (error) {
       console.error('Error saving profile:', error);
     } else {
-      console.log('Profile saved successfully!');
+      // Update MMKV cache with new values immediately
+      updateProfile({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        favoriteStore: formData.favoriteStore,
+        address: formData.address,
+        lat: formData.lat,
+        lng: formData.lng,
+        preferedKm: formData.preferedKm,
+      });
     }
   };
 
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error("Error logging out:", error);
-    } else {
-      setFormData({
-        firstName: "",
-        lastName: "",
-        email: "",
-        dormitory: "",
-        favoriteStore: "",
-        address: "",
-        lat: null,
-        lng: null,
-        preferedKm: 5,
-      });
-      setProfileImage(null);
-      setUserId(null);
-      router.replace('/dashboard'); // Navigate to login page after logout
-      console.log("Logged out successfully, implement navigation to login/home.");
-    }
+    await signOut();
+    router.replace('/dashboard');
   };
 
   const header = (
@@ -282,22 +258,22 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 20, fontWeight: 'bold', marginLeft: 8 },
   scrollContent: { paddingBottom: 20 },
   tabContent: { paddingHorizontal: 16 },
-  logoutButtonContainer: { paddingHorizontal: 16, marginTop: 32 }, // px-4 mt-8
+  logoutButtonContainer: { paddingHorizontal: 16, marginTop: 32 },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8, // gap-2
-    paddingVertical: 12, // py-3
-    paddingHorizontal: 0, // px-0
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 0,
     width: '100%',
-    backgroundColor: '#EF4444', // bg-red-500
+    backgroundColor: '#EF4444',
     borderRadius: 16,
   },
   logoutButtonText: {
     color: 'white',
-    fontSize: 18, // text-lg
-    fontWeight: '600', // font-semibold
-    lineHeight: 26, // leading-[26px]
+    fontSize: 18,
+    fontWeight: '600',
+    lineHeight: 26,
   },
 });

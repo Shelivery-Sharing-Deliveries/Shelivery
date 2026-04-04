@@ -1,15 +1,11 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, Image } from 'react-native';
+import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import VoiceMessageBubble from './VoiceMessageBubble';
 
 // Base URL of the Next.js server — used to resolve /api/... relative URLs on native.
-// On web (PWA) the browser resolves them automatically from the page origin.
 const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
 
-/** Resolve a stored media URL for native display.
- *  - Absolute URLs (http/https) are returned as-is.
- *  - Relative /api/... paths are prefixed with the Next.js server base URL.
- */
 function resolveMediaUrl(url: string): string {
   if (!url) return url;
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
@@ -62,7 +58,12 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
           <View style={[styles.avatarPlaceholder, showAvatar ? null : styles.avatarInvisible]}>
             {showAvatar && (
               item.user?.image ? (
-                <Image source={{ uri: item.user.image }} style={styles.avatarImage} />
+                // expo-image: persistent disk cache for avatars
+                <Image
+                  source={{ uri: resolveMediaUrl(item.user.image) }}
+                  style={styles.avatarImage}
+                  cachePolicy="disk"
+                />
               ) : (
                 <View style={styles.avatarContainer}>
                   <Text style={styles.avatarText}>
@@ -88,9 +89,15 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
           )}
 
           {isImage && item.content ? (
-            <Image source={{ uri: resolveMediaUrl(item.content) }} style={styles.imageMessage} resizeMode="cover" />
+            // expo-image: persistent disk cache for chat images
+            <Image
+              source={{ uri: resolveMediaUrl(item.content) }}
+              style={styles.imageMessage}
+              contentFit="cover"
+              cachePolicy="disk"
+            />
           ) : isAudio && item.content ? (
-            <VoiceMessageBubble src={resolveMediaUrl(item.content)} />
+            <VoiceMessageBubble messageId={item.id} src={resolveMediaUrl(item.content)} />
           ) : (
             <Text style={isOwnMessage ? styles.ownText : styles.otherText}>
               {item.content}

@@ -3,12 +3,19 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import Slider from '@react-native-community/slider';
+import { getCachedAudioUri, downloadAndCacheAudio } from '@/lib/chatCache';
 
 interface VoiceWaveformBubbleProps {
+  /**
+   * Message ID — used as the cache key for the local audio file.
+   * Optional: when not provided (e.g. live recording preview), caching is skipped.
+   */
+  messageId?: string | number;
+  /** Remote URL of the audio file */
   src: string;
 }
 
-export default function VoiceWaveformBubble({ src }: VoiceWaveformBubbleProps) {
+export default function VoiceWaveformBubble({ messageId, src }: VoiceWaveformBubbleProps) {
   const soundRef = useRef<Audio.Sound | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -33,10 +40,18 @@ export default function VoiceWaveformBubble({ src }: VoiceWaveformBubbleProps) {
           playsInSilentModeIOS: true,
         });
 
-        console.log('VoiceMessageBubble: loading audio from', src);
+        // ── Resolve URI (cached local file or remote URL) ──────────────────
+        // If no messageId (e.g. live recording preview), play directly from src
+        let audioUri: string;
+        if (messageId !== undefined) {
+          const cached = getCachedAudioUri(messageId);
+          audioUri = cached ?? await downloadAndCacheAudio(messageId, src);
+        } else {
+          audioUri = src;
+        }
 
         const { sound } = await Audio.Sound.createAsync(
-          { uri: src },
+          { uri: audioUri },
           { shouldPlay: false, progressUpdateIntervalMillis: 200 },
           (status: AVPlaybackStatus) => {
             if (!isMounted) return;
@@ -59,7 +74,6 @@ export default function VoiceWaveformBubble({ src }: VoiceWaveformBubbleProps) {
           setIsLoaded(true);
           setLoadError(false);
         } else {
-          // Component unmounted while loading — clean up
           await sound.unloadAsync();
         }
       } catch (e) {
@@ -78,7 +92,7 @@ export default function VoiceWaveformBubble({ src }: VoiceWaveformBubbleProps) {
       }
       setIsLoaded(false);
     };
-  }, [src]);
+  }, [src, messageId]);
 
   const togglePlayback = async () => {
     if (!soundRef.current || !isLoaded) return;
@@ -98,7 +112,7 @@ export default function VoiceWaveformBubble({ src }: VoiceWaveformBubbleProps) {
     if (!soundRef.current || !isLoaded) return;
     try {
       await soundRef.current.setPositionAsync(value);
-    } catch (e) {
+    } catch {
       // ignore seek errors
     }
   };

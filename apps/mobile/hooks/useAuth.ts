@@ -1,133 +1,99 @@
-// hooks/useAuth.ts
-import { useEffect, useState, useCallback } from "react";
-import { User, Session } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase";
+/**
+ * useAuth.ts
+ *
+ * Thin wrapper around AuthProvider context + direct Supabase actions.
+ * All auth STATE (session, user, profile) comes from the cached AuthProvider —
+ * no redundant Supabase network calls on every hook usage.
+ *
+ * Auth ACTIONS (signIn, signUp, signOut, checkUserExists) still call Supabase
+ * directly since they are intentional user-initiated network operations.
+ */
 
-interface AuthState {
-    user: User | null;
-    session: Session | null;
-    loading: boolean;
-    error: string | null;
-}
+import { useCallback, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { useAuthContext } from "@/providers/AuthProvider";
 
 export function useAuth() {
-    const [state, setState] = useState<AuthState>({
-        user: null,
-        session: null,
-        loading: true,
-        error: null,
-    });
+  const { user, session, profile, loading, signOut: contextSignOut, refreshProfile } = useAuthContext();
+  const [actionLoading, setActionLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        let isMounted = true;
+  const signUp = useCallback(async (email: string, password: string, invitationCode?: string) => {
+    setActionLoading(true);
+    setError(null);
+    try {
+      const { data, error: err } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { invitation_code: invitationCode } },
+      });
+      if (err) throw err;
+      setActionLoading(false);
+      return { data, error: null };
+    } catch (err: any) {
+      setError(err.message);
+      setActionLoading(false);
+      return { data: null, error: err.message };
+    }
+  }, []);
 
-        const getInitialSession = async () => {
-            try {
-                const { data: { session }, error } = await supabase.auth.getSession();
-                if (!isMounted) return;
+  const signIn = useCallback(async (email: string, password: string) => {
+    setActionLoading(true);
+    setError(null);
+    try {
+      const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
+      if (err) throw err;
+      // Profile fetch is triggered automatically by AuthProvider onAuthStateChange
+      setActionLoading(false);
+      return { data, error: null };
+    } catch (err: any) {
+      setError(err.message);
+      setActionLoading(false);
+      return { data: null, error: err.message };
+    }
+  }, []);
 
-                if (error) {
-                    setState(prevState => ({ ...prevState, user: null, session: null, loading: false, error: error.message }));
-                    return;
-                }
+  const signOut = useCallback(async () => {
+    setActionLoading(true);
+    setError(null);
+    try {
+      await contextSignOut();
+      setActionLoading(false);
+      return { error: null };
+    } catch (err: any) {
+      setError(err.message);
+      setActionLoading(false);
+      return { error: err.message };
+    }
+  }, [contextSignOut]);
 
-                setState({
-                    user: session?.user || null,
-                    session,
-                    loading: false,
-                    error: null,
-                });
-            } catch (err: any) {
-                if (!isMounted) return;
-                setState(prevState => ({ ...prevState, loading: false, error: err.message }));
-            }
-        };
+  const checkUserExists = useCallback(async (email: string): Promise<boolean> => {
+    setActionLoading(true);
+    setError(null);
+    try {
+      const { data, error: err } = await supabase.rpc('check_user_exists', { p_email: email });
+      if (err) throw err;
+      setActionLoading(false);
+      return data as boolean;
+    } catch (err: any) {
+      setError(err.message);
+      setActionLoading(false);
+      return false;
+    }
+  }, []);
 
-        getInitialSession();
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            (event, session) => {
-                if (!isMounted) return;
-                setState({
-                    user: session?.user || null,
-                    session,
-                    loading: false,
-                    error: null,
-                });
-            }
-        );
-
-        return () => {
-            isMounted = false;
-            subscription.unsubscribe();
-        };
-    }, []);
-
-    const signUp = useCallback(async (email: string, password: string, invitationCode?: string) => {
-        setState(prevState => ({ ...prevState, loading: true, error: null }));
-        try {
-            const { data, error } = await supabase.auth.signUp({
-                email,
-                password,
-                options: { data: { invitation_code: invitationCode } },
-            });
-
-            if (error) throw error;
-            setState(prevState => ({ ...prevState, loading: false, error: null }));
-            return { data, error: null };
-        } catch (error: any) {
-            setState(prevState => ({ ...prevState, loading: false, error: error.message }));
-            return { data: null, error: error.message };
-        }
-    }, []);
-
-    const signIn = useCallback(async (email: string, password: string) => {
-        setState(prevState => ({ ...prevState, loading: true, error: null }));
-        try {
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-            if (error) throw error;
-            setState(prevState => ({ ...prevState, loading: false, error: null }));
-            return { data, error: null };
-        } catch (error: any) {
-            setState(prevState => ({ ...prevState, loading: false, error: error.message }));
-            return { data: null, error: error.message };
-        }
-    }, []);
-
-    const signOut = useCallback(async () => {
-        setState(prevState => ({ ...prevState, loading: true, error: null }));
-        try {
-            const { error } = await supabase.auth.signOut();
-            if (error) throw error;
-            setState({ user: null, session: null, loading: false, error: null });
-            return { error: null };
-        } catch (error: any) {
-            setState(prevState => ({ ...prevState, loading: false, error: error.message }));
-            return { error: error.message };
-        }
-    }, []);
-
-    const checkUserExists = useCallback(async (email: string): Promise<boolean> => {
-        setState(prevState => ({ ...prevState, loading: true, error: null }));
-        try {
-            const { data, error } = await supabase.rpc('check_user_exists', { p_email: email });
-            if (error) throw error;
-            setState(prevState => ({ ...prevState, loading: false, error: null }));
-            return data as boolean;
-        } catch (error: any) {
-            setState(prevState => ({ ...prevState, loading: false, error: error.message }));
-            return false;
-        }
-    }, []);
-
-    return {
-        user: state.user,
-        session: state.session,
-        loading: state.loading,
-        error: state.error,
-        signUp,
-        signIn,
-        signOut,
-        checkUserExists,
-    };
+  return {
+    // ── State from cache (no network call) ──────────────────────────────────
+    user,
+    session,
+    profile,
+    loading: loading || actionLoading,
+    error,
+    // ── Actions ─────────────────────────────────────────────────────────────
+    signUp,
+    signIn,
+    signOut,
+    checkUserExists,
+    refreshProfile,
+  };
 }
