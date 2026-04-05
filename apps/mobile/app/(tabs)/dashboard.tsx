@@ -1,9 +1,8 @@
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import PageLayout from "@/components/ui/PageLayout";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { colors } from "@/lib/theme";
 import ProfileCard from "@/components/dashboard/ProfileCard";
 import SignInCard from "@/components/dashboard/SignInCard";
@@ -100,87 +99,89 @@ export default function DashboardScreen() {
     const [userProfile, setUserProfile] = useState<{ userName: string; userAvatar: string } | null>(null);
     const [activeBaskets, setActiveBaskets] = useState<DisplayBasket[]>([]);
     const [resolvedBaskets, setResolvedBaskets] = useState<DisplayBasket[]>([]);
-    const [loadingBaskets, setLoadingBaskets] = useState(true);
+    const [loadingBaskets, setLoadingBaskets] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showOldOrders, setShowOldOrders] = useState(false);
     // const [showTutorial, setShowTutorial] = useState(false); // Tutorial skipped
 
     const router = useRouter();
-    const { user, loading: authLoading } = useAuth(); // Authentication postponed
+    const { user, loading: authLoading } = useAuth();
 
-    useEffect(() => {
-        const fetchData = async () => {
-            if (!user) return;
-            
-            setLoadingBaskets(true);
-            setError(null);
+    const fetchData = useCallback(async () => {
+        if (!user) return;
 
+        setLoadingBaskets(true);
+        setError(null);
+
+        try {
             const { data: userData, error: userError } = await supabase
                 .from("user")
                 .select("first_name, image")
                 .eq("id", user.id)
                 .single();
 
-                if (userError) {
-                    console.error("Error fetching user profile:", userError);
-                    setError("Failed to load user profile.");
-                    setUserProfile({ userName: "User", userAvatar: "/avatars/default-avatar.png" });
-                } else if (userData) {
-                    setUserProfile({
-                        userName: userData.first_name || "User",
-                        userAvatar: userData.image || "/avatars/default-avatar.png",
-                    });
-                }
-
-            try {
-                const { data: basketsData, error: basketsError } = await supabase
-                    .from("basket")
-                    .select(`
-                        id,
-                        amount,
-                        status,
-                        chatroom_id,
-                        shop (
-                            name,
-                            logo_url
-                        )
-                    `)
-                    .eq("user_id", user.id)
-                    .order("created_at", { ascending: false });
-
-                    if (basketsError) {
-                        throw basketsError;
-                    }
-
-                    if (basketsData) {
-                        const mappedBaskets: DisplayBasket[] = basketsData.map((basket: any) => ({
-                            id: basket.id,
-                            shopName: basket.shop?.name || "Unknown Shop",
-                            shopLogo: basket.shop?.logo_url || null,
-                            total: basket.amount ? `CHF ${basket.amount.toFixed(2)}` : "CHF 0.00",
-                            status: basket.status,
-                            chatroomId: basket.chatroom_id || undefined,
-                        }));
-
-                        const active = mappedBaskets.filter(b => b.status === 'in_pool' || b.status === 'in_chat');
-                        const resolved = mappedBaskets.filter(b => b.status === 'resolved');
-
-                        setActiveBaskets(active);
-                        setResolvedBaskets(resolved);
-                    }
-                } catch (err: any) {
-                    console.error("Error fetching baskets:", err);
-                    setError(err.message || "Failed to load baskets.");
-            } finally {
-                setLoadingBaskets(false);
+            if (userError) {
+                console.error("Error fetching user profile:", userError);
+                setUserProfile({ userName: "User", userAvatar: "/avatars/default-avatar.png" });
+            } else if (userData) {
+                setUserProfile({
+                    userName: userData.first_name || "User",
+                    userAvatar: userData.image || "/avatars/default-avatar.png",
+                });
             }
-        };
 
+            const { data: basketsData, error: basketsError } = await supabase
+                .from("basket")
+                .select(`
+                    id,
+                    amount,
+                    status,
+                    chatroom_id,
+                    shop (
+                        name,
+                        logo_url
+                    )
+                `)
+                .eq("user_id", user.id)
+                .order("created_at", { ascending: false });
+
+            if (basketsError) {
+                throw basketsError;
+            }
+
+            if (basketsData) {
+                const mappedBaskets: DisplayBasket[] = basketsData.map((basket: any) => ({
+                    id: basket.id,
+                    shopName: basket.shop?.name || "Unknown Shop",
+                    shopLogo: basket.shop?.logo_url || null,
+                    total: basket.amount ? `CHF ${basket.amount.toFixed(2)}` : "CHF 0.00",
+                    status: basket.status,
+                    chatroomId: basket.chatroom_id || undefined,
+                }));
+
+                const active = mappedBaskets.filter(b => b.status === 'in_pool' || b.status === 'in_chat');
+                const resolved = mappedBaskets.filter(b => b.status === 'resolved');
+
+                setActiveBaskets(active);
+                setResolvedBaskets(resolved);
+            }
+        } catch (err: any) {
+            console.error("Error fetching dashboard data:", err);
+            setError(err.message || "Failed to load data.");
+        } finally {
+            setLoadingBaskets(false);
+        }
+    }, [user?.id]); // depend only on user ID, not the full user object reference
+
+    useEffect(() => {
+        // Only fetch when auth is resolved and we have a user.
+        // Depend on user?.id (not the full user object) to avoid re-fetching
+        // on every token refresh which creates a new user object reference.
         if (!authLoading && user) {
             fetchData();
-            // Tutorial skipped, no need to check AsyncStorage
         }
-    }, [user, authLoading]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.id, authLoading]);
 
     const handleAddBasket = () => {
         router.push("/stores" as any);
@@ -190,7 +191,9 @@ export default function DashboardScreen() {
         router.push("/invite-friend" as any); 
     };
 
+    // MODIFIED: handleBasketClick function
     const handleBasketClick = (basketId: string) => {
+        // Search in both active and resolved baskets
         const basket = [...activeBaskets, ...resolvedBaskets].find(b => b.id === basketId);
         if (!basket) {
             console.warn(`Basket with ID ${basketId} not found.`);
@@ -199,7 +202,16 @@ export default function DashboardScreen() {
 
         console.log(`Basket clicked: ${basket.id}, Status: ${basket.status}, Chatroom ID: ${basket.chatroomId}`);
 
-        router.push('/stores' as any);
+        if (basket.status === "in_chat" && basket.chatroomId) {
+            router.push(`/chatrooms/${basket.chatroomId}` as any);
+        } else if (basket.status === "in_pool") {
+            router.push(`/pool/${basket.id}` as any);
+        } else if (basket.status === "resolved" && basket.chatroomId) {
+            // If the basket is resolved and has a chatroom ID, navigate to the chatroom
+            router.push(`/chatrooms/${basket.chatroomId}` as any);
+        }
+        // For resolved baskets without a chatroomId (e.g., if it was a direct order,
+        // though your current setup implies all have chatrooms), no navigation would occur.
     };
 
     // Tutorial skipped, no handleTutorialComplete function needed
@@ -278,7 +290,7 @@ export default function DashboardScreen() {
                                 <Text style={styles.errorText}>
                                     {error}
                                 </Text>
-                                <TouchableOpacity onPress={() => window.location.reload()} style={styles.retryButton}>
+                                <TouchableOpacity onPress={fetchData} style={styles.retryButton}>
                                     <Text style={styles.retryButtonText}>Retry</Text>
                                 </TouchableOpacity>
                             </View>
