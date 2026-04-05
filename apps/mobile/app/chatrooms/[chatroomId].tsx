@@ -14,10 +14,12 @@ import { Ionicons } from '@expo/vector-icons';
 import NetInfo from '@react-native-community/netinfo';
 import { supabase } from '@/lib/supabase';
 import { useAuthContext } from '@/providers/AuthProvider';
+import { useTheme } from '@/providers/ThemeProvider';
 import { SimpleChatHeader } from '@/components/chatroom/SimpleChatHeader';
 import { ChatMessages } from '@/components/chatroom/ChatMessages';
 import { ChatInput } from '@/components/chatroom/ChatInput';
 import { ChatMenu } from '@/components/chatroom/ChatMenu';
+import { OrderDetailsModal } from '@/components/chatroom/OrderDetailsModal';
 import {
   getCachedMessages,
   setCachedMessages,
@@ -89,8 +91,9 @@ function formatTimeLeft(expireAt: string): string {
 export default function ChatroomPage() {
   const { chatroomId } = useLocalSearchParams<{ chatroomId: string }>();
   const router = useRouter();
-  const { user } = useAuthContext();
+  const { user, loading: authLoading } = useAuthContext();
   const userId = user?.id ?? null;
+  const { colors, isDark } = useTheme();
 
   const [chatroom, setChatroom] = useState<Chatroom | null>(null);
   const [members, setMembers] = useState<ChatMember[]>([]);
@@ -100,8 +103,17 @@ export default function ChatroomPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [orderDetailsMember, setOrderDetailsMember] = useState<ChatMember | null>(null);
 
   const subscriptionRef = useRef<any>(null);
+
+  // ─── Auth guard: redirect to auth if not authenticated ───────────────────
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/auth' as any);
+    }
+  }, [user, authLoading]);
 
   // ─── Network state ────────────────────────────────────────────────────────
 
@@ -509,24 +521,26 @@ export default function ChatroomPage() {
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
+  const containerBg = isDark ? colors['shelivery-card-background'] : '#fff';
+
   if (loading && messages.length === 0) {
     return (
-      <SafeAreaView style={styles.center}>
-        <ActivityIndicator size="large" color="#245b7b" />
+      <SafeAreaView style={[styles.center, { backgroundColor: containerBg }]}>
+        <ActivityIndicator size="large" color={colors['shelivery-primary-blue']} />
       </SafeAreaView>
     );
   }
 
   if (!chatroom && messages.length === 0) {
     return (
-      <SafeAreaView style={styles.center}>
-        <Text style={styles.errorText}>Chatroom not found</Text>
+      <SafeAreaView style={[styles.center, { backgroundColor: containerBg }]}>
+        <Text style={[styles.errorText, { color: colors['shelivery-text-tertiary'] }]}>Chatroom not found</Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: containerBg }]} edges={['top', 'bottom']}>
       {/* Status banners — offline takes priority over syncing */}
       {isOffline ? (
         <View style={styles.offlineBanner}>
@@ -534,9 +548,9 @@ export default function ChatroomPage() {
           <Text style={styles.bannerText}>{"You're not connected to the network"}</Text>
         </View>
       ) : isSyncing ? (
-        <View style={styles.syncingBanner}>
-          <ActivityIndicator size="small" color="#245b7b" style={{ transform: [{ scale: 0.7 }] }} />
-          <Text style={styles.syncingBannerText}>Updating…</Text>
+        <View style={[styles.syncingBanner, { backgroundColor: isDark ? colors['shelivery-button-secondary-bg'] : '#f0f9ff', borderBottomColor: isDark ? colors['shelivery-card-border'] : '#bae6fd' }]}>
+          <ActivityIndicator size="small" color={colors['shelivery-primary-blue']} style={{ transform: [{ scale: 0.7 }] }} />
+          <Text style={[styles.syncingBannerText, { color: colors['shelivery-primary-blue'] }]}>Updating…</Text>
         </View>
       ) : null}
 
@@ -556,11 +570,11 @@ export default function ChatroomPage() {
       >
         {messages.length === 0 ? (
           <View style={styles.emptyState}>
-            <View style={styles.emptyIconCircle}>
-              <Ionicons name="chatbubble-ellipses" size={28} color="#9ca3af" />
-            </View>
-            <Text style={styles.emptyTitle}>Welcome to the chatroom!</Text>
-            <Text style={styles.emptySubtitle}>
+          <View style={[styles.emptyIconCircle, { backgroundColor: isDark ? colors['shelivery-button-secondary-bg'] : '#f3f4f6' }]}>
+            <Ionicons name="chatbubble-ellipses" size={28} color={colors['shelivery-text-tertiary']} />
+          </View>
+          <Text style={[styles.emptyTitle, { color: colors['shelivery-text-primary'] }]}>Welcome to the chatroom!</Text>
+          <Text style={[styles.emptySubtitle, { color: colors['shelivery-text-tertiary'] }]}>
               Start the conversation by sending a message to your group members.
             </Text>
           </View>
@@ -576,47 +590,46 @@ export default function ChatroomPage() {
       </KeyboardAvoidingView>
 
       {chatroom && (
-        <ChatMenu
-          visible={menuVisible}
-          onClose={() => setMenuVisible(false)}
-          chatroom={chatroom}
-          members={members}
-          isAdmin={isAdmin}
-          totalAmount={totalAmount}
-          timeLeft={timeLeft}
-          actionLoading={actionLoading}
-          currentUserId={userId || ''}
-          onMarkOrdered={handleMarkAsOrdered}
-          onMarkDelivered={handleMarkAsDelivered}
-          onConfirmDelivery={handleConfirmDelivery}
-          onExtendTime={handleExtendTime}
-          onLeaveOrder={handleLeaveOrder}
-          onMakeAdmin={handleMakeAdmin}
-          onRemoveMember={handleRemoveMember}
-        />
+        <>
+          <ChatMenu
+            visible={menuVisible}
+            onClose={() => setMenuVisible(false)}
+            chatroom={chatroom}
+            members={members}
+            isAdmin={isAdmin}
+            totalAmount={totalAmount}
+            timeLeft={timeLeft}
+            actionLoading={actionLoading}
+            currentUserId={userId || ''}
+            onMarkOrdered={handleMarkAsOrdered}
+            onMarkDelivered={handleMarkAsDelivered}
+            onConfirmDelivery={handleConfirmDelivery}
+            onExtendTime={handleExtendTime}
+            onLeaveOrder={handleLeaveOrder}
+            onMakeAdmin={handleMakeAdmin}
+            onRemoveMember={handleRemoveMember}
+            onViewOrderDetails={(member) => {
+              setMenuVisible(false);
+              setOrderDetailsMember(member);
+            }}
+          />
+
+          <OrderDetailsModal
+            visible={orderDetailsMember !== null}
+            onClose={() => setOrderDetailsMember(null)}
+            member={orderDetailsMember}
+          />
+        </>
       )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  flex: {
-    flex: 1,
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#6b7280',
-  },
+  container: { flex: 1 },
+  flex: { flex: 1 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorText: { fontSize: 16 },
   offlineBanner: {
     flexDirection: 'row',
     alignItems: 'center',

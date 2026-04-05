@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -19,8 +19,10 @@ import { registerExpoPushToken } from '../../hooks/useExpoPushNotifications';
 import { useAuthContext } from '@/providers/AuthProvider';
 import { useUserStore } from '@/store/userStore';
 import { supabase } from '../../lib/supabase';
-import PageLayout from '../../components/ui/PageLayout';
+import PageLayout, { NavBarSpacer } from '../../components/ui/PageLayout';
 import MapboxLocationPicker from '../../components/mapbox/MapboxLocationPicker';
+import { useTheme } from '@/providers/ThemeProvider';
+import { ThemeColors } from '@/lib/theme';
 
 const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
 
@@ -48,36 +50,241 @@ interface RowProps {
   valueColor?: string;
   onPress?: () => void;
   rightElement?: React.ReactNode;
+  colors: ThemeColors;
 }
 
-const SettingsRow: React.FC<RowProps> = ({ icon, label, value, valueColor, onPress, rightElement }) => (
+const SettingsRow: React.FC<RowProps> = ({ icon, label, value, valueColor, onPress, rightElement, colors }) => (
   <TouchableOpacity
-    style={styles.row}
+    style={rowStyles.row}
     onPress={onPress}
     activeOpacity={onPress ? 0.7 : 1}
     disabled={!onPress}
   >
-    <View style={styles.rowLeft}>
-      <Ionicons name={icon} size={20} color="#374151" style={styles.rowIcon} />
-      <Text style={styles.rowLabel}>{label}</Text>
+    <View style={rowStyles.rowLeft}>
+      <Ionicons name={icon} size={20} color={colors['shelivery-text-secondary']} style={rowStyles.rowIcon} />
+      <Text style={[rowStyles.rowLabel, { color: colors['shelivery-text-primary'] }]}>{label}</Text>
     </View>
-    <View style={styles.rowRight}>
+    <View style={rowStyles.rowRight}>
       {value !== undefined && (
-        <Text style={[styles.rowValue, valueColor ? { color: valueColor } : {}]} numberOfLines={1}>
+        <Text
+          style={[rowStyles.rowValue, { color: valueColor ?? colors['shelivery-text-tertiary'] }]}
+          numberOfLines={1}
+        >
           {value}
         </Text>
       )}
       {rightElement}
-      {onPress && !rightElement && <Ionicons name="chevron-forward" size={16} color="#9CA3AF" style={{ marginLeft: 4 }} />}
+      {onPress && !rightElement && (
+        <Ionicons name="chevron-forward" size={16} color={colors['shelivery-text-disabled']} style={{ marginLeft: 4 }} />
+      )}
     </View>
   </TouchableOpacity>
 );
+
+// Static row layout (never changes)
+const rowStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    gap: 8,
+  },
+  rowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 0,
+    flexShrink: 0,
+  },
+  rowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
+  rowIcon: { marginRight: 12 },
+  rowLabel: { fontSize: 15, fontWeight: '400' },
+  rowValue: { fontSize: 14, textAlign: 'right', flexShrink: 1 },
+});
+
+// ── Dynamic styles factory ──────────────────────────────────────────────────
+
+const createStyles = (colors: ThemeColors, isDark: boolean) =>
+  StyleSheet.create({
+    scrollContent: { paddingBottom: 40 },
+
+    /* ── Hero ── */
+    heroSection: {
+      alignItems: 'center',
+      paddingTop: 32,
+      paddingBottom: 24,
+      paddingHorizontal: 16,
+    },
+    avatarTouchable: { marginBottom: 12 },
+    avatar: {
+      width: 90,
+      height: 90,
+      borderRadius: 45,
+      backgroundColor: colors['shelivery-card-border'],
+    },
+    heroName: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: colors['shelivery-text-primary'],
+      marginBottom: 4,
+    },
+    heroEmail: {
+      fontSize: 14,
+      color: colors['shelivery-text-tertiary'],
+      marginBottom: 16,
+    },
+    editProfileButton: {
+      paddingVertical: 8,
+      paddingHorizontal: 28,
+      borderRadius: 24,
+      borderWidth: 1.5,
+      borderColor: colors['shelivery-text-secondary'],
+    },
+    editProfileButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors['shelivery-text-secondary'],
+    },
+
+    /* ── Section card ── */
+    section: {
+      marginHorizontal: 16,
+      marginBottom: 16,
+      backgroundColor: isDark ? colors['shelivery-button-secondary-bg'] : '#F5F5F5',
+      borderRadius: 16,
+      paddingHorizontal: 16,
+      paddingVertical: 4,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors['shelivery-text-primary'],
+      paddingTop: 14,
+      paddingBottom: 10,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: colors['shelivery-card-border'],
+    },
+
+    /* ── Logout ── */
+    logoutButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      marginHorizontal: 16,
+      marginTop: 8,
+      paddingVertical: 14,
+      backgroundColor: '#EF4444',
+      borderRadius: 16,
+    },
+    logoutText: { color: 'white', fontSize: 16, fontWeight: '600' },
+
+    /* ── Modal shared ── */
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-end',
+    },
+    modalSheet: {
+      backgroundColor: isDark ? colors['shelivery-card-background'] : 'white',
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      maxHeight: '60%',
+      paddingBottom: 8,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors['shelivery-card-border'],
+    },
+    modalTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors['shelivery-text-primary'],
+    },
+
+    /* ── Store modal ── */
+    storeListContent: { paddingHorizontal: 16, paddingVertical: 8 },
+    storeItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 14,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+    },
+    storeItemSelected: {
+      backgroundColor: isDark ? colors['shelivery-button-secondary-bg'] : '#FFF9C4',
+    },
+    storeItemText: { fontSize: 15, color: colors['shelivery-text-secondary'] },
+    storeItemTextSelected: { fontWeight: '600', color: colors['shelivery-text-primary'] },
+    separator: {
+      height: 1,
+      backgroundColor: isDark ? colors['shelivery-card-border'] : '#F3F4F6',
+    },
+
+    /* ── Distance modal ── */
+    distanceBody: { padding: 20 },
+    distanceHint: {
+      fontSize: 13,
+      color: colors['shelivery-text-tertiary'],
+      marginBottom: 12,
+    },
+    distanceInput: {
+      borderWidth: 1,
+      borderColor: colors['shelivery-card-border'],
+      borderRadius: 14,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      fontSize: 18,
+      color: colors['shelivery-text-primary'],
+      backgroundColor: isDark ? colors['shelivery-button-secondary-bg'] : 'white',
+      textAlign: 'center',
+      marginBottom: 16,
+    },
+    distanceSaveButton: {
+      backgroundColor: colors['shelivery-primary-yellow'],
+      borderRadius: 14,
+      paddingVertical: 13,
+      alignItems: 'center',
+    },
+    distanceSaveText: { fontSize: 16, fontWeight: '600', color: '#111827' },
+
+    /* ── Location modal ── */
+    locationModalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-end',
+    },
+    locationModalSheet: {
+      backgroundColor: isDark ? colors['shelivery-card-background'] : 'white',
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingBottom: 16,
+    },
+    locationBody: { padding: 20 },
+  });
 
 // ── Main page ───────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
   const { user, profile, signOut } = useAuthContext();
   const { updateProfile } = useUserStore();
+  const { colors, isDark, toggleColorScheme, setColorScheme } = useTheme();
+
+  // Re-create styles whenever the theme changes
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [shops, setShops] = useState<string[]>([]);
@@ -127,7 +334,7 @@ export default function ProfilePage() {
     });
   }, []);
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
   const savePrefs = useCallback(
     async (patch: Partial<PrefsData>) => {
@@ -178,7 +385,6 @@ export default function ProfilePage() {
     router.replace('/dashboard');
   }, [signOut]);
 
-  // Short address for display — keep it brief so the chevron always fits
   const shortAddress = prefs.address
     ? prefs.address.length > 18
       ? prefs.address.slice(0, 18) + '…'
@@ -190,11 +396,9 @@ export default function ProfilePage() {
 
   return (
     <PageLayout showNavigation={false}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ── Hero: avatar / name / email / edit button ─────────────── */}
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
+        {/* ── Hero: avatar / name / email / edit button ──────────────── */}
         <View style={styles.heroSection}>
           <TouchableOpacity
             onPress={() => router.push('/profile/edit')}
@@ -223,11 +427,12 @@ export default function ProfilePage() {
           </TouchableOpacity>
         </View>
 
-        {/* ── Preferences section ──────────────────────────────────── */}
+        {/* ── Preferences section ───────────────────────────────────── */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Preferences</Text>
 
           <SettingsRow
+            colors={colors}
             icon="storefront-outline"
             label="Favorite Store"
             value={prefs.favoriteStore || 'Not set'}
@@ -235,6 +440,7 @@ export default function ProfilePage() {
           />
           <View style={styles.divider} />
           <SettingsRow
+            colors={colors}
             icon="location-outline"
             label="Delivery Location"
             value={shortAddress}
@@ -242,6 +448,7 @@ export default function ProfilePage() {
           />
           <View style={styles.divider} />
           <SettingsRow
+            colors={colors}
             icon="navigate-outline"
             label="Delivery Distance"
             value={`${prefs.preferedKm} km`}
@@ -252,36 +459,62 @@ export default function ProfilePage() {
           />
         </View>
 
-        {/* ── Settings section ─────────────────────────────────────── */}
+        {/* ── Settings section ──────────────────────────────────────── */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Settings</Text>
 
           <SettingsRow
+            colors={colors}
             icon="notifications-outline"
             label="Notifications"
             value={notificationsEnabled ? 'Enabled' : 'Disabled'}
-            valueColor={notificationsEnabled ? '#34C759' : '#9CA3AF'}
+            valueColor={notificationsEnabled ? colors['shelivery-success-green'] : colors['shelivery-text-disabled']}
             rightElement={
               <Switch
                 value={notificationsEnabled}
                 onValueChange={handleNotifToggle}
-                trackColor={{ false: '#E5E8EB', true: '#FFDB0D' }}
+                trackColor={{ false: colors['shelivery-card-border'], true: colors['shelivery-primary-yellow'] }}
                 thumbColor={notificationsEnabled ? '#111827' : '#f4f3f4'}
                 style={{ marginLeft: 8 }}
               />
             }
           />
+          <View style={styles.divider} />
+
+          {/* ── Dark Mode toggle ── */}
+          <SettingsRow
+            colors={colors}
+            icon={isDark ? 'moon' : 'sunny-outline'}
+            label="Dark Mode"
+            value={isDark ? 'On' : 'Off'}
+            valueColor={isDark ? colors['shelivery-badge-blue-text'] : colors['shelivery-text-tertiary']}
+            rightElement={
+              <Switch
+                value={isDark}
+                onValueChange={toggleColorScheme}
+                trackColor={{ false: colors['shelivery-card-border'], true: colors['shelivery-primary-blue'] }}
+                thumbColor={isDark ? colors['shelivery-primary-yellow'] : '#f4f3f4'}
+                style={{ marginLeft: 8 }}
+              />
+            }
+          />
+          <View style={styles.divider} />
+
+          <SettingsRow
+            colors={colors}
+            icon="phone-portrait-outline"
+            label="Follow System Theme"
+            onPress={() => setColorScheme(null)}
+          />
         </View>
 
-        {/* ── Logout ───────────────────────────────────────────────── */}
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}
-          activeOpacity={0.8}
-        >
+        {/* ── Logout ────────────────────────────────────────────────── */}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
           <Ionicons name="log-out-outline" size={20} color="white" />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
+
+        <NavBarSpacer />
       </ScrollView>
 
       {/* ════ Store modal ════════════════════════════════════════════ */}
@@ -303,7 +536,7 @@ export default function ProfilePage() {
                 onPress={() => setStoreModalVisible(false)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons name="close" size={22} color="#374151" />
+                <Ionicons name="close" size={22} color={colors['shelivery-text-secondary']} />
               </TouchableOpacity>
             </View>
             <FlatList
@@ -322,15 +555,12 @@ export default function ProfilePage() {
                     }}
                     activeOpacity={0.7}
                   >
-                    <Text
-                      style={[
-                        styles.storeItemText,
-                        isSelected && styles.storeItemTextSelected,
-                      ]}
-                    >
+                    <Text style={[styles.storeItemText, isSelected && styles.storeItemTextSelected]}>
                       {item}
                     </Text>
-                    {isSelected && <Ionicons name="checkmark" size={18} color="#111827" />}
+                    {isSelected && (
+                      <Ionicons name="checkmark" size={18} color={colors['shelivery-text-primary']} />
+                    )}
                   </TouchableOpacity>
                 );
               }}
@@ -358,7 +588,7 @@ export default function ProfilePage() {
                 onPress={() => setDistanceModalVisible(false)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons name="close" size={22} color="#374151" />
+                <Ionicons name="close" size={22} color={colors['shelivery-text-secondary']} />
               </TouchableOpacity>
             </View>
             <View style={styles.distanceBody}>
@@ -373,6 +603,7 @@ export default function ProfilePage() {
                 maxLength={2}
                 autoFocus
                 selectTextOnFocus
+                placeholderTextColor={colors['shelivery-text-tertiary']}
               />
               <TouchableOpacity
                 style={styles.distanceSaveButton}
@@ -407,7 +638,7 @@ export default function ProfilePage() {
                 onPress={() => setLocationModalVisible(false)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons name="close" size={22} color="#374151" />
+                <Ionicons name="close" size={22} color={colors['shelivery-text-secondary']} />
               </TouchableOpacity>
             </View>
             <View style={styles.locationBody}>
@@ -435,228 +666,3 @@ export default function ProfilePage() {
     </PageLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  scrollContent: {
-    paddingBottom: 40,
-  },
-
-  /* ── Hero ── */
-  heroSection: {
-    alignItems: 'center',
-    paddingTop: 32,
-    paddingBottom: 24,
-    paddingHorizontal: 16,
-  },
-  avatarTouchable: {
-    marginBottom: 12,
-  },
-  avatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: '#E5E8EB',
-  },
-  heroName: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  heroEmail: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 16,
-  },
-  editProfileButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 28,
-    borderRadius: 24,
-    borderWidth: 1.5,
-    borderColor: '#374151',
-  },
-  editProfileButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-  },
-
-  /* ── Section card ── */
-  section: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-    paddingTop: 14,
-    paddingBottom: 10,
-  },
-
-  /* ── Row ── */
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    gap: 8,
-  },
-  rowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 0,   // don't grow — label is fixed width
-    flexShrink: 0,
-  },
-  rowRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,           // take remaining space
-    justifyContent: 'flex-end',
-    overflow: 'hidden',
-  },
-  rowIcon: {
-    marginRight: 12,
-  },
-  rowLabel: {
-    fontSize: 15,
-    color: '#111827',
-    fontWeight: '400',
-  },
-  rowValue: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'right',
-    flexShrink: 1,    // allow text to shrink and truncate
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#E5E8EB',
-  },
-
-  /* ── Logout ── */
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginHorizontal: 16,
-    marginTop: 8,
-    paddingVertical: 14,
-    backgroundColor: '#EF4444',
-    borderRadius: 16,
-  },
-  logoutText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-
-  /* ── Modal shared ── */
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '60%',
-    paddingBottom: 8,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E8EB',
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-
-  /* ── Store modal ── */
-  storeListContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  storeItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-  },
-  storeItemSelected: {
-    backgroundColor: '#FFF9C4',
-  },
-  storeItemText: {
-    fontSize: 15,
-    color: '#374151',
-  },
-  storeItemTextSelected: {
-    fontWeight: '600',
-    color: '#111827',
-  },
-  separator: {
-    height: 1,
-    backgroundColor: '#F3F4F6',
-  },
-
-  /* ── Distance modal ── */
-  distanceBody: {
-    padding: 20,
-  },
-  distanceHint: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginBottom: 12,
-  },
-  distanceInput: {
-    borderWidth: 1,
-    borderColor: '#E5E8EB',
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    fontSize: 18,
-    color: '#111827',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  distanceSaveButton: {
-    backgroundColor: '#FFE75B',
-    borderRadius: 14,
-    paddingVertical: 13,
-    alignItems: 'center',
-  },
-  distanceSaveText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-
-  /* ── Location modal ── */
-  locationModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
-  locationModalSheet: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 16,
-  },
-  locationBody: {
-    padding: 20,
-  },
-});

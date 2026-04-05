@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Text } from 'react-native';
+import { useTheme } from '@/providers/ThemeProvider';
 
 interface TimeLeftProps {
   expireAt: string;
@@ -7,6 +8,7 @@ interface TimeLeftProps {
 
 export function TimeLeft({ expireAt }: TimeLeftProps) {
   const [timeLeft, setTimeLeft] = useState('');
+  const { colors } = useTheme();
 
   useEffect(() => {
     const calculateTime = () => {
@@ -21,7 +23,6 @@ export function TimeLeft({ expireAt }: TimeLeftProps) {
 
       const hours = Math.floor(difference / (1000 * 60 * 60));
       const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-      
       setTimeLeft(`${hours}h ${minutes}m`);
     };
 
@@ -30,5 +31,9 @@ export function TimeLeft({ expireAt }: TimeLeftProps) {
     return () => clearInterval(interval);
   }, [expireAt]);
 
-  return <Text>{timeLeft}</Text>;
+  return (
+    <Text style={{ fontSize: 12, color: colors['shelivery-text-tertiary'] }}>
+      {timeLeft}
+    </Text>
+  );
 }

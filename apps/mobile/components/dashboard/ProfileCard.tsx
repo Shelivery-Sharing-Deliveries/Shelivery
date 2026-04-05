@@ -1,6 +1,6 @@
 import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
-import { colors } from "@/lib/theme"; // Assuming you have a theme file with colors
+import { useTheme } from "@/providers/ThemeProvider";
 
 interface ProfileCardProps {
   userName: string;
@@ -8,36 +8,26 @@ interface ProfileCardProps {
   id?: string;
 }
 
-export default function ProfileCard({
-  userName,
-  userAvatar,
-  id,
-}: ProfileCardProps) {
+export default function ProfileCard({ userName, userAvatar, id }: ProfileCardProps) {
   const router = useRouter();
-
-  const handleProfileClick = () => {
-    router.push("/profile" as any); // Temporary: use alpha since profile doesn't exist yet
-  };
+  const { colors } = useTheme();
 
   return (
     <TouchableOpacity
       style={styles.container}
-      onPress={handleProfileClick}
+      onPress={() => router.push("/profile" as any)}
       activeOpacity={0.8}
       accessibilityLabel={`View profile for ${userName}`}
     >
-      {/* Avatar */}
-      <View style={styles.avatarContainer}>
-        <Image   
+      <View style={[styles.avatarContainer, { borderColor: colors['shelivery-primary-yellow'] }]}>
+        <Image
           source={{ uri: `https://app.shelivery.com/${userAvatar}` }}
           alt={userName}
           style={styles.avatarImage}
         />
       </View>
-
-      {/* Greeting */}
       <View style={styles.greetingContainer}>
-        <Text style={styles.greetingText}>
+        <Text style={[styles.greetingText, { color: colors['shelivery-text-primary'] }]}>
           Hi {userName}!
         </Text>
       </View>
@@ -49,33 +39,18 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 18, // gap-[18px]
-    marginBottom: 18, // mb-[18px]
+    gap: 18,
+    marginBottom: 18,
     width: "100%",
-    // text-left is not directly applicable to TouchableOpacity, but content is left-aligned
   },
   avatarContainer: {
-    position: "relative",
-    width: 54, // w-[54px]
-    height: 54, // h-[54px]
-    borderRadius: 27, // rounded-full (54/2)
-    borderWidth: 2, // border-2
-    borderColor: colors['shelivery-primary-yellow'], // border-[#FFDB0D]
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    borderWidth: 2,
     overflow: "hidden",
   },
-  avatarImage: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "cover", // object-cover
-  },
-  greetingContainer: {
-    flexDirection: "column",
-    gap: 4, // gap-1
-  },
-  greetingText: {
-    fontSize: 20, // text-[20px]
-    fontWeight: "400", // font-normal
-    lineHeight: 28, // leading-[28px]
-    color: colors['shelivery-text-primary'], // text-[#111827]
-  },
+  avatarImage: { width: "100%", height: "100%", resizeMode: "cover" },
+  greetingContainer: { flexDirection: "column", gap: 4 },
+  greetingText: { fontSize: 20, fontWeight: "400", lineHeight: 28 },
 });

@@ -6,17 +6,18 @@ import { SplashScreen } from "expo-router";
 import { useEffect } from "react";
 import { View } from 'react-native';
 import { Navigation } from "../components/ui/Navigation";
-import { colors } from "@/lib/theme";
 import { AuthProvider, useAuthContext } from "@/providers/AuthProvider";
+import { ThemeProvider, useTheme } from "@/providers/ThemeProvider";
 import { useExpoPushNotifications } from "@/hooks/useExpoPushNotifications";
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
-// ─── Inner layout (needs auth context) ───────────────────────────────────────
+// ─── Inner layout (needs auth + theme context) ────────────────────────────────
 
 function RootLayoutInner() {
   const { user } = useAuthContext();
+  const { colors } = useTheme();
   useExpoPushNotifications(user?.id ?? null);
 
   const [fontsLoaded, fontError] = useFonts({
@@ -40,8 +41,7 @@ function RootLayoutInner() {
   }
 
   return (
-    // Blue shell – screens render on top of this; each screen wraps itself
-    // in <PageLayout> which provides the white rounded card.
+    // Shell color now reacts to the active theme automatically
     <View style={{ flex: 1, backgroundColor: colors['shelivery-primary-blue'] }}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -55,12 +55,14 @@ function RootLayoutInner() {
   );
 }
 
-// ─── Root layout (provides auth context) ─────────────────────────────────────
+// ─── Root layout (provides auth + theme context) ──────────────────────────────
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootLayoutInner />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <RootLayoutInner />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

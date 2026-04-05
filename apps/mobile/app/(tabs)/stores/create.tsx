@@ -11,13 +11,17 @@ import { Shop, LocationData, NearbyPool } from "../../../types/stores/types";
 import PageLayout from "@/components/ui/PageLayout";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/providers/ThemeProvider";
 
 // ─── Draft persistence ────────────────────────────────────────────────────────
 
 const DRAFT_KEY = "pendingMobileBasketDraft";
+const DRAFTS_LIST_KEY = "mobileBasketDraftsList";
 
-interface PersistedDraft {
+export interface PersistedDraft {
   shopId: string | null;
+  shopName: string | null;
+  shopLogo: string | null;
   location: LocationData | null;
   basketLink: string;
   basketNote: string;
@@ -25,9 +29,44 @@ interface PersistedDraft {
   step: number;
 }
 
+// ── Multi-draft list helpers ──────────────────────────────────────────────────
+
+async function upsertDraftInList(draft: PersistedDraft) {
+  if (!draft.shopId) return;
+  try {
+    const raw = await AsyncStorage.getItem(DRAFTS_LIST_KEY);
+    const list: PersistedDraft[] = raw ? JSON.parse(raw) : [];
+    const idx = list.findIndex((d) => d.shopId === draft.shopId);
+    if (idx >= 0) {
+      list[idx] = draft;
+    } else {
+      list.push(draft);
+    }
+    await AsyncStorage.setItem(DRAFTS_LIST_KEY, JSON.stringify(list));
+  } catch {}
+}
+
+async function removeDraftFromList(shopId: string) {
+  try {
+    const raw = await AsyncStorage.getItem(DRAFTS_LIST_KEY);
+    if (!raw) return;
+    const list: PersistedDraft[] = JSON.parse(raw);
+    await AsyncStorage.setItem(
+      DRAFTS_LIST_KEY,
+      JSON.stringify(list.filter((d) => d.shopId !== shopId))
+    );
+  } catch {}
+}
+
+// ── Single active-draft helpers ───────────────────────────────────────────────
+
 async function saveDraft(draft: PersistedDraft) {
   try {
     await AsyncStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    // Keep the multi-draft list in sync whenever a shop is selected
+    if (draft.shopId) {
+      await upsertDraftInList(draft);
+    }
   } catch {}
 }
 
@@ -40,9 +79,10 @@ async function loadDraft(): Promise<PersistedDraft | null> {
   }
 }
 
-async function clearDraft() {
+async function clearDraft(shopId?: string | null) {
   try {
     await AsyncStorage.removeItem(DRAFT_KEY);
+    if (shopId) await removeDraftFromList(shopId);
   } catch {}
 }
 
@@ -73,6 +113,7 @@ function normalizeUrl(url: string): string {
 export default function CreateOrderFlow() {
   const router = useRouter();
   const { user } = useAuth();
+  const { colors, isDark } = useTheme();
 
   // ── Shop state
   const [shops, setShops] = useState<Shop[]>([]);
@@ -191,11 +232,14 @@ export default function CreateOrderFlow() {
     }
   }
 
-  // ── Auto-save draft on every change ──────────────────────────────────────
+  // ── Auto-save draft only after user has confirmed shop selection (step >= 2) ──
   useEffect(() => {
     if (!draftInitialized) return; // Don't save until draft is initialized
+    if (step < 2) return; // Don't save draft while user is still browsing shops on step 1
     saveDraft({
       shopId: selectedShop?.id ?? null,
+      shopName: selectedShop?.name ?? null,
+      shopLogo: selectedShop?.logo_url ?? null,
       location: userLocation,
       basketLink,
       basketNote,
@@ -224,6 +268,23 @@ export default function CreateOrderFlow() {
   // Step 3 → 4: find nearby pools
   async function handleFindPools() {
     if (!canSubmitBasket() || !selectedShop || !userLocation) return;
+
+    // Auth guard: save draft and redirect to auth if not logged in
+    if (!user) {
+      await saveDraft({
+        shopId: selectedShop.id,
+        shopName: selectedShop.name,
+        shopLogo: selectedShop.logo_url ?? null,
+        location: userLocation,
+        basketLink,
+        basketNote,
+        basketAmount,
+        step: 3,
+      });
+      await AsyncStorage.setItem("pendingAuthReturnRoute", "/(tabs)/stores/create");
+      router.push("/auth" as any);
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -275,8 +336,25 @@ export default function CreateOrderFlow() {
 
   // Step 4: confirm pool choice and create basket
   async function handleConfirmPool(poolId: string | null) {
-    if (!selectedShop || !userLocation || !user) {
-      setError("You must be logged in to create a basket.");
+    if (!selectedShop || !userLocation) {
+      setError("Missing shop or location information. Please start over.");
+      return;
+    }
+
+    // Auth guard: save draft and redirect to auth if not logged in
+    if (!user) {
+      await saveDraft({
+        shopId: selectedShop.id,
+        shopName: selectedShop.name,
+        shopLogo: selectedShop.logo_url ?? null,
+        location: userLocation,
+        basketLink,
+        basketNote,
+        basketAmount,
+        step: 3,
+      });
+      await AsyncStorage.setItem("pendingAuthReturnRoute", "/(tabs)/stores/create");
+      router.push("/auth" as any);
       return;
     }
 
@@ -361,9 +439,9 @@ export default function CreateOrderFlow() {
   // ── Loading state ─────────────────────────────────────────────────────────
   if (!draftInitialized || shopsLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FFDB0D" />
-        <Text style={styles.loadingText}>
+      <View style={[styles.loadingContainer, { backgroundColor: isDark ? colors['shelivery-card-background'] : "#EAE4E4" }]}>
+        <ActivityIndicator size="large" color={colors['shelivery-primary-yellow']} />
+        <Text style={[styles.loadingText, { color: colors['shelivery-text-secondary'] }]}>
           {!draftInitialized ? "Restoring draft..." : "Loading shops..."}
         </Text>
       </View>
@@ -372,12 +450,12 @@ export default function CreateOrderFlow() {
 
   const header = (
     <View style={styles.headerRow}>
-      <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-        <Ionicons name="arrow-back" size={22} color="#111827" />
+      <TouchableOpacity style={[styles.backButton, { backgroundColor: isDark ? colors['shelivery-button-secondary-bg'] : "#F3F4F6" }]} onPress={handleBack}>
+        <Ionicons name="arrow-back" size={22} color={colors['shelivery-text-primary']} />
       </TouchableOpacity>
-      <Text style={styles.headerTitle}>Create Order</Text>
-      <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
-        <Text style={styles.resetButtonText}>Reset</Text>
+      <Text style={[styles.headerTitle, { color: colors['shelivery-text-primary'] }]}>Create Order</Text>
+      <TouchableOpacity style={[styles.resetButton, { backgroundColor: isDark ? colors['shelivery-button-secondary-bg'] : "#F3F4F6" }]} onPress={handleReset}>
+        <Text style={[styles.resetButtonText, { color: colors['shelivery-text-secondary'] }]}>Reset</Text>
       </TouchableOpacity>
     </View>
   );
@@ -389,13 +467,13 @@ export default function CreateOrderFlow() {
         <View style={styles.stepIndicatorRow}>
           {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
             <View key={s} style={styles.stepIndicatorItem}>
-              <View style={[styles.stepDot, step >= s && styles.stepDotActive]}>
-                <Text style={[styles.stepDotText, step >= s && styles.stepDotTextActive]}>
+              <View style={[styles.stepDot, { backgroundColor: isDark ? colors['shelivery-button-secondary-bg'] : "#E5E8EB" }, step >= s && styles.stepDotActive]}>
+                <Text style={[styles.stepDotText, { color: isDark ? colors['shelivery-text-tertiary'] : "#6B7280" }, step >= s && styles.stepDotTextActive]}>
                   {s}
                 </Text>
               </View>
               {s < totalSteps && (
-                <View style={[styles.stepConnector, step > s && styles.stepConnectorActive]} />
+                <View style={[styles.stepConnector, { backgroundColor: isDark ? colors['shelivery-button-secondary-bg'] : "#E5E8EB" }, step > s && styles.stepConnectorActive]} />
               )}
             </View>
           ))}
@@ -445,7 +523,7 @@ export default function CreateOrderFlow() {
         {/* Step 3 fallback: if shop or location missing, go back to step 1 */}
         {step === 3 && (!selectedShop || !userLocation) && (
           <View style={styles.fallbackContainer}>
-            <Text style={styles.fallbackText}>
+            <Text style={[styles.fallbackText, { color: colors['shelivery-text-secondary'] }]}>
               {!selectedShop ? "Please select a shop first." : "Please set your delivery location."}
             </Text>
             <TouchableOpacity style={styles.fallbackButton} onPress={() => setStep(1)}>

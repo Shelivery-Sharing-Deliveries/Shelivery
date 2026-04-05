@@ -1,8 +1,10 @@
 // Design tokens for Shelivery mobile app
 // Extracted from src/styles/globals.css and tailwind.config.js
 
-export const colors = {
-  // Shelivery Design System
+// ─── Light Mode Palette ───────────────────────────────────────────────────────
+
+export const lightColors = {
+  // Shelivery Design System – Light
   'shelivery-primary-yellow': '#FFDB0D',
   'shelivery-primary-blue': '#245B7B',
   'shelivery-background-gray': '#EAE4E4',
@@ -26,40 +28,70 @@ export const colors = {
   'shelivery-badge-green-bg': '#ECFDF3',
   'shelivery-badge-green-border': '#D1FADF',
   'shelivery-badge-green-text': '#027A48',
-  'shelivery-badge-waiting': '#FFDB0D', // Example color, adjust as needed
-  'shelivery-badge-ordering': '#245B7B', // Example color, adjust as needed
-  'shelivery-badge-delivered': '#34C759', // Example color, adjust as needed
-  'shelivery-shadow-color': '#000', // Example color, adjust as needed
-  'shelivery-border-gray': '#E5E8EB', // Example color, adjust as needed
-  'shelivery-error-red-bg': '#FEF3F2', // Example color, adjust as needed
-  'shelivery-button-secondary-text': '#175CD3', // Example color, adjust as needed
-
-  // Shadcn/ui colors (from globals.css)
-  background: 'hsl(var(--background))',
-  foreground: 'hsl(var(--foreground))',
-  card: 'hsl(var(--card))',
-  'card-foreground': 'hsl(var(--card-foreground))',
-  popover: 'hsl(var(--popover))',
-  'popover-foreground': 'hsl(var(--popover-foreground))',
-  primary: 'hsl(var(--primary))',
-  'primary-foreground': 'hsl(var(--primary-foreground))',
-  secondary: 'hsl(var(--secondary))',
-  'secondary-foreground': 'hsl(var(--secondary-foreground))',
-  muted: 'hsl(var(--muted))',
-  'muted-foreground': 'hsl(var(--muted-foreground))',
-  accent: 'hsl(var(--accent))',
-  'accent-foreground': 'hsl(var(--accent-foreground))',
-  destructive: 'hsl(var(--destructive))',
-  'destructive-foreground': 'hsl(var(--destructive-foreground))',
-  border: 'hsl(var(--border))',
-  input: 'hsl(var(--input))',
-  ring: 'hsl(var(--ring))',
+  'shelivery-badge-waiting': '#FFDB0D',
+  'shelivery-badge-ordering': '#245B7B',
+  'shelivery-badge-delivered': '#34C759',
+  'shelivery-shadow-color': '#000',
+  'shelivery-border-gray': '#E5E8EB',
+  'shelivery-error-red-bg': '#FEF3F2',
+  'shelivery-button-secondary-text': '#175CD3',
 
   // Utility colors
   white: '#FFFFFF',
   black: '#000000',
   transparent: 'transparent',
 };
+
+// ─── Dark Mode Palette ────────────────────────────────────────────────────────
+// Designed to complement the Shelivery brand:
+//  • Deep navy replaces the light grays → feels premium and immersive
+//  • Yellow accent stays identical (great contrast on dark surfaces)
+//  • Blue primary shifts darker so it still reads as "Shelivery blue"
+//  • Text hierarchy flips: near-white → light-blue-gray → muted slate
+
+export const darkColors = {
+  // Shelivery Design System – Dark
+  'shelivery-primary-yellow': '#FFDB0D',       // Unchanged – stands out beautifully on dark
+  'shelivery-primary-blue': '#1B4A64',         // Slightly darker blue for surfaces/shell
+  'shelivery-background-gray': '#0F1923',      // Very deep navy, almost black – main background
+  'shelivery-card-background': '#182534',      // Dark blue-tinted card surface
+  'shelivery-card-border': '#2A3F52',          // Subtle border on dark cards
+  'shelivery-button-secondary-bg': '#1E3144',  // Dark muted blue for secondary buttons
+  'shelivery-button-secondary-border': '#2E4A62', // Secondary button border
+  'shelivery-text-primary': '#EDF2F7',         // Near-white, easy to read
+  'shelivery-text-secondary': '#A8BFCC',       // Light blue-gray for secondary text
+  'shelivery-text-tertiary': '#6A8FA4',        // Muted slate for hints/placeholders
+  'shelivery-text-disabled': '#344F62',        // Very muted for disabled states
+  'shelivery-warning-orange': '#FF9F0A',       // Slightly warmer orange for dark bg
+  'shelivery-error-red': '#FF453A',            // iOS-style vivid red on dark
+  'shelivery-success-green': '#30D158',        // iOS-style vivid green on dark
+  'shelivery-badge-red-bg': '#2D1A1A',
+  'shelivery-badge-red-border': '#4A2222',
+  'shelivery-badge-red-text': '#FF6B6B',
+  'shelivery-badge-blue-bg': '#162130',
+  'shelivery-badge-blue-border': '#1F3347',
+  'shelivery-badge-blue-text': '#5BA8E0',
+  'shelivery-badge-green-bg': '#0F2A1E',
+  'shelivery-badge-green-border': '#1A4030',
+  'shelivery-badge-green-text': '#4ADE80',
+  'shelivery-badge-waiting': '#FFDB0D',
+  'shelivery-badge-ordering': '#5BA8E0',
+  'shelivery-badge-delivered': '#30D158',
+  'shelivery-shadow-color': '#000',
+  'shelivery-border-gray': '#2A3F52',
+  'shelivery-error-red-bg': '#2D1A1A',
+  'shelivery-button-secondary-text': '#5BA8E0',
+
+  // Utility colors
+  white: '#FFFFFF',
+  black: '#000000',
+  transparent: 'transparent',
+};
+
+// Default export (light) – kept for backwards compat with direct imports
+export const colors = lightColors;
+
+// ─── Spacing ──────────────────────────────────────────────────────────────────
 
 export const spacing = {
   'shelivery-1': 4,
@@ -130,7 +162,9 @@ export const shadows = {
   },
 };
 
-// Helper function to create rgba colors
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Convert a hex color to rgba string */
 export const rgba = (color: string, opacity: number) => {
   if (color.startsWith('#')) {
     const r = parseInt(color.slice(1, 3), 16);
@@ -141,23 +175,19 @@ export const rgba = (color: string, opacity: number) => {
   return color;
 };
 
-// Component-specific style helpers
+// ─── Component-specific style helpers (light, for backwards compat) ───────────
+
 export const componentStyles = {
-  // Navigation Bar
   navbar: {
     backgroundColor: colors['shelivery-primary-blue'],
     borderRadius: borderRadius['shelivery-md'],
     padding: spacing['shelivery-4'],
   },
-  
-  // Avatar Component
   avatar: {
     borderRadius: 9999,
     borderWidth: 2,
     borderColor: colors['shelivery-primary-yellow'],
   },
-  
-  // Basket Cards
   basketCard: {
     backgroundColor: colors['shelivery-card-background'],
     borderWidth: 1,
@@ -166,23 +196,18 @@ export const componentStyles = {
     padding: spacing['shelivery-4'],
     ...shadows['shelivery-md'],
   },
-  
-  // Progress Bar
   progressBar: {
     backgroundColor: colors['shelivery-card-border'],
     borderRadius: borderRadius['shelivery-sm'],
     height: 16,
     overflow: 'hidden',
   },
-  
-  // Buttons
   buttonPrimary: {
     backgroundColor: colors['shelivery-primary-yellow'],
     borderRadius: borderRadius['shelivery-md'],
     paddingHorizontal: spacing['shelivery-6'],
     paddingVertical: spacing['shelivery-3'],
   },
-  
   buttonSecondary: {
     backgroundColor: colors['shelivery-button-secondary-bg'],
     borderWidth: 1,
@@ -191,27 +216,32 @@ export const componentStyles = {
     paddingHorizontal: spacing['shelivery-4'],
     paddingVertical: spacing['shelivery-2'],
   },
-  
-  // Status Badges
   badge: {
     borderRadius: borderRadius['shelivery-full'],
     paddingHorizontal: spacing['shelivery-2'],
     paddingVertical: spacing['shelivery-1'],
   },
-  
-  // Text Fields
   input: {
     backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: '#9CA3AF', // gray-400
+    borderColor: '#9CA3AF',
     borderRadius: borderRadius['shelivery-lg'],
     paddingHorizontal: spacing['shelivery-4'],
     paddingVertical: spacing['shelivery-3'],
   },
 };
 
+export type ColorScheme = 'light' | 'dark';
+export type ThemeColors = typeof lightColors;
+
+/** Returns the full color palette for the given scheme */
+export const getColors = (scheme: ColorScheme): ThemeColors =>
+  scheme === 'dark' ? darkColors : lightColors;
+
 export default {
   colors,
+  lightColors,
+  darkColors,
   spacing,
   borderRadius,
   fontFamilies,
@@ -220,4 +250,5 @@ export default {
   shadows,
   rgba,
   componentStyles,
+  getColors,
 };

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   ActivityIndicator, Modal, Share, Image,
@@ -9,6 +9,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/lib/supabase";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import PageLayout from "@/components/ui/PageLayout";
+import { useTheme } from "@/providers/ThemeProvider";
+import { ThemeColors } from "@/lib/theme";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -63,6 +65,8 @@ interface DisplayPoolData {
 export default function PoolPage() {
   const { basketId } = useLocalSearchParams<{ basketId: string }>();
   const router = useRouter();
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   const [poolData, setPoolData] = useState<DisplayPoolData | null>(null);
   const [rawBasketData, setRawBasketData] = useState<BasketData | null>(null);
@@ -238,6 +242,8 @@ export default function PoolPage() {
     if (!poolData || !rawBasketData) return;
     const draft = {
       shopId: poolData.shop_id,
+      shopName: poolData.shopName,
+      shopLogo: poolData.shopLogo,
       location:
         rawBasketData.lat && rawBasketData.lng
           ? {
@@ -304,19 +310,22 @@ export default function PoolPage() {
   };
 
   // ── Loading / error screens ──────────────────────────────────────────────
+  const centeredBg = isDark ? colors['shelivery-card-background'] : "#EAE4E4";
+  const btnCircleBg = isDark ? colors['shelivery-button-secondary-bg'] : "#F3F4F6";
+
   if (isPageLoading) {
     return (
-      <View style={styles.centeredScreen}>
-        <ActivityIndicator size="large" color="#FFDB0D" />
-        <Text style={styles.centeredText}>Loading basket data...</Text>
+      <View style={[styles.centeredScreen, { backgroundColor: centeredBg }]}>
+        <ActivityIndicator size="large" color={colors['shelivery-primary-yellow']} />
+        <Text style={[styles.centeredText, { color: colors['shelivery-text-secondary'] }]}>Loading basket data...</Text>
       </View>
     );
   }
 
   if (error && !poolData) {
     return (
-      <View style={styles.centeredScreen}>
-        <Text style={styles.errorText}>{error}</Text>
+      <View style={[styles.centeredScreen, { backgroundColor: centeredBg }]}>
+        <Text style={[styles.errorText, { color: "#F04438" }]}>{error}</Text>
         <TouchableOpacity style={styles.centeredButton} onPress={() => router.back()}>
           <Text style={styles.centeredButtonText}>Go Back</Text>
         </TouchableOpacity>
@@ -326,12 +335,9 @@ export default function PoolPage() {
 
   if (!poolData) {
     return (
-      <View style={styles.centeredScreen}>
-        <Text style={styles.centeredText}>Basket not found or no longer active.</Text>
-        <TouchableOpacity
-          style={styles.centeredButton}
-          onPress={() => router.replace("/(tabs)/dashboard" as any)}
-        >
+      <View style={[styles.centeredScreen, { backgroundColor: centeredBg }]}>
+        <Text style={[styles.centeredText, { color: colors['shelivery-text-secondary'] }]}>Basket not found or no longer active.</Text>
+        <TouchableOpacity style={styles.centeredButton} onPress={() => router.replace("/(tabs)/dashboard" as any)}>
           <Text style={styles.centeredButtonText}>Go to Dashboard</Text>
         </TouchableOpacity>
       </View>
@@ -362,14 +368,14 @@ export default function PoolPage() {
   // ── Header ───────────────────────────────────────────────────────────────
   const header = (
     <View style={styles.headerRow}>
-      <TouchableOpacity style={styles.headerBackButton} onPress={() => router.back()}>
-        <Ionicons name="arrow-back" size={22} color="#111827" />
+      <TouchableOpacity style={[styles.headerBackButton, { backgroundColor: btnCircleBg }]} onPress={() => router.back()}>
+        <Ionicons name="arrow-back" size={22} color={colors['shelivery-text-primary']} />
       </TouchableOpacity>
-      <Text style={styles.headerTitle} numberOfLines={1}>
+      <Text style={[styles.headerTitle, { color: colors['shelivery-text-primary'] }]} numberOfLines={1}>
         {poolData.shopName} Basket
       </Text>
-      <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-        <Ionicons name="share-outline" size={22} color="#111827" />
+      <TouchableOpacity style={[styles.shareButton, { backgroundColor: btnCircleBg }]} onPress={handleShare}>
+        <Ionicons name="share-outline" size={22} color={colors['shelivery-text-primary']} />
       </TouchableOpacity>
     </View>
   );
@@ -381,7 +387,7 @@ export default function PoolPage() {
         showsVerticalScrollIndicator={false}
       >
         {/* Main Status Card */}
-        <View style={styles.statusCard}>
+        <View style={[styles.statusCard, { backgroundColor: isDark ? colors['shelivery-button-secondary-bg'] : "#FFFADF", borderColor: colors['shelivery-card-border'] }]}>
           {/* Shop logo */}
           <View style={styles.shopLogoWrapper}>
             {poolData.shopLogo ? (
@@ -395,10 +401,10 @@ export default function PoolPage() {
             )}
           </View>
 
-          <Text style={styles.statusTitle}>
+          <Text style={[styles.statusTitle, { color: colors['shelivery-text-primary'] }]}>
             {isReady ? "Joining Soon" : "Ready To Join?"}
           </Text>
-          <Text style={styles.statusSubtitle}>
+          <Text style={[styles.statusSubtitle, { color: colors['shelivery-text-secondary'] }]}>
             {isReady
               ? "We\u2019re collecting enough orders to activate free shipping."
               : "You can still edit or delete this basket. Tap ready when you\u2019re done."}
@@ -434,8 +440,8 @@ export default function PoolPage() {
           <View style={styles.detailRow}>
             <Ionicons name="wallet-outline" size={20} color="#374151" />
             <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Total</Text>
-              <Text style={styles.detailValue}>CHF {poolData.userBasket.total.toFixed(2)}</Text>
+              <Text style={[styles.detailLabel, { color: colors['shelivery-text-primary'] }]}>Total</Text>
+              <Text style={[styles.detailValue, { color: colors['shelivery-text-secondary'] }]}>CHF {poolData.userBasket.total.toFixed(2)}</Text>
             </View>
           </View>
 
@@ -443,15 +449,15 @@ export default function PoolPage() {
           <View style={styles.detailRow}>
             <Ionicons name="list-outline" size={20} color="#374151" />
             <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Items Detail</Text>
+              <Text style={[styles.detailLabel, { color: colors['shelivery-text-primary'] }]}>Items Detail</Text>
               {poolData.userBasket.itemsUrl ? (
                 <Text style={styles.detailLink} numberOfLines={2}>
                   🔗 {poolData.userBasket.itemsUrl}
                 </Text>
               ) : null}
               {poolData.userBasket.itemsNote ? (
-                <View style={styles.noteBox}>
-                  <Text style={styles.noteText}>{poolData.userBasket.itemsNote}</Text>
+                <View style={[styles.noteBox, { backgroundColor: isDark ? colors['shelivery-button-secondary-bg'] : "#F9FAFB", borderColor: colors['shelivery-card-border'] }]}>
+                  <Text style={[styles.noteText, { color: colors['shelivery-text-secondary'] }]}>{poolData.userBasket.itemsNote}</Text>
                 </View>
               ) : null}
               {!poolData.userBasket.itemsUrl && !poolData.userBasket.itemsNote && (
@@ -465,11 +471,11 @@ export default function PoolPage() {
         {!isReady && (
           <View style={styles.editDeleteRow}>
             <TouchableOpacity style={styles.editButton} onPress={handleEdit} disabled={isButtonLoading}>
-              <Ionicons name="create-outline" size={16} color="#245B7B" />
+              <Ionicons name="create-outline" size={16} color={colors['shelivery-badge-blue-text']} />
               <Text style={styles.editButtonText}>Edit</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.deleteButton} onPress={handleDelete} disabled={isButtonLoading}>
-              <Ionicons name="trash-outline" size={16} color="#B42318" />
+              <Ionicons name="trash-outline" size={16} color={colors['shelivery-badge-red-text']} />
               <Text style={styles.deleteButtonText}>
                 {isButtonLoading ? "Deleting..." : "Delete"}
               </Text>
@@ -491,9 +497,9 @@ export default function PoolPage() {
           activeOpacity={0.85}
         >
           {isButtonLoading ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={buttonStyle === styles.actionButtonYellow ? "#111827" : "#FFFFFF"} />
           ) : (
-            <Text style={styles.actionButtonText}>{buttonLabel}</Text>
+            <Text style={[styles.actionButtonText, buttonStyle === styles.actionButtonYellow && styles.actionButtonTextDark]}>{buttonLabel}</Text>
           )}
         </TouchableOpacity>
       </ScrollView>
@@ -501,20 +507,20 @@ export default function PoolPage() {
       {/* Edit Confirmation Modal */}
       <Modal visible={showEditConfirm} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={[styles.modalIcon, { backgroundColor: "#EFF8FF" }]}>
+          <View style={[styles.modalCard, { backgroundColor: isDark ? colors['shelivery-card-background'] : "#FFFFFF" }]}>
+            <View style={[styles.modalIcon, { backgroundColor: isDark ? "#0D2035" : "#EFF8FF" }]}>
               <Ionicons name="create-outline" size={24} color="#245B7B" />
             </View>
-            <Text style={styles.modalTitle}>Edit Basket?</Text>
-            <Text style={styles.modalBody}>
+            <Text style={[styles.modalTitle, { color: colors['shelivery-text-primary'] }]}>Edit Basket?</Text>
+            <Text style={[styles.modalBody, { color: colors['shelivery-text-tertiary'] }]}>
               {"Editing your basket will remove you from the current pool. If you\u2019re the only member, the pool will be dissolved. Otherwise, the pool anchor will be passed to the next member. Do you wish to continue?"}
             </Text>
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={styles.modalButtonCancel}
+                style={[styles.modalButtonCancel, { borderColor: colors['shelivery-card-border'] }]}
                 onPress={() => setShowEditConfirm(false)}
               >
-                <Text style={styles.modalButtonCancelText}>Cancel</Text>
+                <Text style={[styles.modalButtonCancelText, { color: colors['shelivery-text-secondary'] }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalButtonConfirmBlue} onPress={confirmEdit}>
                 <Text style={styles.modalButtonConfirmText}>Continue</Text>
@@ -527,22 +533,22 @@ export default function PoolPage() {
       {/* Delete Confirmation Modal */}
       <Modal visible={showDeleteConfirm} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={[styles.modalIcon, { backgroundColor: "#FEF3F2" }]}>
+          <View style={[styles.modalCard, { backgroundColor: isDark ? colors['shelivery-card-background'] : "#FFFFFF" }]}>
+            <View style={[styles.modalIcon, { backgroundColor: isDark ? "#2D0000" : "#FEF3F2" }]}>
               <Ionicons name="trash-outline" size={24} color="#B42318" />
             </View>
-            <Text style={styles.modalTitle}>Delete Basket?</Text>
-            <Text style={styles.modalBody}>
+            <Text style={[styles.modalTitle, { color: colors['shelivery-text-primary'] }]}>Delete Basket?</Text>
+            <Text style={[styles.modalBody, { color: colors['shelivery-text-tertiary'] }]}>
               {poolData.pool_id
                 ? "Your basket will be removed from the pool. If you\u2019re the only member, the pool will be dissolved. Otherwise, the pool anchor will be passed to the next member."
                 : "This will permanently delete your basket."}
             </Text>
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={styles.modalButtonCancel}
+                style={[styles.modalButtonCancel, { borderColor: colors['shelivery-card-border'] }]}
                 onPress={() => setShowDeleteConfirm(false)}
               >
-                <Text style={styles.modalButtonCancelText}>Cancel</Text>
+                <Text style={[styles.modalButtonCancelText, { color: colors['shelivery-text-secondary'] }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalButtonConfirmRed} onPress={confirmDelete}>
                 <Text style={styles.modalButtonConfirmText}>Delete</Text>
@@ -557,7 +563,7 @@ export default function PoolPage() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   centeredScreen: {
     flex: 1,
     alignItems: "center",
@@ -633,9 +639,9 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 12,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#E5E8EB",
+    borderColor: colors['shelivery-card-border'],
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -667,12 +673,12 @@ const styles = StyleSheet.create({
   progressYouLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#111827",
+    color: colors['shelivery-text-primary'],
   },
   progressTotalLabel: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#111827",
+    color: colors['shelivery-text-primary'],
     marginLeft: "auto" as any,
   },
   progressBarContainer: {
@@ -701,7 +707,7 @@ const styles = StyleSheet.create({
   },
   detailLink: {
     fontSize: 13,
-    color: "#245B7B",
+    color: colors['shelivery-primary-blue'],
     textDecorationLine: "underline",
   },
   noteBox: {
@@ -718,7 +724,7 @@ const styles = StyleSheet.create({
   },
   noDetailText: {
     fontSize: 13,
-    color: "#9CA3AF",
+    color: colors['shelivery-text-tertiary'],
     fontStyle: "italic",
   },
   editDeleteRow: {
@@ -731,16 +737,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    backgroundColor: "#EAF7FF",
+    backgroundColor: isDark ? colors['shelivery-badge-blue-bg'] : "#EAF7FF",
     borderWidth: 1,
-    borderColor: "#D8F0FE",
+    borderColor: isDark ? colors['shelivery-badge-blue-border'] : "#D8F0FE",
     borderRadius: 10,
     paddingVertical: 10,
   },
   editButtonText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#245B7B",
+    color: colors['shelivery-badge-blue-text'],
   },
   deleteButton: {
     flex: 1,
@@ -748,21 +754,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    backgroundColor: "#FEF3F2",
+    backgroundColor: isDark ? colors['shelivery-badge-red-bg'] : "#FEF3F2",
     borderWidth: 1,
-    borderColor: "#FEE4E2",
+    borderColor: isDark ? colors['shelivery-badge-red-border'] : "#FEE4E2",
     borderRadius: 10,
     paddingVertical: 10,
   },
   deleteButtonText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#B42318",
+    color: colors['shelivery-badge-red-text'],
   },
   errorBanner: {
-    backgroundColor: "#FEF3F2",
+    backgroundColor: isDark ? colors['shelivery-badge-red-bg'] : "#FEF3F2",
     borderWidth: 1,
-    borderColor: "#FEE4E2",
+    borderColor: isDark ? colors['shelivery-badge-red-border'] : "#FEE4E2",
     borderRadius: 8,
     padding: 12,
   },
@@ -778,18 +784,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   actionButtonYellow: {
-    backgroundColor: "#FFDB0D",
+    backgroundColor: colors['shelivery-primary-yellow'],
   },
   actionButtonRed: {
     backgroundColor: "#F04438",
   },
   actionButtonBlue: {
-    backgroundColor: "#245B7B",
+    backgroundColor: colors['shelivery-primary-blue'],
   },
   actionButtonText: {
     fontSize: 17,
     fontWeight: "700",
     color: "#FFFFFF",
+  },
+  actionButtonTextDark: {
+    color: "#111827",
   },
   buttonDisabled: {
     opacity: 0.6,

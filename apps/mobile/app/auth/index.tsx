@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   LoginForm,
   PasswordForm,
@@ -13,6 +14,8 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import PageLayout from '@/components/ui/PageLayout';
+
+const PENDING_AUTH_RETURN_KEY = 'pendingAuthReturnRoute';
 
 export default function AuthScreen() {
   const [step, setStep] = useState<'login' | 'password' | 'invite' | 'setPassword' | 'awaitingEmailConfirmation' | 'otp' | 'forgotPassword'>('login');
@@ -32,7 +35,16 @@ export default function AuthScreen() {
 
   const handlePasswordSubmit = async (password: string) => {
     const result = await signIn(email, password);
-    if (!result.error) router.replace('/(tabs)/dashboard');
+    if (!result.error) {
+      // Check if there's a pending return route (e.g., from pool step 4 auth redirect)
+      const returnRoute = await AsyncStorage.getItem(PENDING_AUTH_RETURN_KEY);
+      if (returnRoute) {
+        await AsyncStorage.removeItem(PENDING_AUTH_RETURN_KEY);
+        router.replace(returnRoute as any);
+      } else {
+        router.replace('/(tabs)/dashboard');
+      }
+    }
   };
 
   const handleInviteCodeSubmit = async (code: string) => {

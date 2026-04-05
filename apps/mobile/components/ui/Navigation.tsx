@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from 'react-native-svg';
+import { useTheme } from '@/providers/ThemeProvider';
 
 interface NavigationProps {}
 
@@ -30,6 +31,14 @@ export function Navigation({}: NavigationProps) {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<string | null>(null);
+  const { isDark } = useTheme();
+
+  // Primary blue RGBA for the nav pill gradient
+  // Light: #245B7B = rgb(36, 91, 123)
+  // Dark:  #1B4A64 = rgb(27, 74, 100)
+  const gradientColors = isDark
+    ? (["rgba(27,74,100,0.92)", "rgba(27,74,100,0.97)", "rgba(27,74,100,0.97)", "rgba(27,74,100,0.97)", "rgba(27,74,100,0.92)"] as const)
+    : (["rgba(36,91,123,0.9)", "rgba(36,91,123,0.95)", "rgba(36,91,123,0.95)", "rgba(36,91,123,0.95)", "rgba(36,91,123,0.9)"] as const);
 
   // Hide navigation bar on chatroom detail pages
   if (pathname.startsWith('/chatrooms/')) {
@@ -145,15 +154,7 @@ export function Navigation({}: NavigationProps) {
     >
       <View style={[styles.navigationWrapper, { paddingBottom: insets.bottom }]}>
         <LinearGradient
-          colors={[
-            // Visible pill that still feels like it's on top of the page.
-            // (We keep it semi-transparent, but not so transparent that it looks like a faint gradient.)
-            "rgba(36, 91, 123, 0.9)",
-            "rgba(36, 91, 123, 0.95)",
-            "rgba(36, 91, 123, 0.95)",
-            "rgba(36, 91, 123, 0.95)",
-            "rgba(36, 91, 123, 0.9)",
-          ]}
+          colors={gradientColors}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.gradientBackground}

@@ -2,8 +2,8 @@ import React, { useRef, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import VoiceMessageBubble from './VoiceMessageBubble';
+import { useTheme } from '@/providers/ThemeProvider';
 
-// Base URL of the Next.js server — used to resolve /api/... relative URLs on native.
 const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
 
 function resolveMediaUrl(url: string): string {
@@ -13,7 +13,6 @@ function resolveMediaUrl(url: string): string {
   return url;
 }
 
-// Simple interface based on the structure we see in the database.types.ts
 interface Message {
   id: number;
   chatroom_id: string;
@@ -22,12 +21,7 @@ interface Message {
   type: string | null;
   sent_at: string | null;
   read_at: string | null;
-  user: {
-    id: string;
-    email: string;
-    first_name: string | null;
-    image: string | null;
-  };
+  user: { id: string; email: string; first_name: string | null; image: string | null };
 }
 
 interface ChatMessagesProps {
@@ -37,11 +31,10 @@ interface ChatMessagesProps {
 
 export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
   const flatListRef = useRef<FlatList>(null);
+  const { colors, isDark } = useTheme();
 
   useEffect(() => {
-    if (messages.length > 0) {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }
+    if (messages.length > 0) flatListRef.current?.scrollToEnd({ animated: true });
   }, [messages]);
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
@@ -51,22 +44,20 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
     const isAudio = item.type === 'audio';
     const isImage = item.type === 'image';
 
+    // Other bubble adapts to dark mode
+    const otherBubbleBg = isDark ? '#1E3A50' : '#f3f4f6';
+    const otherBubbleText = colors['shelivery-text-primary'];
+
     return (
       <View style={[styles.messageRow, isOwnMessage && styles.ownMessageRow]}>
-        {/* Avatar – only shown for first message in a group */}
         {!isOwnMessage && (
           <View style={[styles.avatarPlaceholder, showAvatar ? null : styles.avatarInvisible]}>
             {showAvatar && (
               item.user?.image ? (
-                // expo-image: persistent disk cache for avatars
-                <Image
-                  source={{ uri: resolveMediaUrl(item.user.image) }}
-                  style={styles.avatarImage}
-                  cachePolicy="disk"
-                />
+                <Image source={{ uri: resolveMediaUrl(item.user.image) }} style={styles.avatarImage} cachePolicy="disk" />
               ) : (
-                <View style={styles.avatarContainer}>
-                  <Text style={styles.avatarText}>
+                <View style={[styles.avatarContainer, { backgroundColor: isDark ? '#2A3F52' : '#d1d5db' }]}>
+                  <Text style={[styles.avatarText, { color: colors['shelivery-text-secondary'] }]}>
                     {item.user?.first_name?.charAt(0).toUpperCase() || '?'}
                   </Text>
                 </View>
@@ -75,36 +66,27 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
           </View>
         )}
 
-        {/* Bubble */}
-        <View
-          style={[
-            styles.bubble,
-            isOwnMessage ? styles.ownBubble : styles.otherBubble,
-            isAudio && styles.audioBubble,
-          ]}
-        >
-          {/* Sender name (only for first message in group, and not own) */}
+        <View style={[
+          styles.bubble,
+          isOwnMessage
+            ? [styles.ownBubble, { backgroundColor: colors['shelivery-primary-blue'] }]
+            : [styles.otherBubble, { backgroundColor: otherBubbleBg }],
+          isAudio && styles.audioBubble,
+        ]}>
           {!isOwnMessage && showAvatar && item.user?.first_name && (
-            <Text style={styles.senderName}>{item.user.first_name}</Text>
+            <Text style={[styles.senderName, { color: colors['shelivery-text-tertiary'] }]}>{item.user.first_name}</Text>
           )}
 
           {isImage && item.content ? (
-            // expo-image: persistent disk cache for chat images
-            <Image
-              source={{ uri: resolveMediaUrl(item.content) }}
-              style={styles.imageMessage}
-              contentFit="cover"
-              cachePolicy="disk"
-            />
+            <Image source={{ uri: resolveMediaUrl(item.content) }} style={styles.imageMessage} contentFit="cover" cachePolicy="disk" />
           ) : isAudio && item.content ? (
             <VoiceMessageBubble messageId={item.id} src={resolveMediaUrl(item.content)} />
           ) : (
-            <Text style={isOwnMessage ? styles.ownText : styles.otherText}>
+            <Text style={isOwnMessage ? styles.ownText : [styles.otherText, { color: otherBubbleText }]}>
               {item.content}
             </Text>
           )}
 
-          {/* Timestamp */}
           {item.sent_at && (
             <Text style={[styles.timestamp, isOwnMessage ? styles.ownTimestamp : styles.otherTimestamp]}>
               {new Date(item.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -128,100 +110,23 @@ export function ChatMessages({ messages, currentUserId }: ChatMessagesProps) {
 }
 
 const styles = StyleSheet.create({
-  listContent: {
-    padding: 16,
-    paddingBottom: 8,
-  },
-  messageRow: {
-    flexDirection: 'row',
-    marginBottom: 4,
-    alignItems: 'flex-end',
-  },
-  ownMessageRow: {
-    flexDirection: 'row-reverse',
-  },
-
-  // ── Avatar ──────────────────────────────────────────────────────────────
-  avatarPlaceholder: {
-    width: 32,
-    marginRight: 8,
-    marginBottom: 2,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
-  avatarInvisible: {
-    opacity: 0,
-  },
-  avatarContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#d1d5db',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-  avatarText: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#374151',
-  },
-
-  // ── Bubble ───────────────────────────────────────────────────────────────
-  bubble: {
-    padding: 10,
-    borderRadius: 18,
-    maxWidth: '80%',
-    marginBottom: 2,
-  },
-  ownBubble: {
-    backgroundColor: '#245b7b',
-    borderBottomRightRadius: 4,
-  },
-  otherBubble: {
-    backgroundColor: '#f3f4f6',
-    borderBottomLeftRadius: 4,
-  },
-  audioBubble: {
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    minWidth: 200,
-  },
-  senderName: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#6b7280',
-    marginBottom: 3,
-  },
-  ownText: {
-    color: '#fff',
-    fontSize: 15,
-    lineHeight: 20,
-  },
-  otherText: {
-    color: '#111827',
-    fontSize: 15,
-    lineHeight: 20,
-  },
-  imageMessage: {
-    width: 200,
-    height: 200,
-    borderRadius: 10,
-  },
-  timestamp: {
-    fontSize: 10,
-    marginTop: 3,
-  },
-  ownTimestamp: {
-    color: 'rgba(255,255,255,0.65)',
-    textAlign: 'right',
-  },
-  otherTimestamp: {
-    color: '#9ca3af',
-    textAlign: 'right',
-  },
+  listContent: { padding: 16, paddingBottom: 8 },
+  messageRow: { flexDirection: 'row', marginBottom: 4, alignItems: 'flex-end' },
+  ownMessageRow: { flexDirection: 'row-reverse' },
+  avatarPlaceholder: { width: 32, marginRight: 8, marginBottom: 2, alignItems: 'center', justifyContent: 'flex-end' },
+  avatarInvisible: { opacity: 0 },
+  avatarContainer: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  avatarImage: { width: 32, height: 32, borderRadius: 16 },
+  avatarText: { fontSize: 13, fontWeight: 'bold' },
+  bubble: { padding: 10, borderRadius: 18, maxWidth: '80%', marginBottom: 2 },
+  ownBubble: { borderBottomRightRadius: 4 },
+  otherBubble: { borderBottomLeftRadius: 4 },
+  audioBubble: { paddingVertical: 8, paddingHorizontal: 10, minWidth: 200 },
+  senderName: { fontSize: 11, fontWeight: '600', marginBottom: 3 },
+  ownText: { color: '#fff', fontSize: 15, lineHeight: 20 },
+  otherText: { fontSize: 15, lineHeight: 20 },
+  imageMessage: { width: 200, height: 200, borderRadius: 10 },
+  timestamp: { fontSize: 10, marginTop: 3 },
+  ownTimestamp: { color: 'rgba(255,255,255,0.65)', textAlign: 'right' },
+  otherTimestamp: { color: '#9ca3af', textAlign: 'right' },
 });
