@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 
 type TabType = 'general' | 'preferences' | 'notifications';
 
@@ -9,60 +9,66 @@ interface TabNavigationProps {
   onTabChange: (tab: TabType) => void;
 }
 
+const TABS: { key: TabType; label: string }[] = [
+  { key: 'general', label: 'General' },
+  { key: 'preferences', label: 'Preferences' },
+  { key: 'notifications', label: 'Notifications' },
+];
+
 export const TabNavigation: React.FC<TabNavigationProps> = ({ activeTab, onTabChange }) => {
   return (
-    <View style={styles.tabContainer}>
-      <TouchableOpacity
-        onPress={() => onTabChange('general')}
-        style={[styles.tabButton, activeTab === 'general' ? styles.activeTabButton : {}]}
+    <View style={styles.wrapper}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
       >
-        <Text style={[styles.tabText, activeTab === 'general' ? styles.activeTabText : {}]}>
-          General
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        onPress={() => onTabChange('preferences')}
-        style={[styles.tabButton, activeTab === 'preferences' ? styles.activeTabButton : {}]}
-      >
-        <Text style={[styles.tabText, activeTab === 'preferences' ? styles.activeTabText : {}]}>
-          Preferences
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        onPress={() => onTabChange('notifications')}
-        style={[styles.tabButton, activeTab === 'notifications' ? styles.activeTabButton : {}]}
-      >
-        <Text style={[styles.tabText, activeTab === 'notifications' ? styles.activeTabText : {}]}>
-          Notifications
-        </Text>
-      </TouchableOpacity>
+        {TABS.map((tab) => (
+          <TouchableOpacity
+            key={tab.key}
+            onPress={() => onTabChange(tab.key)}
+            style={[styles.pill, activeTab === tab.key && styles.activePill]}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.pillText, activeTab === tab.key && styles.activePillText]}>
+              {tab.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  tabContainer: {
+  wrapper: {
+    paddingHorizontal: 16,
+    marginBottom: 24,
+  },
+  scrollContent: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderColor: '#E5E8EB', // gray-200
-    marginBottom: 24, // mb-6
+    gap: 8,
+    paddingVertical: 4,
   },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 12, // py-3
-    paddingHorizontal: 16, // px-4
-    alignItems: 'center',
+  pill: {
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 24,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E8EB',
   },
-  tabText: {
-    fontSize: 14, // text-sm
-    fontWeight: '500', // font-medium
-    color: '#6B7280', // gray-500
+  activePill: {
+    backgroundColor: '#FFE75B',
+    borderColor: '#FFE75B',
   },
-  activeTabButton: {
-    borderBottomWidth: 2,
-    borderColor: '#FFDB0D',
+  pillText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
   },
-  activeTabText: {
-    color: '#FFDB0D',
+  activePillText: {
+    color: '#111827',
+    fontWeight: '600',
   },
 });

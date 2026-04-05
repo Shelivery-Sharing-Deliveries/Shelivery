@@ -52,10 +52,14 @@ interface ChatMenuProps {
   totalAmount: number;
   timeLeft: string;
   actionLoading: boolean;
+  currentUserId: string;
   onMarkOrdered: () => void;
+  onMarkDelivered: () => void;
+  onConfirmDelivery: () => void;
   onExtendTime: () => void;
   onLeaveOrder: () => void;
-  currentUserId: string;
+  onMakeAdmin: (userId: string) => void;
+  onRemoveMember: (userId: string) => void;
 }
 
 // ─── Status config ────────────────────────────────────────────────────────────
@@ -88,7 +92,25 @@ function getStatusConfig(state: Chatroom['state']) {
         cardBg: '#f0fdf4',
         cardBorder: '#bbf7d0',
         title: 'Order Delivered',
-        description: 'All items have been delivered successfully',
+        description: 'Confirm receipt of your order below',
+      };
+    case 'resolved':
+      return {
+        iconName: 'checkmark-done-circle-outline' as const,
+        iconColor: '#16a34a',
+        cardBg: '#f0fdf4',
+        cardBorder: '#bbf7d0',
+        title: 'Order Resolved',
+        description: 'All members have confirmed delivery',
+      };
+    case 'canceled':
+      return {
+        iconName: 'close-circle-outline' as const,
+        iconColor: '#dc2626',
+        cardBg: '#fef2f2',
+        cardBorder: '#fecaca',
+        title: 'Order Canceled',
+        description: 'This order has been canceled',
       };
     default:
       return {
@@ -104,12 +126,9 @@ function getStatusConfig(state: Chatroom['state']) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getMemberStatus(
-  member: ChatMember,
-  isOrderDelivered: boolean
-): string {
+function getMemberStatus(member: ChatMember, isOrderDelivered: boolean): string {
   if (isOrderDelivered && member.basket?.is_delivered_by_user) {
-    return 'Delivery Confirmed';
+    return 'Delivery Confirmed ✓';
   }
   if (member.basket?.is_ready) {
     return 'Ready to order';
@@ -128,17 +147,27 @@ export function ChatMenu({
   totalAmount,
   timeLeft,
   actionLoading,
+  currentUserId,
   onMarkOrdered,
+  onMarkDelivered,
+  onConfirmDelivery,
   onExtendTime,
   onLeaveOrder,
-  currentUserId,
+  onMakeAdmin,
+  onRemoveMember,
 }: ChatMenuProps) {
   const [orderDetailsMember, setOrderDetailsMember] = useState<ChatMember | null>(null);
 
   const status = getStatusConfig(chatroom.state);
   const isWaiting = chatroom.state === 'waiting' || chatroom.state === 'active';
-  const isOrderDelivered =
-    chatroom.state === 'delivered' || chatroom.state === 'resolved';
+  const isOrdered = chatroom.state === 'ordered';
+  const isDelivered = chatroom.state === 'delivered';
+  const isOrderDelivered = chatroom.state === 'delivered' || chatroom.state === 'resolved';
+  const isResolved = chatroom.state === 'resolved' || chatroom.state === 'canceled';
+
+  // Check if current user has already confirmed delivery
+  const currentUserMember = members.find((m) => m.id === currentUserId);
+  const hasConfirmedDelivery = currentUserMember?.basket?.is_delivered_by_user === true;
 
   return (
     <>
@@ -231,6 +260,10 @@ export function ChatMenu({
                         <View style={styles.memberNameRow}>
                           <Text style={styles.memberName}>{fullName}</Text>
                           {isYou && <Text style={styles.youBadge}> (You)</Text>}
+                          {/* Admin badge */}
+                          {isThisAdmin && !isYou && (
+                            <Text style={styles.adminBadge}> Admin</Text>
+                          )}
                           {/* Delivery confirmed icon */}
                           {isOrderDelivered && member.basket?.is_delivered_by_user && (
                             <Ionicons
@@ -262,6 +295,34 @@ export function ChatMenu({
                         ) : (
                           <Text style={styles.memberNoBasket}>No order yet</Text>
                         )}
+
+                        {/* ── Per-member admin actions ── */}
+                        {isAdmin && !isYou && !isResolved && (
+                          <View style={styles.memberActions}>
+                            {/* Make Admin — only show if this member is not already admin */}
+                            {!isThisAdmin && (
+                              <TouchableOpacity
+                                style={styles.memberActionBtn}
+                                onPress={() => onMakeAdmin(member.id)}
+                                disabled={actionLoading}
+                              >
+                                <Ionicons name="shield-checkmark-outline" size={13} color="#245b7b" />
+                                <Text style={styles.memberActionBtnText}>Make Admin</Text>
+                              </TouchableOpacity>
+                            )}
+                            {/* Remove Member */}
+                            <TouchableOpacity
+                              style={[styles.memberActionBtn, styles.memberActionBtnDanger]}
+                              onPress={() => onRemoveMember(member.id)}
+                              disabled={actionLoading}
+                            >
+                              <Ionicons name="person-remove-outline" size={13} color="#dc2626" />
+                              <Text style={[styles.memberActionBtnText, styles.memberActionBtnTextDanger]}>
+                                Remove
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
                       </View>
                     </View>
                   );
@@ -272,11 +333,12 @@ export function ChatMenu({
                 )}
               </View>
 
-              {/* ── Actions (admin only) ── */}
-              {isAdmin && (
+              {/* ── Admin Actions ── */}
+              {isAdmin && !isResolved && (
                 <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Actions</Text>
+                  <Text style={styles.sectionTitle}>Admin Actions</Text>
 
+                  {/* Mark as Ordered — waiting/active state */}
                   {isWaiting && (
                     <TouchableOpacity
                       style={[styles.actionBtn, styles.darkBlueBtn]}
@@ -286,33 +348,99 @@ export function ChatMenu({
                       {actionLoading ? (
                         <ActivityIndicator color="#fff" size="small" />
                       ) : (
-                        <Text style={styles.actionBtnText}>Mark as Ordered</Text>
+                        <View style={styles.actionBtnContent}>
+                          <Ionicons name="bag-check-outline" size={18} color="#fff" />
+                          <Text style={styles.actionBtnText}>Mark as Ordered</Text>
+                        </View>
                       )}
                     </TouchableOpacity>
                   )}
 
+                  {/* Mark as Delivered — ordered state */}
+                  {isOrdered && (
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.greenBtn]}
+                      onPress={onMarkDelivered}
+                      disabled={actionLoading}
+                    >
+                      {actionLoading ? (
+                        <ActivityIndicator color="#fff" size="small" />
+                      ) : (
+                        <View style={styles.actionBtnContent}>
+                          <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
+                          <Text style={styles.actionBtnText}>Mark as Delivered</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Extend Time — waiting/active/ordered state */}
+                  {(isWaiting || isOrdered || isDelivered) && (
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.yellowBtn]}
+                      onPress={onExtendTime}
+                      disabled={actionLoading}
+                    >
+                      {actionLoading ? (
+                        <ActivityIndicator color="#fff" size="small" />
+                      ) : (
+                        <View style={styles.actionBtnContent}>
+                          <Ionicons name="time-outline" size={18} color="#fff" />
+                          <Text style={styles.actionBtnText}>Extend Time</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+
+              {/* ── Confirm Delivery (non-admin members, delivered state) ── */}
+              {isDelivered && !hasConfirmedDelivery && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Delivery</Text>
+                  <Text style={styles.sectionSubtitle}>
+                    The admin has marked this order as delivered. Please confirm you received your items.
+                  </Text>
                   <TouchableOpacity
-                    style={[styles.actionBtn, styles.yellowBtn]}
-                    onPress={onExtendTime}
+                    style={[styles.actionBtn, styles.greenBtn]}
+                    onPress={onConfirmDelivery}
                     disabled={actionLoading}
                   >
                     {actionLoading ? (
                       <ActivityIndicator color="#fff" size="small" />
                     ) : (
-                      <Text style={styles.actionBtnText}>Extend Time</Text>
+                      <View style={styles.actionBtnContent}>
+                        <Ionicons name="checkmark-done-outline" size={18} color="#fff" />
+                        <Text style={styles.actionBtnText}>Confirm I Received My Order</Text>
+                      </View>
                     )}
                   </TouchableOpacity>
                 </View>
               )}
 
+              {/* ── Delivery already confirmed ── */}
+              {isDelivered && hasConfirmedDelivery && (
+                <View style={[styles.section, styles.confirmedSection]}>
+                  <View style={styles.confirmedRow}>
+                    <Ionicons name="checkmark-done-circle" size={20} color="#16a34a" />
+                    <Text style={styles.confirmedText}>You have confirmed delivery receipt</Text>
+                  </View>
+                </View>
+              )}
+
               {/* ── Leave Order ── */}
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.redBtn, styles.leaveBtn]}
-                onPress={onLeaveOrder}
-                disabled={actionLoading}
-              >
-                <Text style={styles.actionBtnText}>Leave Order</Text>
-              </TouchableOpacity>
+              {!isResolved && (
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.redBtn, styles.leaveBtn]}
+                  onPress={onLeaveOrder}
+                  disabled={actionLoading}
+                >
+                  <View style={styles.actionBtnContent}>
+                    <Ionicons name="exit-outline" size={18} color="#fff" />
+                    <Text style={styles.actionBtnText}>Leave Order</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
 
             </ScrollView>
           </SafeAreaView>
@@ -341,7 +469,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '88%',
+    maxHeight: '90%',
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
@@ -468,7 +596,7 @@ const styles = StyleSheet.create({
   // ── Members ──
   memberRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingVertical: 10,
     borderTopWidth: 1,
     borderTopColor: '#f3f4f6',
@@ -508,6 +636,7 @@ const styles = StyleSheet.create({
   memberNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   memberName: {
     fontSize: 15,
@@ -517,6 +646,11 @@ const styles = StyleSheet.create({
   youBadge: {
     fontSize: 13,
     color: '#6b7280',
+  },
+  adminBadge: {
+    fontSize: 11,
+    color: '#f59e0b',
+    fontWeight: '600',
   },
   deliveredIcon: {
     marginLeft: 4,
@@ -544,6 +678,37 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
 
+  // ── Per-member admin action buttons ──
+  memberActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+    flexWrap: 'wrap',
+  },
+  memberActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  memberActionBtnDanger: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+  },
+  memberActionBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#245b7b',
+  },
+  memberActionBtnTextDanger: {
+    color: '#dc2626',
+  },
+
   // ── Action buttons ──
   actionBtn: {
     paddingVertical: 16,
@@ -551,8 +716,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
+  actionBtnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   darkBlueBtn: {
     backgroundColor: '#245b7b',
+  },
+  greenBtn: {
+    backgroundColor: '#16a34a',
   },
   yellowBtn: {
     backgroundColor: '#f59e0b',
@@ -567,5 +740,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#ffffff',
+  },
+
+  // ── Confirmed delivery ──
+  confirmedSection: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#bbf7d0',
+  },
+  confirmedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  confirmedText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#16a34a',
   },
 });

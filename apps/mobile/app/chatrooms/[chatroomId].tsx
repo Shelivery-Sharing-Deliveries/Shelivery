@@ -280,6 +280,172 @@ export default function ChatroomPage() {
     setMenuVisible(false);
   };
 
+  const handleMarkAsDelivered = async () => {
+    if (!chatroomId || !userId) return;
+    if (chatroom?.admin_id !== userId) {
+      Alert.alert('Permission denied', 'Only the admin can mark the order as delivered.');
+      return;
+    }
+    Alert.alert(
+      'Mark as Delivered',
+      'Are you sure the order has been delivered to all members?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Mark Delivered',
+          onPress: async () => {
+            setActionLoading(true);
+            // Step 1: Update chatroom state to 'delivered'
+            const { error: chatroomError } = await supabase
+              .from('chatroom')
+              .update({ state: 'delivered' })
+              .eq('id', chatroomId);
+
+            if (chatroomError) {
+              Alert.alert('Error', 'Failed to mark as delivered. Please try again.');
+              setActionLoading(false);
+              return;
+            }
+
+            // Step 2: Confirm admin's own delivery via RPC
+            const { data, error: rpcError } = await supabase.rpc('confirm_user_delivery', {
+              p_chatroom_id: chatroomId,
+              p_user_id: userId,
+            });
+
+            if (rpcError) {
+              Alert.alert('Error', rpcError.message || 'Failed to confirm admin delivery.');
+            } else if (data && typeof data === 'object') {
+              Alert.alert('Success', data.message || 'Order marked as delivered!');
+            } else {
+              Alert.alert('Success', 'Order marked as delivered! Waiting for members to confirm receipt.');
+            }
+
+            await loadData();
+            await loadMembers();
+            setActionLoading(false);
+            setMenuVisible(false);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleConfirmDelivery = async () => {
+    if (!chatroomId || !userId) return;
+    Alert.alert(
+      'Confirm Delivery',
+      'Have you received your order?',
+      [
+        { text: 'Not yet', style: 'cancel' },
+        {
+          text: 'Yes, I received it',
+          onPress: async () => {
+            setActionLoading(true);
+            const { data, error } = await supabase.rpc('confirm_user_delivery', {
+              p_chatroom_id: chatroomId,
+              p_user_id: userId,
+            });
+
+            if (error) {
+              Alert.alert('Error', error.message || 'Failed to confirm delivery.');
+            } else if (data && typeof data === 'object') {
+              Alert.alert('Success', data.message || 'Delivery confirmed!');
+            } else {
+              Alert.alert('Success', 'Delivery confirmation processed.');
+            }
+
+            await loadData();
+            await loadMembers();
+            setActionLoading(false);
+            setMenuVisible(false);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleMakeAdmin = async (targetUserId: string) => {
+    if (!chatroomId || !userId) return;
+    if (chatroom?.admin_id !== userId) {
+      Alert.alert('Permission denied', 'Only the current admin can transfer the admin role.');
+      return;
+    }
+    const targetMember = members.find((m) => m.id === targetUserId);
+    const targetName =
+      [targetMember?.first_name, targetMember?.last_name].filter(Boolean).join(' ') || 'this member';
+
+    Alert.alert(
+      'Make Admin',
+      `Are you sure you want to make ${targetName} the new admin? You will lose your admin privileges.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm',
+          onPress: async () => {
+            setActionLoading(true);
+            const { error } = await supabase
+              .from('chatroom')
+              .update({ admin_id: targetUserId })
+              .eq('id', chatroomId);
+
+            if (error) {
+              Alert.alert('Error', 'Failed to transfer admin role. Please try again.');
+            } else {
+              Alert.alert('Success', 'Admin role transferred successfully!');
+              await loadData();
+              await loadMembers();
+            }
+            setActionLoading(false);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleRemoveMember = async (targetUserId: string) => {
+    if (!chatroomId || !userId) return;
+    if (chatroom?.admin_id !== userId) {
+      Alert.alert('Permission denied', 'Only the admin can remove members.');
+      return;
+    }
+    if (targetUserId === userId) {
+      Alert.alert('Error', 'You cannot remove yourself. Use "Leave Order" instead.');
+      return;
+    }
+    const targetMember = members.find((m) => m.id === targetUserId);
+    const targetName =
+      [targetMember?.first_name, targetMember?.last_name].filter(Boolean).join(' ') || 'this member';
+
+    Alert.alert(
+      'Remove Member',
+      `Are you sure you want to remove ${targetName} from the group?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            setActionLoading(true);
+            const { error } = await supabase
+              .from('chat_membership')
+              .update({ left_at: new Date().toISOString() })
+              .eq('chatroom_id', chatroomId)
+              .eq('user_id', targetUserId);
+
+            if (error) {
+              Alert.alert('Error', 'Failed to remove member. Please try again.');
+            } else {
+              setMembers((prev) => prev.filter((m) => m.id !== targetUserId));
+              Alert.alert('Success', 'Member removed from group.');
+            }
+            setActionLoading(false);
+          },
+        },
+      ]
+    );
+  };
+
   const handleExtendTime = async () => {
     if (!chatroomId || !userId) return;
     if (chatroom?.admin_id !== userId) {
@@ -419,10 +585,14 @@ export default function ChatroomPage() {
           totalAmount={totalAmount}
           timeLeft={timeLeft}
           actionLoading={actionLoading}
+          currentUserId={userId || ''}
           onMarkOrdered={handleMarkAsOrdered}
+          onMarkDelivered={handleMarkAsDelivered}
+          onConfirmDelivery={handleConfirmDelivery}
           onExtendTime={handleExtendTime}
           onLeaveOrder={handleLeaveOrder}
-          currentUserId={userId || ''}
+          onMakeAdmin={handleMakeAdmin}
+          onRemoveMember={handleRemoveMember}
         />
       )}
     </SafeAreaView>
