@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Platform } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator } from "react-native";
 import { LocationData } from "../../types/stores/types";
 import { Ionicons } from '@expo/vector-icons';
-import Mapbox, { MapView, Camera, MarkerView, PointAnnotation } from "@rnmapbox/maps";
+import Mapbox, { MapView, Camera, MarkerView } from "@rnmapbox/maps";
 import * as Location from 'expo-location';
 
-
-Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || "");
-
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || "";
+Mapbox.setAccessToken(MAPBOX_TOKEN);
 
 interface Props {
   userLocation: LocationData | null;
@@ -17,7 +16,6 @@ interface Props {
 }
 
 export function LocationStep({ userLocation, onLocationSelect, onContinue, onBack }: Props) {
-  const [mapboxToken, setMapboxToken] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -34,7 +32,7 @@ export function LocationStep({ userLocation, onLocationSelect, onContinue, onBac
   useEffect(() => {
     if (userLocation) {
       setSelectedLocation(userLocation);
-      setSearchQuery(userLocation.address || userLocation.placeName || "");
+      setSearchQuery(userLocation.placeName || userLocation.address || "");
       if (cameraRef.current) {
         cameraRef.current.setCamera({
           centerCoordinate: [userLocation.longitude, userLocation.latitude],
@@ -48,45 +46,41 @@ export function LocationStep({ userLocation, onLocationSelect, onContinue, onBac
   const reverseGeocode = useCallback(async (longitude: number, latitude: number) => {
     try {
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${mapboxToken}`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${MAPBOX_TOKEN}`
       );
       const data = await response.json();
-      const address = data.features[0]?.place_name || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-      const placeName = data.features[0]?.text || data.features[0]?.place_name;
+      const address = data.features?.[0]?.place_name || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+      const placeName = data.features?.[0]?.text || data.features?.[0]?.place_name;
       return { address, placeName };
     } catch (err) {
       console.error("Reverse geocoding error:", err);
       return { address: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, placeName: undefined };
     }
-  }, [mapboxToken]);
+  }, []);
 
   const handleMapPress = useCallback(async (event: any) => {
     const { geometry } = event;
+    if (!geometry?.coordinates) return;
     const [longitude, latitude] = geometry.coordinates;
 
     const { address, placeName } = await reverseGeocode(longitude, latitude);
 
-    const newLocation: LocationData = {
-      longitude,
-      latitude,
-      address,
-      placeName,
-    };
+    const newLocation: LocationData = { longitude, latitude, address, placeName };
     setSelectedLocation(newLocation);
     setSearchQuery(address || "");
+    setShowSuggestions(false);
     onLocationSelect(newLocation);
   }, [onLocationSelect, reverseGeocode]);
 
   const searchPlaces = useCallback(async (query: string) => {
-    if (!query.trim() || !mapboxToken) {
+    if (!query.trim() || !MAPBOX_TOKEN) {
       setSuggestions([]);
       return;
     }
-
     setIsLoading(true);
     try {
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxToken}&country=ch&limit=5&types=address,place,locality,neighborhood,poi`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=ch&limit=5&types=address,place,locality,neighborhood,poi`
       );
       const data = await response.json();
       setSuggestions(data.features || []);
@@ -96,7 +90,7 @@ export function LocationStep({ userLocation, onLocationSelect, onContinue, onBac
     } finally {
       setIsLoading(false);
     }
-  }, [mapboxToken]);
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -106,22 +100,14 @@ export function LocationStep({ userLocation, onLocationSelect, onContinue, onBac
         setSuggestions([]);
       }
     }, 300);
-
     return () => clearTimeout(timer);
   }, [searchQuery, searchPlaces]);
 
   const handleSelectSuggestion = useCallback(async (suggestion: any) => {
     const [longitude, latitude] = suggestion.center;
-
     const { address, placeName } = await reverseGeocode(longitude, latitude);
 
-    const newLocation: LocationData = {
-      longitude,
-      latitude,
-      address,
-      placeName,
-    };
-
+    const newLocation: LocationData = { longitude, latitude, address, placeName };
     setSelectedLocation(newLocation);
     setSearchQuery(address || "");
     setSuggestions([]);
@@ -139,49 +125,45 @@ export function LocationStep({ userLocation, onLocationSelect, onContinue, onBac
 
   const handleGetCurrentLocation = useCallback(async () => {
     setIsLoading(true);
-    let { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      setError('Permission to access location was denied');
+    setError(null);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setError('Permission to access location was denied');
+        return;
+      }
+      const location = await Location.getCurrentPositionAsync({});
+      const { longitude, latitude } = location.coords;
+      const { address, placeName } = await reverseGeocode(longitude, latitude);
+
+      const newLocation: LocationData = { longitude, latitude, address, placeName };
+      setSelectedLocation(newLocation);
+      setSearchQuery(address || "");
+      onLocationSelect(newLocation);
+
+      if (cameraRef.current) {
+        cameraRef.current.setCamera({
+          centerCoordinate: [longitude, latitude],
+          zoomLevel: 15,
+          animationDuration: 1000,
+        });
+      }
+    } catch (err) {
+      setError('Failed to get current location');
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    let location = await Location.getCurrentPositionAsync({});
-    const { longitude, latitude } = location.coords;
-
-    const { address, placeName } = await reverseGeocode(longitude, latitude);
-
-    const newLocation: LocationData = {
-      longitude,
-      latitude,
-      address,
-      placeName,
-    };
-
-    setSelectedLocation(newLocation);
-    setSearchQuery(address || "");
-    onLocationSelect(newLocation);
-
-    if (cameraRef.current) {
-      cameraRef.current.setCamera({
-        centerCoordinate: [longitude, latitude],
-        zoomLevel: 15,
-        animationDuration: 1000,
-      });
-    }
-    setIsLoading(false);
   }, [onLocationSelect, reverseGeocode]);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.headerTitle}>
-        Step 2: Set Delivery Location
-      </Text>
+      <Text style={styles.headerTitle}>Step 2: Set Delivery Location</Text>
 
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
           placeholder="Search for your address in Switzerland..."
+          placeholderTextColor="#9CA3AF"
           value={searchQuery}
           onChangeText={(text) => {
             setSearchQuery(text);
@@ -211,7 +193,7 @@ export function LocationStep({ userLocation, onLocationSelect, onContinue, onBac
               onPress={() => handleSelectSuggestion(suggestion)}
             >
               <Text style={styles.suggestionText}>{suggestion.text}</Text>
-              <Text style={styles.suggestionPlaceName}>{suggestion.place_name}</Text>
+              <Text style={styles.suggestionPlaceName} numberOfLines={1}>{suggestion.place_name}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -225,20 +207,16 @@ export function LocationStep({ userLocation, onLocationSelect, onContinue, onBac
           onPress={handleMapPress}
           zoomEnabled={true}
           scrollEnabled={true}
-          pitchEnabled={true}
-          rotateEnabled={true}
         >
           <Camera
             ref={cameraRef}
             zoomLevel={userLocation ? 13 : 10}
-            centerCoordinate={defaultCamera}
+            centerCoordinate={defaultCamera as [number, number]}
             animationMode="flyTo"
             animationDuration={0}
           />
           {selectedLocation && (
-            <MarkerView
-              coordinate={[selectedLocation.longitude, selectedLocation.latitude]}
-            >
+            <MarkerView coordinate={[selectedLocation.longitude, selectedLocation.latitude]}>
               <View style={styles.marker}>
                 <Ionicons name="location" size={30} color="#FFDB0D" />
               </View>
@@ -264,19 +242,16 @@ export function LocationStep({ userLocation, onLocationSelect, onContinue, onBac
       )}
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={onBack}
-        >
-          <Ionicons name="arrow-back" size={24} color="black" />
-          <Text style={styles.buttonText}>Back</Text>
+        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+          <Ionicons name="arrow-back" size={20} color="#374151" />
+          <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.continueButton, !selectedLocation && styles.disabledButton]}
           onPress={onContinue}
           disabled={!selectedLocation}
         >
-          <Text style={styles.buttonText}>Continue</Text>
+          <Text style={styles.continueButtonText}>Continue</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -285,77 +260,83 @@ export function LocationStep({ userLocation, onLocationSelect, onContinue, onBac
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#FFFADF",
-    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
     padding: 16,
     marginBottom: 24,
     borderWidth: 1,
     borderColor: "#E5E8EB",
   },
   headerTitle: {
-    color: "#1A1A1A",
+    color: "#111827",
     marginBottom: 16,
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: "600",
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 10,
-    zIndex: 1, // Ensure search input and suggestions are above the map
+    zIndex: 10,
   },
   searchInput: {
     flex: 1,
-    height: 40,
+    height: 44,
     borderColor: "#E5E8EB",
     borderWidth: 1,
     borderRadius: 8,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     backgroundColor: "#FFFFFF",
+    fontSize: 14,
+    color: "#111827",
   },
   currentLocationButton: {
-    marginLeft: 10,
-    padding: 8,
+    marginLeft: 8,
+    width: 44,
+    height: 44,
     borderRadius: 8,
     backgroundColor: "#FFDB0D",
     alignItems: "center",
     justifyContent: "center",
   },
   suggestionsContainer: {
-    position: "absolute",
-    top: 110, // Adjust based on headerTitle and searchInput height
-    left: 16,
-    right: 16,
     backgroundColor: "#FFFFFF",
     borderColor: "#E5E8EB",
     borderWidth: 1,
     borderRadius: 8,
     maxHeight: 200,
-    overflow: "hidden",
-    zIndex: 2, // Ensure suggestions are above everything else
+    marginBottom: 10,
+    zIndex: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
   },
   suggestionItem: {
-    padding: 10,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
   },
   suggestionText: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#1A1A1A",
+    color: "#111827",
   },
   suggestionPlaceName: {
     fontSize: 12,
     color: "#6B7280",
+    marginTop: 2,
   },
   errorText: {
-    color: "red",
+    color: "#F04438",
     marginBottom: 10,
     textAlign: "center",
+    fontSize: 13,
   },
   mapContainer: {
-    height: 300,
-    borderRadius: 8,
+    height: 280,
+    borderRadius: 12,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "#E5E8EB",
@@ -369,29 +350,30 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   selectedLocationContainer: {
-    backgroundColor: "#FFF5C0",
+    backgroundColor: "#ECFDF3",
     padding: 12,
     borderRadius: 8,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#FFDB0D",
+    borderColor: "#D1FADF",
   },
   selectedLocationHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
+    marginBottom: 4,
   },
   selectedLocationText: {
     fontWeight: "600",
-    color: "#1A1A1A",
+    color: "#111827",
+    fontSize: 13,
   },
   selectedLocationAddress: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#374151",
-    marginTop: 4,
   },
   locationPrompt: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#6B7280",
     marginBottom: 16,
     textAlign: "center",
@@ -405,27 +387,31 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#E5E8EB",
-    gap: 8,
+    gap: 6,
+  },
+  backButtonText: {
+    fontWeight: "600",
+    color: "#374151",
+    fontSize: 15,
   },
   continueButton: {
     flex: 2,
     backgroundColor: "#FFDB0D",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
+  continueButtonText: {
+    fontWeight: "600",
+    color: "#111827",
+    fontSize: 15,
+  },
   disabledButton: {
     opacity: 0.5,
-  },
-  buttonText: {
-    fontWeight: "600",
-    color: "black",
   },
 });

@@ -1,7 +1,6 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from "react-native";
 import { Shop, NearbyPool, LocationData } from "../../types/stores/types";
 import { Ionicons } from '@expo/vector-icons';
-import { RadioGroup } from "react-native-radio-buttons-group"; // Assuming a library for RadioGroup
 
 interface Props {
   selectedShop: Shop;
@@ -26,82 +25,12 @@ export function PoolSelectionStep({
   onExpandSearch, expandedSearchLoading = false, currentSearchRadius = 5,
 }: Props) {
 
-  const radioButtons = [
-    ...nearbyPools.map((pool) => ({
-      id: pool.pool_id,
-      label: `${pool.distance_km.toFixed(2)} km away`,
-      value: pool.pool_id,
-      containerStyle: {
-        padding: 16,
-        borderWidth: 2,
-        borderRadius: 12,
-        borderColor: selectedPool === pool.pool_id ? "#FFDB0D" : "#E5E8EB",
-        backgroundColor: selectedPool === pool.pool_id ? "#FFF5C0" : "transparent",
-        flexDirection: "row" as const,
-        alignItems: "flex-start" as const,
-        justifyContent: "space-between" as const,
-        gap: 8,
-      },
-      labelStyle: {
-        fontWeight: "600" as const,
-        color: "#1A1A1A",
-      },
-      description: `${pool.member_count} member${pool.member_count !== 1 ? "s" : ""} waiting
-📍 ${pool.address}`,
-      descriptionStyle: {
-        fontSize: 12,
-        color: "#374151",
-      },
-      rightElement: (
-        <View style={styles.poolProgressContainer}>
-          <Text style={styles.poolProgressLabel}>Progress</Text>
-          <Text style={styles.poolProgressAmount}>CHF {pool.current_amount.toFixed(2)}</Text>
-          <Text style={styles.poolProgressOfAmount}>of CHF {pool.min_amount.toFixed(2)}</Text>
-          <View style={styles.progressBarBackground}>
-            <View style={[styles.progressBarFill, { width: `${(pool.current_amount / pool.min_amount) * 100}%` }]} />
-          </View>
-        </View>
-      ),
-    })),
-    {
-      id: "NEW_POOL",
-      label: "Create New Pool",
-      value: "NEW_POOL",
-      containerStyle: {
-        padding: 16,
-        borderWidth: 2,
-        borderRadius: 12,
-        borderColor: selectedPool === null ? "#FFDB0D" : "#E5E8EB",
-        backgroundColor: selectedPool === null ? "#FFF5C0" : "transparent",
-        flexDirection: "row" as const,
-        alignItems: "flex-start" as const,
-        justifyContent: "space-between" as const,
-        gap: 8,
-      },
-      labelStyle: {
-        fontWeight: "600" as const,
-        color: "#1A1A1A",
-      },
-      description: userLocation ? `Your location will be the anchor
-📍 ${userLocation.placeName || userLocation.address}` : "Your location will be the anchor",
-      descriptionStyle: {
-        fontSize: 12,
-        color: "#374151",
-      },
-      rightElement: (
-        <View style={styles.poolProgressContainer}>
-          <Text style={styles.poolProgressLabel}>Your amount</Text>
-          <Text style={styles.poolProgressAmount}>CHF {totalAmount.toFixed(2)}</Text>
-        </View>
-      ),
-    },
-  ];
+  // "null" means create new pool — we track it as a literal null in the parent
+  const isNewPoolSelected = selectedPool === null;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.headerTitle}>
-        Step 4: Choose a Pool
-      </Text>
+      <Text style={styles.headerTitle}>Step 4: Choose a Pool</Text>
 
       {/* Summary */}
       <View style={styles.summaryContainer}>
@@ -111,14 +40,8 @@ export function PoolSelectionStep({
         </View>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Location:</Text>
-          <Text style={styles.summaryValue}>
+          <Text style={[styles.summaryValue, { flex: 1, textAlign: "right" }]} numberOfLines={2}>
             {userLocation.placeName || userLocation.address}
-          </Text>
-        </View>
-        <View style={styles.summaryLocationDetails}>
-          <Ionicons name="location-sharp" size={12} color="#6B7280" />
-          <Text style={styles.summaryLocationText}>
-            📍 {userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}
           </Text>
         </View>
       </View>
@@ -136,34 +59,91 @@ export function PoolSelectionStep({
         )}
       </View>
 
-      <ScrollView style={{ maxHeight: 400 }}>
-        <View style={styles.radioGroupContainer}>
-          {/* Expand search button when no pools found */}
-          {nearbyPools.length === 0 && onExpandSearch && (
-            <TouchableOpacity
-              onPress={onExpandSearch}
-              disabled={expandedSearchLoading}
-              style={styles.expandSearchButton}
-            >
-              {expandedSearchLoading ? (
-                <ActivityIndicator color="black" />
-              ) : (
-                <Ionicons name="search" size={16} color="black" />
-              )}
-              <Text style={styles.expandSearchButtonText}>
-                {expandedSearchLoading ? "Expanding Search..." : "Expand Search Range"}
-              </Text>
-            </TouchableOpacity>
-          )}
+      <ScrollView style={styles.poolsList} showsVerticalScrollIndicator={false}>
+        {/* Expand search button when no pools found */}
+        {nearbyPools.length === 0 && onExpandSearch && (
+          <TouchableOpacity
+            onPress={onExpandSearch}
+            disabled={expandedSearchLoading}
+            style={styles.expandSearchButton}
+          >
+            {expandedSearchLoading ? (
+              <ActivityIndicator size="small" color="#111827" />
+            ) : (
+              <Ionicons name="search" size={16} color="#111827" />
+            )}
+            <Text style={styles.expandSearchButtonText}>
+              {expandedSearchLoading ? "Expanding Search..." : "Expand Search Range"}
+            </Text>
+          </TouchableOpacity>
+        )}
 
-          {/* Existing pools */}
-          <RadioGroup
-            radioButtons={radioButtons}
-            onPress={(id) => onPoolSelect(id === "NEW_POOL" ? null : id)}
-            selectedId={selectedPool || "NEW_POOL"}
-            containerStyle={styles.radioGroup}
-          />
-        </View>
+        {/* Existing pool cards */}
+        {nearbyPools.map((pool) => {
+          const isSelected = selectedPool === pool.pool_id;
+          const progressPct = Math.min(100, (pool.current_amount / pool.min_amount) * 100);
+          return (
+            <TouchableOpacity
+              key={pool.pool_id}
+              style={[styles.poolCard, isSelected && styles.poolCardSelected]}
+              onPress={() => onPoolSelect(pool.pool_id)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.poolCardRow}>
+                <View style={styles.radioOuter}>
+                  {isSelected && <View style={styles.radioInner} />}
+                </View>
+                <View style={styles.poolCardInfo}>
+                  <Text style={styles.poolCardDistance}>
+                    {pool.distance_km.toFixed(2)} km away
+                  </Text>
+                  <Text style={styles.poolCardMembers}>
+                    {pool.member_count} member{pool.member_count !== 1 ? "s" : ""} waiting
+                  </Text>
+                  {pool.address ? (
+                    <Text style={styles.poolCardAddress} numberOfLines={1}>
+                      📍 {pool.address}
+                    </Text>
+                  ) : null}
+                </View>
+                <View style={styles.poolProgressContainer}>
+                  <Text style={styles.poolProgressLabel}>Progress</Text>
+                  <Text style={styles.poolProgressAmount}>CHF {pool.current_amount.toFixed(2)}</Text>
+                  <Text style={styles.poolProgressOfAmount}>of CHF {pool.min_amount.toFixed(2)}</Text>
+                  <View style={styles.progressBarBackground}>
+                    <View style={[styles.progressBarFill, { width: `${progressPct}%` as any }]} />
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+
+        {/* Create New Pool card */}
+        <TouchableOpacity
+          style={[styles.poolCard, isNewPoolSelected && styles.poolCardSelected]}
+          onPress={() => onPoolSelect(null)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.poolCardRow}>
+            <View style={styles.radioOuter}>
+              {isNewPoolSelected && <View style={styles.radioInner} />}
+            </View>
+            <View style={styles.poolCardInfo}>
+              <Text style={styles.poolCardDistance}>Create New Pool</Text>
+              <Text style={styles.poolCardMembers}>Your location will be the anchor</Text>
+              {userLocation && (
+                <Text style={styles.poolCardAddress} numberOfLines={2}>
+                  📍 {userLocation.placeName || userLocation.address}
+                </Text>
+              )}
+            </View>
+            <View style={styles.poolProgressContainer}>
+              <Text style={styles.poolProgressLabel}>Your amount</Text>
+              <Text style={styles.poolProgressAmount}>CHF {totalAmount.toFixed(2)}</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
       </ScrollView>
 
       {error && (
@@ -179,11 +159,11 @@ export function PoolSelectionStep({
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity
-          style={styles.backButton}
+          style={[styles.backButton, loading && styles.disabledButton]}
           onPress={onBack}
           disabled={loading}
         >
-          <Text style={styles.buttonText}>Back</Text>
+          <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.confirmButton, loading && styles.disabledButton]}
@@ -191,9 +171,9 @@ export function PoolSelectionStep({
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="black" />
+            <ActivityIndicator color="#111827" />
           ) : (
-            <Text style={styles.buttonText}>Confirm Selection</Text>
+            <Text style={styles.confirmButtonText}>Confirm Selection</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -203,96 +183,141 @@ export function PoolSelectionStep({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#FFFADF",
-    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
     padding: 16,
     marginBottom: 24,
     borderWidth: 1,
     borderColor: "#E5E8EB",
   },
   headerTitle: {
-    color: "#1A1A1A",
+    color: "#111827",
     marginBottom: 16,
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: "600",
   },
   summaryContainer: {
-    backgroundColor: "#EAE4E4",
-    borderRadius: 4,
+    backgroundColor: "#F9FAFB",
+    borderRadius: 8,
     padding: 12,
     marginBottom: 16,
     gap: 8,
   },
   summaryRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
+    gap: 8,
   },
   summaryLabel: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#374151",
+    flexShrink: 0,
   },
   summaryValue: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
-    color: "#1A1A1A",
+    color: "#111827",
     textAlign: "right",
-    flex: 1,
-  },
-  summaryLocationDetails: {
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: "#E5E8EB",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  summaryLocationText: {
-    fontSize: 10,
-    color: "#6B7280",
   },
   poolInfoContainer: {
     marginBottom: 16,
   },
   poolInfoText: {
-    fontSize: 16,
+    fontSize: 14,
     color: "#374151",
   },
   poolInfoHint: {
-    fontSize: 10,
+    fontSize: 12,
     color: "#6B7280",
     marginTop: 4,
   },
-  radioGroupContainer: {
-    gap: 12,
+  poolsList: {
+    maxHeight: 400,
   },
   expandSearchButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#EAE4E4",
+    backgroundColor: "#F3F4F6",
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     gap: 8,
+    marginBottom: 12,
   },
   expandSearchButtonText: {
-    color: "#1A1A1A",
+    color: "#111827",
     fontWeight: "600",
+    fontSize: 14,
+  },
+  poolCard: {
+    padding: 14,
+    borderWidth: 2,
+    borderRadius: 12,
+    borderColor: "#E5E8EB",
+    backgroundColor: "transparent",
+    marginBottom: 12,
+  },
+  poolCardSelected: {
+    borderColor: "#FFDB0D",
+    backgroundColor: "#FFFBEB",
+  },
+  poolCardRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  radioOuter: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#6B7280",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+    flexShrink: 0,
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#FFDB0D",
+  },
+  poolCardInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  poolCardDistance: {
+    fontWeight: "600",
+    color: "#111827",
+    fontSize: 14,
+  },
+  poolCardMembers: {
+    fontSize: 13,
+    color: "#374151",
+  },
+  poolCardAddress: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginTop: 2,
   },
   poolProgressContainer: {
     alignItems: "flex-end",
     flexShrink: 0,
+    minWidth: 90,
   },
   poolProgressLabel: {
-    fontSize: 10,
+    fontSize: 11,
     color: "#374151",
   },
   poolProgressAmount: {
     fontWeight: "700",
-    color: "#1A1A1A",
+    color: "#111827",
+    fontSize: 13,
   },
   poolProgressOfAmount: {
-    fontSize: 10,
+    fontSize: 11,
     color: "#6B7280",
   },
   progressBarBackground: {
@@ -312,59 +337,59 @@ const styles = StyleSheet.create({
     backgroundColor: "#FEF3F2",
     borderColor: "#FF3B30",
     borderWidth: 1,
-    padding: 8,
-    borderRadius: 4,
-    marginTop: 16,
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 12,
   },
   errorText: {
-    fontSize: 12,
-    color: "#FF3B30",
+    fontSize: 13,
+    color: "#F04438",
   },
   successContainer: {
     backgroundColor: "#ECFDF3",
     borderColor: "#34C759",
     borderWidth: 1,
-    padding: 8,
-    borderRadius: 4,
-    marginTop: 16,
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 12,
   },
   successText: {
-    fontSize: 12,
-    color: "#34C759",
+    fontSize: 13,
+    color: "#12B76A",
   },
   buttonContainer: {
     flexDirection: "row",
-    marginTop: 24,
+    marginTop: 20,
     gap: 12,
   },
   backButton: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 13,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#E5E8EB",
   },
+  backButtonText: {
+    fontWeight: "600",
+    color: "#374151",
+    fontSize: 15,
+  },
   confirmButton: {
     flex: 1,
     backgroundColor: "#FFDB0D",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 13,
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
+  confirmButtonText: {
+    fontWeight: "600",
+    color: "#111827",
+    fontSize: 15,
+  },
   disabledButton: {
     opacity: 0.5,
-  },
-  buttonText: {
-    fontWeight: "600",
-    color: "black",
-    fontSize: 16,
-  },
-  radioGroup: {
-    alignItems: "stretch", // Ensure radio buttons take full width
   },
 });
