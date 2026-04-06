@@ -28,6 +28,14 @@ jobs:
         working-directory: apps/mobile/ios
         run: pod install
 
+      - name: Debug - List schemes and workspace info
+        working-directory: apps/mobile/ios
+        run: |
+          echo "=== Workspaces found ==="
+          ls *.xcworkspace || echo "No xcworkspace found"
+          echo "=== Schemes available ==="
+          xcodebuild -list -workspace *.xcworkspace
+
       - name: Build IPA (unsigned)
         working-directory: apps/mobile/ios
         run: |
