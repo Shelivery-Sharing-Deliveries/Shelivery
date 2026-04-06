@@ -15,6 +15,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Create .env file
+        working-directory: apps/mobile
+        run: echo "${{ secrets.ENV_FILE }}" > .env
 
       - name: Install dependencies
         working-directory: apps/mobile
