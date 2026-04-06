@@ -11,9 +11,10 @@ try {
   // If dotenv isn't available for some reason, fall back to process.env.
 }
 
-// In this repo the value is defined as EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN in apps/mobile/.env
 const MAPBOX_ACCESS_TOKEN =
-  process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || process.env.MAPBOX_ACCESS_TOKEN || '';
+  process.env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN ||
+  process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || 
+  process.env.MAPBOX_ACCESS_TOKEN || '';
 
 module.exports = {
   expo: {
