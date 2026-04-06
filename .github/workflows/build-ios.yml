@@ -19,6 +19,13 @@ jobs:
         working-directory: apps/mobile
         run: echo "${{ secrets.ENV_FILE }}" > .env
 
+      - name: Configure Mapbox credentials
+        working-directory: apps/mobile
+        run: |
+          source .env
+          echo "machine api.mapbox.com login mapbox password ${RNMAPBOX_MAPS_DOWNLOAD_TOKEN}" >> ~/.netrc
+          chmod 600 ~/.netrc
+
       - name: Install dependencies
         working-directory: apps/mobile
         run: npm install
