@@ -1,0 +1,66 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch: # manual trigger from GitHub UI
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        working-directory: apps/mobile
+        run: npm install
+
+      - name: Run Expo Prebuild
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Install CocoaPods
+        working-directory: apps/mobile/ios
+        run: pod install
+
+      - name: Debug - List schemes and workspace info
+        working-directory: apps/mobile/ios
+        run: |
+          echo "=== Workspaces found ==="
+          ls *.xcworkspace || echo "No xcworkspace found"
+          echo "=== Schemes available ==="
+          xcodebuild -list -workspace *.xcworkspace
+
+      - name: Build IPA (unsigned)
+        working-directory: apps/mobile/ios
+        run: |
+          xcodebuild \
+            -workspace mobile.xcworkspace \
+            -scheme mobile \
+            -configuration Release \
+            -sdk iphoneos \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            -derivedDataPath build
+
+      - name: Package IPA
+        working-directory: apps/mobile/ios
+        run: |
+          mkdir -p output
+          cp -r build/Build/Products/Release-iphoneos/mobile.app output/
+          cd output
+          mkdir Payload
+          cp -r mobile.app Payload/
+          zip -r app.ipa Payload/
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: apps/mobile/ios/output/app.ipa
