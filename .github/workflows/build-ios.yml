@@ -20,13 +20,23 @@ jobs:
         working-directory: apps/mobile
         run: npm install
 
+      - name: Patch expo-image-picker for Xcode 16
+        working-directory: apps/mobile
+        run: |
+          FILE="node_modules/expo-image-picker/ios/MediaHandler.swift"
+          sed -i '' 's/asset?\.contentType/asset?.uniformTypeIdentifiers?.first.flatMap { UTType($0) }/g' "$FILE"
+          sed -i '' 's/resource\.contentType/UTType(resource.uniformTypeIdentifier ?? "")/g' "$FILE"
+
       - name: Run Expo Prebuild
         working-directory: apps/mobile
         run: npx expo prebuild --platform ios --clean
 
       - name: Install CocoaPods
         working-directory: apps/mobile/ios
-        run: pod install --repo-update
+        run: |
+          rm -rf Pods
+          rm -f Podfile.lock
+          pod install --repo-update
 
       - name: Build IPA (unsigned)
         working-directory: apps/mobile/ios
