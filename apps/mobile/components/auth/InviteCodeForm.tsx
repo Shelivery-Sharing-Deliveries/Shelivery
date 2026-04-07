@@ -1,16 +1,80 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { View, StyleSheet, Text, TouchableOpacity } from "react-native";
 import AuthLayout from "./AuthLayout";
 import TextField from "./TextField";
 import AuthButton from "./AuthButton";
 import { getStoredInviteCode, clearStoredInviteCode } from "../../lib/invite-storage";
-import { colors } from "@/lib/theme";
+import { useTheme } from "@/providers/ThemeProvider";
+import { ThemeColors } from "@/lib/theme";
 
 interface InviteCodeFormProps {
   onCodeSubmit: (code: string) => void;
   loading?: boolean;
   error?: string | undefined;
 }
+
+const createStyles = (colors: ThemeColors, isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      width: "100%",
+      gap: 32,
+    },
+    header: {
+      alignItems: "center",
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: colors["shelivery-text-primary"],
+    },
+    popup: {
+      position: "relative",
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors["shelivery-card-border"],
+      backgroundColor: isDark ? colors["shelivery-card-background"] : "#ffffff",
+      padding: 16,
+    },
+    closeButton: {
+      position: "absolute",
+      right: 12,
+      top: 12,
+    },
+    closeButtonText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors["shelivery-text-tertiary"],
+    },
+    popupContent: {
+      gap: 8,
+      alignItems: "center",
+    },
+    popupTitle: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors["shelivery-text-primary"],
+    },
+    popupText: {
+      fontSize: 12,
+      color: colors["shelivery-text-tertiary"],
+    },
+    form: {
+      gap: 24,
+    },
+    error: {
+      color: colors["shelivery-error-red"],
+      fontSize: 14,
+      fontWeight: "500",
+    },
+    helpTextContainer: {
+      alignItems: "center",
+    },
+    helpText: {
+      fontSize: 12,
+      fontWeight: "500",
+      color: colors["shelivery-text-secondary"],
+    },
+  });
 
 export default function InviteCodeForm({
   onCodeSubmit,
@@ -21,6 +85,9 @@ export default function InviteCodeForm({
   const [isPopupOpen, setIsPopupOpen] = useState(true);
   const inviteMessageCode = "INNOSUISSE";
   const isPopupActive = true;
+
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   // Auto-populate invite code from localStorage on component mount
   useEffect(() => {
@@ -82,72 +149,10 @@ export default function InviteCodeForm({
 
         <View style={styles.helpTextContainer}>
           <Text style={styles.helpText}>
-            Don't you have a code ? ask a friend to invite you
+            {"Don't you have a code ? ask a friend to invite you"}
           </Text>
         </View>
       </View>
     </AuthLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    width: "100%",
-    gap: 32,
-  },
-  header: {
-    alignItems: "center",
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#000000",
-  },
-  popup: {
-    position: "relative",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#ffffff",
-    padding: 16,
-  },
-  closeButton: {
-    position: "absolute",
-    right: 12,
-    top: 12,
-  },
-  closeButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#6B7280",
-  },
-  popupContent: {
-    gap: 8,
-    alignItems: "center",
-  },
-  popupTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#111827",
-  },
-  popupText: {
-    fontSize: 12,
-    color: "#6B7280",
-  },
-  form: {
-    gap: 24,
-  },
-  error: {
-    color: "#DC2626",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  helpTextContainer: {
-    alignItems: "center",
-  },
-  helpText: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: "#000000",
-  },
-});

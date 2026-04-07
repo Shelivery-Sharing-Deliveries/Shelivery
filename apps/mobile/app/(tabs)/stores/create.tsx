@@ -236,6 +236,7 @@ export default function CreateOrderFlow() {
   useEffect(() => {
     if (!draftInitialized) return; // Don't save until draft is initialized
     if (step < 2) return; // Don't save draft while user is still browsing shops on step 1
+    if (success) return; // Don't save draft after a successful pool creation/join
     saveDraft({
       shopId: selectedShop?.id ?? null,
       shopName: selectedShop?.name ?? null,
@@ -246,7 +247,7 @@ export default function CreateOrderFlow() {
       basketAmount,
       step,
     });
-  }, [draftInitialized, selectedShop, userLocation, basketLink, basketNote, basketAmount, step]);
+  }, [draftInitialized, selectedShop, userLocation, basketLink, basketNote, basketAmount, step, success]);
 
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -398,7 +399,8 @@ export default function CreateOrderFlow() {
         } catch {}
       })();
 
-      await clearDraft();
+      // Pass shopId so both DRAFT_KEY and DRAFTS_LIST_KEY are cleared
+      await clearDraft(selectedShop.id);
       activeDraftRef.current = null;
       setSuccess("Basket created! Redirecting...");
 

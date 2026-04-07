@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { View, StyleSheet, Text } from "react-native";
 import AuthLayout from "./AuthLayout";
 import TextField from "./TextField";
 import { Button } from "../ui/Button";
+import { useTheme } from "@/providers/ThemeProvider";
+import { ThemeColors } from "@/lib/theme";
 
 interface OTPVerificationFormProps {
   email: string;
@@ -13,6 +15,50 @@ interface OTPVerificationFormProps {
   resendCountdown?: number;
 }
 
+const createStyles = (colors: ThemeColors, isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      width: "100%",
+      gap: 32,
+    },
+    header: {
+      alignItems: "center",
+      gap: 8,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: colors["shelivery-text-primary"],
+    },
+    text: {
+      fontSize: 14,
+      color: colors["shelivery-text-tertiary"],
+      textAlign: "center",
+    },
+    form: {
+      gap: 24,
+    },
+    error: {
+      color: colors["shelivery-error-red"],
+      fontSize: 14,
+      fontWeight: "500",
+      textAlign: "center",
+    },
+    resendContainer: {
+      alignItems: "center",
+    },
+    resendText: {
+      fontSize: 14,
+      color: colors["shelivery-text-tertiary"],
+    },
+    resendLink: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors["shelivery-primary-blue"],
+      textDecorationLine: "underline",
+    },
+  });
+
 export default function OTPVerificationForm({
   email,
   onCodeSubmit,
@@ -22,6 +68,8 @@ export default function OTPVerificationForm({
   resendCountdown = 0,
 }: OTPVerificationFormProps) {
   const [code, setCode] = useState("");
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   const handleSubmit = () => {
     if (code.trim()) {
@@ -41,7 +89,9 @@ export default function OTPVerificationForm({
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Enter Verification Code</Text>
-          <Text style={styles.text}>Enter the code we sent to {formatEmail(email)}</Text>
+          <Text style={styles.text}>
+            Enter the code we sent to {formatEmail(email)}
+          </Text>
         </View>
 
         <View style={styles.form}>
@@ -74,46 +124,3 @@ export default function OTPVerificationForm({
     </AuthLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    width: "100%",
-    gap: 32,
-  },
-  header: {
-    alignItems: "center",
-    gap: 8,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#000000",
-  },
-  text: {
-    fontSize: 14,
-    color: "#A4A7AE",
-    textAlign: "center",
-  },
-  form: {
-    gap: 24,
-  },
-  error: {
-    color: "#DC2626",
-    fontSize: 14,
-    fontWeight: "500",
-    textAlign: "center",
-  },
-  resendContainer: {
-    alignItems: "center",
-  },
-  resendText: {
-    fontSize: 14,
-    color: "#A4A7AE",
-  },
-  resendLink: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#245B7B",
-    textDecorationLine: "underline",
-  },
-});

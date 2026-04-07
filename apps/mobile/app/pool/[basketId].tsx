@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   ActivityIndicator, Modal, Share, Image,
@@ -150,27 +150,10 @@ export default function PoolPage() {
   }, [basketId, fetchAndProcessBasketData]);
 
   // ── Realtime pool subscription + polling ─────────────────────────────────
+  const subscriptionRef = useRef<any>(null);
+
   useEffect(() => {
     if (!basketId) return;
-
-    // 1. Real-time subscription on pool table (progress bar updates)
-    let poolSubscription: any;
-    if (poolData?.pool_id) {
-      poolSubscription = supabase
-        .channel(`pool_updates:${poolData.pool_id}`)
-        .on(
-          "postgres_changes",
-          { event: "UPDATE", schema: "public", table: "pool", filter: `id=eq.${poolData.pool_id}` },
-          (payload) => {
-            setPoolData((prev) =>
-              prev
-                ? { ...prev, currentAmount: payload.new.current_amount, minAmount: payload.new.min_amount }
-                : prev
-            );
-          }
-        )
-        .subscribe();
-    }
 
     // 2. Polling for basket status changes (redirect detection)
     const pollingInterval = setInterval(async () => {
@@ -183,10 +166,48 @@ export default function PoolPage() {
     }, 4000);
 
     return () => {
-      if (poolSubscription) supabase.removeChannel(poolSubscription);
       clearInterval(pollingInterval);
     };
-  }, [basketId, poolData?.pool_id, fetchAndProcessBasketData]);
+  }, [basketId, fetchAndProcessBasketData]);
+
+  // Separate effect for real-time subscription to avoid dependency issues
+  useEffect(() => {
+    if (!poolData?.pool_id) {
+      if (subscriptionRef.current) {
+        supabase.removeChannel(subscriptionRef.current);
+        subscriptionRef.current = null;
+      }
+      return;
+    }
+
+    // Use a unique channel name on every mount to avoid the Supabase error:
+    // "cannot add postgres_changes callbacks after subscribe()".
+    // Supabase reuses channel objects by topic name; a unique suffix guarantees
+    // we always get a fresh, unsubscribed channel object.
+    const uniqueChannelName = `pool_updates:${poolData.pool_id}:${Date.now()}`;
+
+    const channel = supabase
+      .channel(uniqueChannelName)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "pool", filter: `id=eq.${poolData.pool_id}` },
+        (payload) => {
+          setPoolData((prev) =>
+            prev
+              ? { ...prev, currentAmount: payload.new.current_amount, minAmount: payload.new.min_amount }
+              : prev
+          );
+        }
+      )
+      .subscribe();
+
+    subscriptionRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+      subscriptionRef.current = null;
+    };
+  }, [poolData?.pool_id]);
 
   // ── Toggle ready state ───────────────────────────────────────────────────
   const handleToggleReady = async () => {

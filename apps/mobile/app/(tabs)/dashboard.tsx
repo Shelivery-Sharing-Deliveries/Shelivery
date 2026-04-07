@@ -205,7 +205,7 @@ export default function DashboardScreen() {
 
   return (
     <PageLayout>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollViewContent}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollViewContent}>
         {authLoading ? (
           <DashboardLoading />
         ) : !user ? (

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   TouchableOpacity,
   Text,
@@ -8,7 +8,9 @@ import {
   TextStyle,
 } from "react-native";
 import { mergeStyles } from "@/lib/utils";
-import { colors, spacing, borderRadius, fontSizes, fontWeights } from "@/lib/theme";
+import { spacing, borderRadius, fontSizes, fontWeights } from "@/lib/theme";
+import { useTheme } from "@/providers/ThemeProvider";
+import { ThemeColors } from "@/lib/theme";
 
 interface ButtonProps {
   variant?: "primary" | "secondary" | "error" | "success";
@@ -21,6 +23,25 @@ interface ButtonProps {
   onPress?: () => void;
 }
 
+const createStyles = (colors: ThemeColors, isDark: boolean) =>
+  StyleSheet.create({
+    buttonBase: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    textBase: {
+      fontWeight: fontWeights.semibold as TextStyle["fontWeight"],
+      textAlign: "center",
+    },
+    disabled: {
+      opacity: 0.5,
+    },
+    loadingIndicator: {
+      marginRight: spacing["shelivery-2"],
+    },
+  });
+
 const Button: React.FC<ButtonProps> = ({
   variant = "primary",
   size = "md",
@@ -32,6 +53,9 @@ const Button: React.FC<ButtonProps> = ({
   onPress,
   ...props
 }) => {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+
   const getVariantStyles = (): ViewStyle => {
     switch (variant) {
       case "primary":
@@ -91,7 +115,8 @@ const Button: React.FC<ButtonProps> = ({
   const getTextColor = (): string => {
     switch (variant) {
       case "primary":
-        return colors["shelivery-text-primary"];
+        // Yellow background needs dark text for contrast
+        return colors.black;
       case "secondary":
         return colors["shelivery-text-primary"];
       case "error":
@@ -99,7 +124,7 @@ const Button: React.FC<ButtonProps> = ({
       case "success":
         return colors.white;
       default:
-        return colors["shelivery-text-primary"];
+        return colors.black;
     }
   };
 
@@ -147,23 +172,5 @@ const Button: React.FC<ButtonProps> = ({
     </TouchableOpacity>
   );
 };
-
-const styles = StyleSheet.create({
-  buttonBase: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  textBase: {
-    fontWeight: fontWeights.semibold as TextStyle["fontWeight"],
-    textAlign: "center",
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-  loadingIndicator: {
-    marginRight: spacing["shelivery-2"],
-  },
-});
 
 export { Button };

@@ -208,7 +208,7 @@ export default function FeaturedShopCard() {
   const handleClick = async () => {
     const draft = { shopId: featuredPool?.shop_id || null, location: null, basketLink: "", basketNote: "", basketAmount: "", step: 1 };
     try { await AsyncStorage.setItem("pendingAlphaBasket", JSON.stringify(draft)); } catch {}
-    router.push('/alpha?restored=true' as any);
+    router.push('/stores'  as any);
   };
 
   if (loading) {

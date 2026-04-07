@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { View, StyleSheet, Text } from "react-native";
 import AuthLayout from "./AuthLayout";
 import TextField from "./TextField";
 import { Button } from "../ui/Button";
+import { useTheme } from "@/providers/ThemeProvider";
+import { ThemeColors } from "@/lib/theme";
 
 interface PasswordFormProps {
   email: string;
@@ -13,6 +15,40 @@ interface PasswordFormProps {
   error?: string | undefined;
 }
 
+const createStyles = (colors: ThemeColors, isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      width: "100%",
+      gap: 32,
+    },
+    header: {
+      alignItems: "center",
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: colors["shelivery-text-primary"],
+    },
+    email: {
+      fontSize: 14,
+      color: colors["shelivery-text-tertiary"],
+      marginTop: 8,
+    },
+    form: {
+      gap: 24,
+    },
+    error: {
+      color: colors["shelivery-error-red"],
+      fontSize: 14,
+      fontWeight: "500",
+    },
+    forgot: {
+      textAlign: "center",
+      fontSize: 14,
+      color: colors["shelivery-text-tertiary"],
+    },
+  });
+
 export default function PasswordForm({
   email,
   onPasswordSubmit,
@@ -22,6 +58,8 @@ export default function PasswordForm({
   error,
 }: PasswordFormProps) {
   const [password, setPassword] = useState("");
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   const handleSubmit = () => {
     if (password.trim()) {
@@ -65,36 +103,3 @@ export default function PasswordForm({
     </AuthLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    width: "100%",
-    gap: 32,
-  },
-  header: {
-    alignItems: "center",
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#000000",
-  },
-  email: {
-    fontSize: 14,
-    color: "#A4A7AE",
-    marginTop: 8,
-  },
-  form: {
-    gap: 24,
-  },
-  error: {
-    color: "#DC2626",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  forgot: {
-    textAlign: 'center',
-    fontSize: 14,
-    color: "#A4A7AE",
-  },
-});

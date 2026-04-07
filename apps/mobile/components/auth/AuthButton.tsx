@@ -1,6 +1,7 @@
-import { ReactNode } from "react";
+import { ReactNode, useMemo } from "react";
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from "react-native";
-import { colors } from "@/lib/theme";
+import { useTheme } from "@/providers/ThemeProvider";
+import { ThemeColors } from "@/lib/theme";
 
 interface AuthButtonProps {
   children: ReactNode;
@@ -11,6 +12,37 @@ interface AuthButtonProps {
   style?: any;
 }
 
+const createStyles = (colors: ThemeColors, isDark: boolean) =>
+  StyleSheet.create({
+    base: {
+      height: 56,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: 16,
+      paddingHorizontal: 16,
+    },
+    primary: {
+      backgroundColor: colors["shelivery-primary-yellow"],
+    },
+    google: {
+      backgroundColor: isDark ? colors["shelivery-button-secondary-bg"] : colors.white,
+      borderWidth: 1,
+      borderColor: colors["shelivery-card-border"],
+    },
+    disabled: {
+      opacity: 0.5,
+    },
+    text: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: colors.black,
+    },
+    googleText: {
+      color: colors.black,
+    },
+  });
+
 export default function AuthButton({
   children,
   onPress,
@@ -19,6 +51,9 @@ export default function AuthButton({
   loading = false,
   style,
 }: AuthButtonProps) {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -31,7 +66,7 @@ export default function AuthButton({
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={variant === "google" ? "#000000" : "#000000"} />
+        <ActivityIndicator color={colors.black} />
       ) : (
         <Text style={[styles.text, variant === "google" && styles.googleText]}>
           {children}
@@ -40,33 +75,3 @@ export default function AuthButton({
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  base: {
-    height: 56,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-  },
-  primary: {
-    backgroundColor: colors['shelivery-primary-yellow'] || "#FFDB0D",
-  },
-  google: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: "#E9EAEB",
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-  text: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#000000",
-  },
-  googleText: {
-    color: "#000000",
-  },
-});

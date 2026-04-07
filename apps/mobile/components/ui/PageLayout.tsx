@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/providers/ThemeProvider';
 
 // Base height of the floating Navigation bar (Navigation.tsx: container height = 74 + insets.bottom)
-export const NAV_BAR_BASE_HEIGHT = 74;
+export const NAV_BAR_BASE_HEIGHT = 10;
 
 /**
  * Drop this as the LAST item inside any ScrollView / FlatList that lives inside
