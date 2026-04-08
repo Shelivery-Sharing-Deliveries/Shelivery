@@ -33,6 +33,12 @@ module.exports = {
       infoPlist: {
         NSLocationWhenInUseUsageDescription:
           'This app needs access to your location to help you find nearby pools and set your delivery address.'
+      },
+      entitlements: {
+        // Required for APNs (Apple Push Notification service) on physical devices.
+        // EAS Build sets this automatically via the expo-notifications plugin,
+        // but declaring it explicitly prevents "no valid aps-environment entitlement" errors.
+        'aps-environment': process.env.EAS_BUILD_PROFILE === 'production' ? 'production' : 'development'
       }
     },
     android: {
