@@ -15,6 +15,7 @@ import { useAuthContext } from '@/providers/AuthProvider';
 import { useUserStore } from '@/store/userStore';
 import { useTheme } from '@/providers/ThemeProvider';
 import { supabase } from '../../lib/supabase';
+import { uploadAvatar } from '../../lib/uploadAvatar';
 import PageLayout from '../../components/ui/PageLayout';
 import { ThemeColors } from '@/lib/theme';
 
@@ -177,6 +178,7 @@ export default function EditProfilePage() {
   });
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // Hydrate from profile cache
   useEffect(() => {
@@ -196,25 +198,28 @@ export default function EditProfilePage() {
       if (response.didCancel || response.errorMessage) return;
       const asset = response.assets?.[0];
       if (!asset?.uri) return;
+
+      setUploading(true);
       try {
-        const ext = asset.uri.split('.').pop();
-        const fileName = `${user.id}-${Date.now()}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(fileName, { uri: asset.uri, type: asset.type, name: fileName } as any, {
-            cacheControl: '3600',
-            upsert: true,
-          });
-        if (uploadError) return;
-        const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
-        const r2Path = publicUrlData.publicUrl.split('public/')[1];
-        const proxyUrl = `/api/images/${r2Path}`;
-        await supabase.from('user').update({ image: proxyUrl }).eq('id', user.id);
-        const resolved = resolveImageUrl(proxyUrl);
+        // Upload directly to R2 via presigned URL (same flow as chat media)
+        const { url: storedUrl, error: uploadError } = await uploadAvatar(asset.uri, user.id);
+
+        if (uploadError || !storedUrl) {
+          console.error('Avatar upload failed:', uploadError);
+          return;
+        }
+
+        // Persist the relative URL in the DB (matches what PWA stores)
+        await supabase.from('user').update({ image: storedUrl }).eq('id', user.id);
+
+        // Resolve to absolute URL for immediate display on native
+        const resolved = resolveImageUrl(storedUrl);
         updateProfile({ imageUrl: resolved });
         setProfileImage(resolved);
       } catch (err) {
         console.error('Upload error:', err);
+      } finally {
+        setUploading(false);
       }
     });
   };
@@ -257,7 +262,7 @@ export default function EditProfilePage() {
       >
         {/* ── Avatar ─────────────────────────────────────────────── */}
         <View style={styles.avatarSection}>
-          <TouchableOpacity style={styles.avatarWrapper} onPress={handleImageUpload} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.avatarWrapper} onPress={handleImageUpload} activeOpacity={0.8} disabled={uploading}>
             <Image
               source={
                 profileImage
@@ -270,7 +275,7 @@ export default function EditProfilePage() {
               <Ionicons name="camera" size={14} color={colors['shelivery-text-primary']} />
             </View>
           </TouchableOpacity>
-          <Text style={styles.changePhotoText}>Change photo</Text>
+          <Text style={styles.changePhotoText}>{uploading ? 'Uploading…' : 'Change photo'}</Text>
         </View>
 
         {/* ── Form ───────────────────────────────────────────────── */}

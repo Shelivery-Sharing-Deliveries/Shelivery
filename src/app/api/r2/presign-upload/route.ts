@@ -8,7 +8,7 @@ const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY ?? ''
 const R2_BUCKET = process.env.R2_BUCKET ?? 'shelivery'
 const R2_PUBLIC_URL = (process.env.R2_PUBLIC_URL ?? '').replace(/\/$/, '')
 
-const ALLOWED_MEDIA_TYPES = new Set(['audio', 'image'])
+const ALLOWED_MEDIA_TYPES = new Set(['audio', 'image', 'avatar'])
 const ALLOWED_MIME_PREFIXES = ['audio/', 'image/']
 
 let r2Client: S3Client | null = null
@@ -89,24 +89,33 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const chatroomId = String(body?.chatroomId ?? '').trim()
+    const userId = String(body?.userId ?? '').trim()
     const mediaType = String(body?.mediaType ?? '').trim()
     const contentType = String(body?.contentType ?? '').trim().toLowerCase()
     const extension = sanitizeExtension(String(body?.extension ?? 'bin'))
 
-    if (!chatroomId) {
-      return withCors(NextResponse.json({ error: 'chatroomId is required' }, { status: 400 }), request)
-    }
-
     if (!ALLOWED_MEDIA_TYPES.has(mediaType)) {
-      return withCors(NextResponse.json({ error: 'mediaType must be audio or image' }, { status: 400 }), request)
+      return withCors(NextResponse.json({ error: 'mediaType must be audio, image, or avatar' }, { status: 400 }), request)
     }
 
     if (!contentType || !isValidMimeType(contentType)) {
       return withCors(NextResponse.json({ error: 'Invalid contentType' }, { status: 400 }), request)
     }
 
+    if (mediaType === 'avatar') {
+      if (!userId) {
+        return withCors(NextResponse.json({ error: 'userId is required for avatar uploads' }, { status: 400 }), request)
+      }
+    } else {
+      if (!chatroomId) {
+        return withCors(NextResponse.json({ error: 'chatroomId is required' }, { status: 400 }), request)
+      }
+    }
+
     const uid = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-    const key = `chat-media/${chatroomId}/${mediaType}/${uid}.${extension}`
+    const key = mediaType === 'avatar'
+      ? `avatars/${userId}/avatar-${uid}.${extension}`
+      : `chat-media/${chatroomId}/${mediaType}/${uid}.${extension}`
 
     const command = new PutObjectCommand({
       Bucket: R2_BUCKET,
