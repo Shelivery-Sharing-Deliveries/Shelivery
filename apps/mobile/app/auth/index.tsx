@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -79,15 +79,25 @@ export default function AuthScreen() {
 
   return (
     <PageLayout>
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
-        {step === 'login' && <LoginForm onEmailSubmit={handleEmailSubmit} loading={loading} error={error || undefined} />}
-        {step === 'password' && <PasswordForm email={email} onPasswordSubmit={handlePasswordSubmit} onBackToEmail={() => setStep('login')} onForgotPasswordClick={handleForgotPassword} loading={loading} error={error || undefined} />}
-        {step === 'forgotPassword' && <ForgotPasswordForm initialEmail={email} onSubmit={handleResetSubmit} onBackToLogin={handleBackFromForgot} loading={resetLoading} error={resetError || undefined} successMessage={resetMessage || undefined} />}
-        {step === 'invite' && <InviteCodeForm onCodeSubmit={handleInviteCodeSubmit} loading={loading} error={error || undefined} />}
-        {step === 'setPassword' && <SetPasswordForm email={email} onPasswordSubmit={handleSetPasswordSubmit} loading={loading} error={error || undefined} />}
-        {step === 'awaitingEmailConfirmation' && <EmailConfirmationForm email={email} onResendClick={() => console.log('Resend')} resendCountdown={0} />}
-        {step === 'otp' && <OTPVerificationForm email={email} onCodeSubmit={(code) => console.log('OTP:', code)} onResendCode={() => console.log('Resend')} />}
-      </ScrollView>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
+      >
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {step === 'login' && <LoginForm onEmailSubmit={handleEmailSubmit} loading={loading} error={error || undefined} />}
+          {step === 'password' && <PasswordForm email={email} onPasswordSubmit={handlePasswordSubmit} onBackToEmail={() => setStep('login')} onForgotPasswordClick={handleForgotPassword} loading={loading} error={error || undefined} />}
+          {step === 'forgotPassword' && <ForgotPasswordForm initialEmail={email} onSubmit={handleResetSubmit} onBackToLogin={handleBackFromForgot} loading={resetLoading} error={resetError || undefined} successMessage={resetMessage || undefined} />}
+          {step === 'invite' && <InviteCodeForm onCodeSubmit={handleInviteCodeSubmit} loading={loading} error={error || undefined} />}
+          {step === 'setPassword' && <SetPasswordForm email={email} onPasswordSubmit={handleSetPasswordSubmit} loading={loading} error={error || undefined} />}
+          {step === 'awaitingEmailConfirmation' && <EmailConfirmationForm email={email} onResendClick={() => console.log('Resend')} resendCountdown={0} />}
+          {step === 'otp' && <OTPVerificationForm email={email} onCodeSubmit={(code) => console.log('OTP:', code)} onResendCode={() => console.log('Resend')} />}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </PageLayout>
   );
 }
