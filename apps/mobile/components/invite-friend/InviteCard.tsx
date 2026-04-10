@@ -1,20 +1,32 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
+import { useTheme } from '@/providers/ThemeProvider';
 
 export default function InviteCard() {
+    const { colors, isDark } = useTheme();
+
     return (
         <View style={styles.container}>
             <View style={styles.illustrationContainer}>
-                <View style={styles.illustrationBackground} />
-                <Image 
-                    source={require('../../public/icons/invite-illustration.png')} 
+                <View
+                    style={[
+                        styles.illustrationBackground,
+                        { backgroundColor: isDark ? colors['shelivery-card-border'] : '#FFFADF' },
+                    ]}
+                />
+                <Image
+                    source={require('../../public/icons/invite-illustration.png')}
                     style={styles.illustration}
                 />
             </View>
 
             <View style={styles.textContainer}>
-                <Text style={styles.title}>Group up, Save more !</Text>
-                <Text style={styles.description}>Add Your Friend, share the order and unlock free delivery together</Text>
+                <Text style={[styles.title, { color: colors['shelivery-text-primary'] }]}>
+                    Group up, Save more !
+                </Text>
+                <Text style={[styles.description, { color: colors['shelivery-text-secondary'] }]}>
+                    Add Your Friend, share the order and unlock free delivery together
+                </Text>
             </View>
         </View>
     );
@@ -23,7 +35,7 @@ export default function InviteCard() {
 const styles = StyleSheet.create({
     container: { gap: 24, alignItems: 'center' },
     illustrationContainer: { width: 205, height: 205, justifyContent: 'center', alignItems: 'center', position: 'relative' },
-    illustrationBackground: { position: 'absolute', inset: 0, backgroundColor: '#FFFADF', borderRadius: 102.5 },
+    illustrationBackground: { position: 'absolute', inset: 0, borderRadius: 102.5 },
     illustration: { width: 205, height: 205, borderRadius: 102.5 },
     textContainer: { gap: 16, width: '100%' },
     title: { fontSize: 16, fontWeight: 'bold', textAlign: 'center' },

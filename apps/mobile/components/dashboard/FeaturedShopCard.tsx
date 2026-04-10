@@ -112,7 +112,11 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
   progressBarOverride: { flex: 1, marginBottom: 0 },
 });
 
-export default function FeaturedShopCard() {
+interface FeaturedShopCardProps {
+  refreshKey?: number;
+}
+
+export default function FeaturedShopCard({ refreshKey = 0 }: FeaturedShopCardProps) {
   const [featuredPool, setFeaturedPool] = useState<FeaturedPool | null>(null);
   const [loading, setLoading] = useState(true);
   const { user, loading: authLoading } = useAuth();
@@ -203,7 +207,7 @@ export default function FeaturedShopCard() {
       } finally { setLoading(false); }
     };
     fetchFeaturedPool();
-  }, [user, authLoading]);
+  }, [user, authLoading, refreshKey]);
 
   const handleClick = async () => {
     const draft = { shopId: featuredPool?.shop_id || null, location: null, basketLink: "", basketNote: "", basketAmount: "", step: 1 };

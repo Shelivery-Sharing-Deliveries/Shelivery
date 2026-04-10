@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl } from "react-native";
 import { useRouter } from "expo-router";
 import PageLayout, { NavBarSpacer } from "@/components/ui/PageLayout";
 import { useCallback, useEffect, useState, useMemo } from "react";
@@ -146,10 +146,49 @@ export default function DashboardScreen() {
   const [loadingBaskets, setLoadingBaskets] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showOldOrders, setShowOldOrders] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [featuredPoolRefreshKey, setFeaturedPoolRefreshKey] = useState(0);
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+
+  const onRefresh = useCallback(async () => {
+    if (!user) return;
+    setRefreshing(true);
+    setError(null);
+    try {
+      const { data: userData } = await supabase.from("user").select("first_name, image").eq("id", user.id).single();
+      if (userData) {
+        setUserProfile({ userName: userData.first_name || "User", userAvatar: userData.image || "/avatars/default-avatar.png" });
+      } else {
+        setUserProfile({ userName: "User", userAvatar: "/avatars/default-avatar.png" });
+      }
+      const { data: basketsData, error: basketsError } = await supabase
+        .from("basket")
+        .select("id, amount, status, chatroom_id, shop (name, logo_url)")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (basketsError) throw basketsError;
+      if (basketsData) {
+        const mapped: DisplayBasket[] = basketsData.map((basket: any) => ({
+          id: basket.id,
+          shopName: basket.shop?.name || "Unknown Shop",
+          shopLogo: basket.shop?.logo_url || null,
+          total: basket.amount ? `CHF ${basket.amount.toFixed(2)}` : "CHF 0.00",
+          status: basket.status,
+          chatroomId: basket.chatroom_id || undefined,
+        }));
+        setActiveBaskets(mapped.filter(b => b.status === 'in_pool' || b.status === 'in_chat'));
+        setResolvedBaskets(mapped.filter(b => b.status === 'resolved'));
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to load data.");
+    } finally {
+      setFeaturedPoolRefreshKey(k => k + 1);
+      setRefreshing(false);
+    }
+  }, [user?.id]);
 
   const fetchData = useCallback(async () => {
     if (!user) return;
@@ -205,7 +244,14 @@ export default function DashboardScreen() {
 
   return (
     <PageLayout>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollViewContent}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollViewContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {authLoading ? (
           <DashboardLoading />
         ) : !user ? (
@@ -214,7 +260,7 @@ export default function DashboardScreen() {
             <SignInCard id="sign-in-card" />
             <SquareBanner id="square-banner" />
             <Text style={styles.sectionTitle}>Just About to Complete 🔥</Text>
-            <FeaturedShopCard />
+            <FeaturedShopCard refreshKey={featuredPoolRefreshKey} />
             <AddBasket onClick={() => router.push("/stores" as any)} id="add-basket-button" />
           </>
         ) : (
@@ -248,7 +294,7 @@ export default function DashboardScreen() {
 
             <AddBasket onClick={() => router.push("/stores" as any)} id="add-basket-button" />
             <Text style={styles.sectionTitle}>Just About to Complete 🔥</Text>
-            <FeaturedShopCard />
+            <FeaturedShopCard refreshKey={featuredPoolRefreshKey} />
 
             {loadingBaskets ? (
               <DashboardLoading />

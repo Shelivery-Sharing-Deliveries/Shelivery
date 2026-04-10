@@ -46,7 +46,6 @@ function RootLayoutInner() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="alpha" options={{ headerShown: false }} />
         <Stack.Screen name="choose-shop" options={{ headerShown: false }} />
       </Stack>
       {/* Floating pill navigation bar – absolutely positioned over all screens */}

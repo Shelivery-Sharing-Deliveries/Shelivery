@@ -6,12 +6,14 @@ import { generateInvite } from '../lib/invites';
 import InviteCard from '../components/invite-friend/InviteCard';
 import PageLayout from '../components/ui/PageLayout';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@/providers/ThemeProvider';
 
 export default function InviteFriendPage() {
     const { user, loading: authLoading } = useAuth();
     const [inviteCode, setInviteCode] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
+    const { colors, isDark } = useTheme();
 
     useEffect(() => {
         if (authLoading) return;
@@ -40,10 +42,18 @@ export default function InviteFriendPage() {
 
     const header = (
         <View style={styles.headerRow}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-                <Ionicons name="arrow-back" size={22} color="#111827" />
+            <TouchableOpacity
+                style={[
+                    styles.backButton,
+                    { backgroundColor: isDark ? colors['shelivery-card-border'] : '#F3F4F6' },
+                ]}
+                onPress={() => router.back()}
+            >
+                <Ionicons name="arrow-back" size={22} color={colors['shelivery-text-primary']} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Invite Friend</Text>
+            <Text style={[styles.headerTitle, { color: colors['shelivery-text-primary'] }]}>
+                Invite Friend
+            </Text>
         </View>
     );
 
@@ -51,7 +61,7 @@ export default function InviteFriendPage() {
         return (
             <PageLayout header={header}>
                 <View style={styles.center}>
-                    <ActivityIndicator size="large" />
+                    <ActivityIndicator size="large" color={colors['shelivery-primary-yellow']} />
                 </View>
             </PageLayout>
         );
@@ -62,8 +72,18 @@ export default function InviteFriendPage() {
             <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
                 <InviteCard />
 
-                <View style={styles.codeContainer}>
-                    <Text style={styles.codeText}>{inviteCode}</Text>
+                <View
+                    style={[
+                        styles.codeContainer,
+                        {
+                            backgroundColor: isDark ? colors['shelivery-card-background'] : '#F9FAFB',
+                            borderColor: colors['shelivery-card-border'],
+                        },
+                    ]}
+                >
+                    <Text style={[styles.codeText, { color: colors['shelivery-text-primary'] }]}>
+                        {inviteCode}
+                    </Text>
                 </View>
 
                 <TouchableOpacity style={styles.button} onPress={handleShare}>
@@ -86,14 +106,12 @@ const styles = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: '#F3F4F6',
         alignItems: 'center',
         justifyContent: 'center',
     },
     headerTitle: {
         fontSize: 18,
         fontWeight: '700',
-        color: '#111827',
     },
     center: {
         flex: 1,
@@ -106,9 +124,7 @@ const styles = StyleSheet.create({
         paddingBottom: 120,
     },
     codeContainer: {
-        backgroundColor: '#F9FAFB',
         borderWidth: 1,
-        borderColor: '#E5E8EB',
         borderRadius: 18,
         padding: 16,
         width: '100%',
@@ -116,7 +132,6 @@ const styles = StyleSheet.create({
     },
     codeText: {
         fontSize: 14,
-        color: '#111827',
         letterSpacing: 2,
         fontWeight: '600',
     },
