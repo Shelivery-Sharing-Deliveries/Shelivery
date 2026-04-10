@@ -115,6 +115,7 @@ export default function ChatroomsPage() {
     const { data, error } = await supabase
       .from('chatroom')
       .select('id, state, expire_at, pool:pool(shop:shop(id, name, logo_url))')
+      .neq('state', 'canceled')
       .order('created_at', { ascending: false });
     if (!error && data) {
       setActiveChatrooms(data as any);

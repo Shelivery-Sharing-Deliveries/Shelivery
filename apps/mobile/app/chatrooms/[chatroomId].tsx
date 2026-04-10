@@ -4,10 +4,10 @@ import {
   Text,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { crossAlert } from '@/lib/crossPlatformAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -274,7 +274,7 @@ export default function ChatroomPage() {
   const handleMarkAsOrdered = async () => {
     if (!chatroomId || !userId) return;
     if (chatroom?.admin_id !== userId) {
-      Alert.alert('Permission denied', 'Only the admin can mark the order as placed.');
+      crossAlert('Permission denied', 'Only the admin can mark the order as placed.');
       return;
     }
     setActionLoading(true);
@@ -284,7 +284,7 @@ export default function ChatroomPage() {
       .eq('id', chatroomId);
 
     if (error) {
-      Alert.alert('Error', 'Failed to mark as ordered. Please try again.');
+      crossAlert('Error', 'Failed to mark as ordered. Please try again.');
     } else {
       await loadData();
     }
@@ -295,10 +295,10 @@ export default function ChatroomPage() {
   const handleMarkAsDelivered = async () => {
     if (!chatroomId || !userId) return;
     if (chatroom?.admin_id !== userId) {
-      Alert.alert('Permission denied', 'Only the admin can mark the order as delivered.');
+      crossAlert('Permission denied', 'Only the admin can mark the order as delivered.');
       return;
     }
-    Alert.alert(
+    crossAlert(
       'Mark as Delivered',
       'Are you sure the order has been delivered to all members?',
       [
@@ -314,7 +314,7 @@ export default function ChatroomPage() {
               .eq('id', chatroomId);
 
             if (chatroomError) {
-              Alert.alert('Error', 'Failed to mark as delivered. Please try again.');
+              crossAlert('Error', 'Failed to mark as delivered. Please try again.');
               setActionLoading(false);
               return;
             }
@@ -326,11 +326,11 @@ export default function ChatroomPage() {
             });
 
             if (rpcError) {
-              Alert.alert('Error', rpcError.message || 'Failed to confirm admin delivery.');
+              crossAlert('Error', rpcError.message || 'Failed to confirm admin delivery.');
             } else if (data && typeof data === 'object') {
-              Alert.alert('Success', data.message || 'Order marked as delivered!');
+              crossAlert('Success', data.message || 'Order marked as delivered!');
             } else {
-              Alert.alert('Success', 'Order marked as delivered! Waiting for members to confirm receipt.');
+              crossAlert('Success', 'Order marked as delivered! Waiting for members to confirm receipt.');
             }
 
             await loadData();
@@ -345,7 +345,7 @@ export default function ChatroomPage() {
 
   const handleConfirmDelivery = async () => {
     if (!chatroomId || !userId) return;
-    Alert.alert(
+    crossAlert(
       'Confirm Delivery',
       'Have you received your order?',
       [
@@ -360,11 +360,11 @@ export default function ChatroomPage() {
             });
 
             if (error) {
-              Alert.alert('Error', error.message || 'Failed to confirm delivery.');
+              crossAlert('Error', error.message || 'Failed to confirm delivery.');
             } else if (data && typeof data === 'object') {
-              Alert.alert('Success', data.message || 'Delivery confirmed!');
+              crossAlert('Success', data.message || 'Delivery confirmed!');
             } else {
-              Alert.alert('Success', 'Delivery confirmation processed.');
+              crossAlert('Success', 'Delivery confirmation processed.');
             }
 
             await loadData();
@@ -380,14 +380,14 @@ export default function ChatroomPage() {
   const handleMakeAdmin = async (targetUserId: string) => {
     if (!chatroomId || !userId) return;
     if (chatroom?.admin_id !== userId) {
-      Alert.alert('Permission denied', 'Only the current admin can transfer the admin role.');
+      crossAlert('Permission denied', 'Only the current admin can transfer the admin role.');
       return;
     }
     const targetMember = members.find((m) => m.id === targetUserId);
     const targetName =
       [targetMember?.first_name, targetMember?.last_name].filter(Boolean).join(' ') || 'this member';
 
-    Alert.alert(
+    crossAlert(
       'Make Admin',
       `Are you sure you want to make ${targetName} the new admin? You will lose your admin privileges.`,
       [
@@ -402,9 +402,9 @@ export default function ChatroomPage() {
               .eq('id', chatroomId);
 
             if (error) {
-              Alert.alert('Error', 'Failed to transfer admin role. Please try again.');
+              crossAlert('Error', 'Failed to transfer admin role. Please try again.');
             } else {
-              Alert.alert('Success', 'Admin role transferred successfully!');
+              crossAlert('Success', 'Admin role transferred successfully!');
               await loadData();
               await loadMembers();
             }
@@ -418,18 +418,18 @@ export default function ChatroomPage() {
   const handleRemoveMember = async (targetUserId: string) => {
     if (!chatroomId || !userId) return;
     if (chatroom?.admin_id !== userId) {
-      Alert.alert('Permission denied', 'Only the admin can remove members.');
+      crossAlert('Permission denied', 'Only the admin can remove members.');
       return;
     }
     if (targetUserId === userId) {
-      Alert.alert('Error', 'You cannot remove yourself. Use "Leave Order" instead.');
+      crossAlert('Error', 'You cannot remove yourself. Use "Leave Order" instead.');
       return;
     }
     const targetMember = members.find((m) => m.id === targetUserId);
     const targetName =
       [targetMember?.first_name, targetMember?.last_name].filter(Boolean).join(' ') || 'this member';
 
-    Alert.alert(
+    crossAlert(
       'Remove Member',
       `Are you sure you want to remove ${targetName} from the group?`,
       [
@@ -446,10 +446,10 @@ export default function ChatroomPage() {
               .eq('user_id', targetUserId);
 
             if (error) {
-              Alert.alert('Error', 'Failed to remove member. Please try again.');
+              crossAlert('Error', 'Failed to remove member. Please try again.');
             } else {
               setMembers((prev) => prev.filter((m) => m.id !== targetUserId));
-              Alert.alert('Success', 'Member removed from group.');
+              crossAlert('Success', 'Member removed from group.');
             }
             setActionLoading(false);
           },
@@ -461,7 +461,7 @@ export default function ChatroomPage() {
   const handleExtendTime = async () => {
     if (!chatroomId || !userId) return;
     if (chatroom?.admin_id !== userId) {
-      Alert.alert('Permission denied', 'Only the admin can extend the time.');
+      crossAlert('Permission denied', 'Only the admin can extend the time.');
       return;
     }
     setActionLoading(true);
@@ -471,9 +471,9 @@ export default function ChatroomPage() {
     });
 
     if (error) {
-      Alert.alert('Error', error.message || 'Failed to extend time. Please try again.');
+      crossAlert('Error', error.message || 'Failed to extend time. Please try again.');
     } else {
-      Alert.alert('Success', 'Time has been extended by 1 day.');
+      crossAlert('Success', 'Time has been extended by 1 day.');
       await loadData();
     }
     setActionLoading(false);
@@ -483,7 +483,7 @@ export default function ChatroomPage() {
   const handleLeaveOrder = async () => {
     if (!chatroomId || !userId) return;
 
-    Alert.alert(
+    crossAlert(
       'Leave Order',
       'Are you sure you want to leave this group order?',
       [
@@ -497,7 +497,7 @@ export default function ChatroomPage() {
               chatroom_id_param: chatroomId,
             });
             if (error) {
-              Alert.alert('Error', 'Failed to leave the group. Please try again.');
+              crossAlert('Error', 'Failed to leave the group. Please try again.');
             } else {
               router.replace('/chatrooms' as any);
             }

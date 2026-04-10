@@ -8,6 +8,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/providers/ThemeProvider';
 import { ThemeColors } from '@/lib/theme';
 
+// ─── Image URL helper ─────────────────────────────────────────────────────────
+
+const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
+
+function resolveImageUrl(url: string | null): string | null {
+  if (!url) return null;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/') && API_BASE_URL) return `${API_BASE_URL}${url}`;
+  return url;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ChatMember {
@@ -269,7 +280,7 @@ export function ChatMenu({
                   const isThisAdmin = member.id === chatroom.admin_id;
                   const fullName = [member.first_name, member.last_name].filter(Boolean).join(' ') || 'Unknown';
                   const hasOrderDetails = isAdmin && !!(member.basket?.link || member.basket?.note);
-
+                  console.log(resolveImageUrl(member.image));
                   return (
                     <View key={member.id} style={styles.memberRow}>
                       <View style={styles.avatarWrapper}>
@@ -278,8 +289,8 @@ export function ChatMenu({
                             <Ionicons name="trophy" size={10} color="#f59e0b" />
                           </View>
                         )}
-                        {member.image ? (
-                          <Image source={{ uri: member.image }} style={styles.avatar} />
+                        {resolveImageUrl(member.image) ? (
+                          <Image source={{ uri: resolveImageUrl(member.image)! }} style={styles.avatar} />
                         ) : (
                           <View style={[styles.avatar, styles.avatarFallback]}>
                             <Text style={styles.avatarText}>
